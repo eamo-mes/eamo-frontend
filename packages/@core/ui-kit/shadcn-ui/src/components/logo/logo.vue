@@ -73,12 +73,7 @@ const props = withDefaults(defineProps<Props>(), {
  * @zh_CN 根据主题选择合适的 logo 图标
  */
 const logoSrc = computed(() => {
-  // 如果是暗色主题且提供了 srcDark，则使用暗色主题的 logo
-  if (props.theme === 'dark' && props.srcDark) {
-    return props.srcDark;
-  }
-  // 否则使用默认的 src
-  return props.src;
+  return '/favicon.png';
 });
 
 /**
@@ -129,7 +124,7 @@ const fullLogoStyle = computed(() => ({
         :alt="text"
         :src="logoSrc"
         :style="fullLogoStyle"
-        class="w-full"
+        class="w-full rounded-md"
       />
 
       <VbenAvatar
@@ -138,7 +133,7 @@ const fullLogoStyle = computed(() => ({
         :src="logoSrc"
         :size="logoSize"
         :fit="fit"
-        class="relative rounded-none bg-transparent"
+        class="relative rounded-md bg-transparent"
       />
       <template v-if="shouldShowText">
         <slot name="text">

@@ -94,8 +94,34 @@ export const useAuthStore = defineStore('auth', () => {
     window.location.href = 'http://localhost:8000/logout';
   }
 
+  function getRolesFromToken(token: string): string[] {
+    try {
+      const base64Url = token.split('.')[1];
+      if (!base64Url) return [];
+      const base64 = base64Url.replace(/-/g, '+').replace(/_/g, '/');
+      const jsonPayload = decodeURIComponent(
+        window
+          .atob(base64)
+          .split('')
+          .map((c) => '%' + ('00' + c.charCodeAt(0).toString(16)).slice(-2))
+          .join(''),
+      );
+      const payload = JSON.parse(jsonPayload);
+      return payload.roles || (payload.role ? [payload.role] : []);
+    } catch (e) {
+      console.error('Failed to parse roles from JWT:', e);
+      return [];
+    }
+  }
+
   async function fetchUserInfo() {
     const userInfo = await getUserInfoApi();
+    const token = accessStore.accessToken;
+    if (token) {
+      const roles = getRolesFromToken(token);
+      userInfo.roles = roles;
+      console.log('Detected roles from JWT:', roles);
+    }
     userStore.setUserInfo(userInfo);
     return userInfo;
   }

@@ -64,8 +64,11 @@ async function bootstrap(namespace: string) {
   watchEffect(() => {
     if (preferences.app.dynamicTitle) {
       const routeTitle = router.currentRoute.value.meta?.title;
-      const pageTitle =
+      let pageTitle =
         (routeTitle ? `${$t(routeTitle)} - ` : '') + preferences.app.name;
+      if (pageTitle.includes('EAMO Admin')) {
+        pageTitle = pageTitle.replace(/EAMO Admin/g, 'EAMO');
+      }
       useTitle(pageTitle);
     }
   });
