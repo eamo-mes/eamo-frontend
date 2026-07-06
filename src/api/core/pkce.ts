@@ -1,9 +1,13 @@
 import axios from 'axios';
 
-const CLIENT_ID = '019f3532-e8ea-7057-8f32-b0d17c1d1965';
-const REDIRECT_URI = 'http://localhost:5173/auth/callback';
-const AUTH_URL = 'http://localhost:8000/oauth/authorize';
-const TOKEN_URL = 'http://localhost:8000/oauth/token';
+const CLIENT_ID = import.meta.env.VITE_AUTH_CLIENT_ID as string;
+const REDIRECT_URI = import.meta.env.VITE_AUTH_REDIRECT_URI ?? 'http://localhost:5173/auth/callback';
+const AUTH_URL = import.meta.env.VITE_AUTH_AUTHORIZE_URL ?? 'http://localhost:8000/oauth/authorize';
+const TOKEN_URL = import.meta.env.VITE_AUTH_TOKEN_URL ?? 'http://localhost:8000/oauth/token';
+
+if (!CLIENT_ID) {
+  console.error('[pkce] VITE_AUTH_CLIENT_ID is not defined. Please set it in your .env file.');
+}
 
 function dec2hex(dec: number): string {
   return dec.toString(16).padStart(2, '0');

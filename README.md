@@ -28,11 +28,42 @@ pnpm install
 ```
 
 ### 2.3. Environment Configuration
-Verify and update the environment settings for development:
-- Open the `.env.development` file located in the root directory.
-- Ensure that the `VITE_GLOB_API_URL` variable correctly references the local Laravel backend API endpoint (default path: `http://localhost:8000/api`):
+The project uses Vite's layered environment file system. Files are loaded in the following order of priority (higher overrides lower):
+
+| File | Committed | Purpose |
+|---|---|---|
+| `.env` | ❌ No (gitignored) | Local secrets — copy from `.env.example` |
+| `.env.example` | ✅ Yes | Template with placeholder values |
+| `.env.development` | ✅ Yes | Dev-specific overrides (ports, mock flags) |
+| `.env.production` | ✅ Yes | Production-specific overrides |
+
+**Setup steps:**
+1. Copy the example file to create your local env:
+```bash
+cp .env.example .env
+```
+2. Open `.env` and fill in the required values:
 ```env
-VITE_GLOB_API_URL=http://localhost:8000/api
+# Tiêu đề ứng dụng
+VITE_APP_TITLE=EAMO
+
+# Namespace ứng dụng
+VITE_APP_NAMESPACE=eamo-web-antd
+
+# Khóa bảo mật mã hóa localStorage store
+VITE_APP_STORE_SECURE_KEY=please-replace-me-with-your-own-key
+
+# OAuth Public Client ID — lấy từ bảng oauth_clients trên backend
+VITE_AUTH_CLIENT_ID=019f3598-1773-73aa-b922-377675fd2b7f
+```
+
+> **Note:** All variables exposed to the browser **must** be prefixed with `VITE_`. Variables without this prefix are only available on the build server and will be `undefined` at runtime.
+
+The following optional variables can override defaults defined in `pkce.ts`:
+```env
+VITE_AUTH_REDIRECT_URI=http://localhost:5173/auth/callback
+VITE_AUTH_AUTHORIZE_URL=http://localhost:8000/oauth/authorize
+VITE_AUTH_TOKEN_URL=http://localhost:8000/oauth/token
 ```
 
 ### 2.4. Execution of the Development Server

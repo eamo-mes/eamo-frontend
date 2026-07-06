@@ -25,6 +25,7 @@ package-lock.json
 .omx
 .pnpm-store
 # local env files
+.env
 .env.local
 .env.*.local
 .eslintcache
@@ -52,3 +53,4 @@ vite.config.ts.*
 .history
 .cursor
 
+.env

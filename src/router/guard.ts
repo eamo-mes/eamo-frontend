@@ -88,7 +88,14 @@ function setupAccessGuard(router: Router) {
 
     // 生成路由表
     // 当前登录用户拥有的角色标识列表
-    const userInfo = userStore.userInfo || (await authStore.fetchUserInfo());
+    let userInfo: Awaited<ReturnType<typeof authStore.fetchUserInfo>>;
+    try {
+      userInfo = userStore.userInfo || (await authStore.fetchUserInfo());
+    } catch {
+      // fetchUserInfo already cleared the token and triggered PKCE redirect.
+      // Return false to abort the current navigation cleanly.
+      return false;
+    }
     const userRoles = userInfo.roles ?? [];
 
     // 生成菜单和路由

@@ -35,5 +35,23 @@
     "formTitleEditDept": "Chỉnh sửa phòng ban",
     "deleteConfirm": "Bạn có chắc chắn muốn xóa bản ghi này?",
     "pleaseSelectCompany": "Vui lòng chọn công ty"
+  },
+  "profile": {
+    "name": "Họ và tên",
+    "namePlaceholder": "Vui lòng nhập họ và tên",
+    "nameRequired": "Vui lòng nhập họ và tên",
+    "email": "Email",
+    "emailPlaceholder": "Vui lòng nhập email",
+    "emailRequired": "Vui lòng nhập email",
+    "emailInvalid": "Vui lòng nhập địa chỉ email hợp lệ",
+    "password": "Mật khẩu",
+    "passwordPlaceholder": "Vui lòng nhập mật khẩu mới (tùy chọn)",
+    "passwordMin": "Mật khẩu phải chứa ít nhất 6 ký tự",
+    "confirmPassword": "Xác nhận mật khẩu",
+    "confirmPasswordPlaceholder": "Vui lòng xác nhận mật khẩu mới",
+    "confirmPasswordRequired": "Vui lòng xác nhận mật khẩu mới",
+    "passwordMismatch": "Mật khẩu xác nhận không khớp",
+    "btnUpdate": "Cập nhật thông tin",
+    "updateSuccess": "Cập nhật thông tin thành công"
   }
 }
