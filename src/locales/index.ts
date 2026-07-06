@@ -15,9 +15,10 @@ import { preferences } from '@vben/preferences';
 
 import antdEnLocale from 'ant-design-vue/es/locale/en_US';
 import antdDefaultLocale from 'ant-design-vue/es/locale/zh_CN';
+import antdViLocale from 'ant-design-vue/es/locale/vi_VN';
 import dayjs from 'dayjs';
 
-const antdLocale = ref<Locale>(antdDefaultLocale);
+const antdLocale = ref<Locale>(antdViLocale);
 
 const modules = import.meta.glob('./langs/**/*.json');
 
@@ -58,7 +59,7 @@ async function loadDayjsLocale(lang: SupportedLanguagesType) {
       break;
     }
     case 'zh-CN': {
-      locale = await import('dayjs/locale/zh-cn');
+      locale = await import('dayjs/locale/vi');
       break;
     }
     // 默认使用英语
@@ -84,7 +85,7 @@ async function loadAntdLocale(lang: SupportedLanguagesType) {
       break;
     }
     case 'zh-CN': {
-      antdLocale.value = antdDefaultLocale;
+      antdLocale.value = antdViLocale;
       break;
     }
   }

@@ -11,5 +11,29 @@
     "title": "Dashboard",
     "analytics": "Analytics",
     "workspace": "Workspace"
+  },
+  "company": {
+    "title": "Company Management",
+    "info": "Company Info",
+    "department": "Department Management",
+    "searchPlaceholderInfo": "Search by company name",
+    "searchPlaceholderDept": "Search by department name",
+    "btnFilter": "Filter",
+    "btnReset": "Clear Filter",
+    "btnAddCompany": "Add Company",
+    "btnAddDept": "Add Department",
+    "btnEdit": "Edit",
+    "btnDelete": "Delete",
+    "colName": "Company Name",
+    "colContact": "Contact",
+    "colCompany": "Company Owned",
+    "colActions": "Actions",
+    "colDeptName": "Department Name",
+    "formTitleAddCompany": "Add New Company",
+    "formTitleEditCompany": "Edit Company Info",
+    "formTitleAddDept": "Add New Department",
+    "formTitleEditDept": "Edit Department",
+    "deleteConfirm": "Are you sure you want to delete this record?",
+    "pleaseSelectCompany": "Please select company"
   }
 }

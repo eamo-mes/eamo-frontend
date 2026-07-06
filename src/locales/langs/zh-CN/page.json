@@ -1,15 +1,39 @@
 {
   "auth": {
-    "login": "登录",
-    "register": "注册",
-    "codeLogin": "验证码登录",
-    "qrcodeLogin": "二维码登录",
-    "forgetPassword": "忘记密码",
-    "profile": "个人中心"
+    "login": "Đăng nhập",
+    "register": "Đăng ký",
+    "codeLogin": "Đăng nhập mã xác thực",
+    "qrcodeLogin": "Đăng nhập mã QR",
+    "forgetPassword": "Quên mật khẩu",
+    "profile": "Thông tin cá nhân"
   },
   "dashboard": {
-    "title": "概览",
-    "analytics": "分析页",
-    "workspace": "工作台"
+    "title": "Tổng quan",
+    "analytics": "Trang phân tích",
+    "workspace": "Không gian làm việc"
+  },
+  "company": {
+    "title": "Quản lý doanh nghiệp",
+    "info": "Thông tin công ty",
+    "department": "Quản lý phòng ban",
+    "searchPlaceholderInfo": "Tìm theo tên công ty",
+    "searchPlaceholderDept": "Tìm theo tên phòng ban",
+    "btnFilter": "Lọc",
+    "btnReset": "Xóa lọc",
+    "btnAddCompany": "Thêm công ty",
+    "btnAddDept": "Thêm phòng ban",
+    "btnEdit": "Sửa",
+    "btnDelete": "Xóa",
+    "colName": "Tên công ty",
+    "colContact": "Liên hệ",
+    "colCompany": "Công ty sở hữu",
+    "colActions": "Thao tác",
+    "colDeptName": "Tên phòng ban",
+    "formTitleAddCompany": "Thêm công ty mới",
+    "formTitleEditCompany": "Chỉnh sửa thông tin công ty",
+    "formTitleAddDept": "Thêm phòng ban mới",
+    "formTitleEditDept": "Chỉnh sửa phòng ban",
+    "deleteConfirm": "Bạn có chắc chắn muốn xóa bản ghi này?",
+    "pleaseSelectCompany": "Vui lòng chọn công ty"
   }
 }

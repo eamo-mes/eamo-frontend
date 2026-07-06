@@ -13,7 +13,7 @@ export interface LanguageOption {
  */
 export const SUPPORT_LANGUAGES: LanguageOption[] = [
   {
-    label: '简体中文',
+    label: 'Tiếng Việt',
     value: 'zh-CN',
   },
   {

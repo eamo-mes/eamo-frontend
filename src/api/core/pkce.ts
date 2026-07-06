@@ -1,6 +1,6 @@
 import axios from 'axios';
 
-const CLIENT_ID = '019f270a-267b-73f6-b06e-acc8d726122d';
+const CLIENT_ID = '019f3532-e8ea-7057-8f32-b0d17c1d1965';
 const REDIRECT_URI = 'http://localhost:5173/auth/callback';
 const AUTH_URL = 'http://localhost:8000/oauth/authorize';
 const TOKEN_URL = 'http://localhost:8000/oauth/token';
