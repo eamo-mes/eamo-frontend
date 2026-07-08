@@ -1,7 +1,10 @@
 <script lang="ts" setup>
-import { ref, computed } from 'vue';
+import { ref, computed, onMounted } from 'vue';
 import { $t } from '#/locales';
 import { useCompanyStore } from '#/store/company';
+import { useAccessStore } from '@vben/stores';
+import { API_BASE_URL } from '#/api/config';
+import axios from 'axios';
 import { 
   Button, 
   Table, 
@@ -10,10 +13,43 @@ import {
   Form, 
   FormItem,
   Popconfirm,
-  message 
+  message,
+  Spin
 } from 'ant-design-vue';
 
 const companyStore = useCompanyStore();
+const loading = ref(false);
+const submitting = ref(false);
+
+const BASE_URL = API_BASE_URL;
+
+function getAuthHeaders() {
+  const accessStore = useAccessStore();
+  return {
+    Authorization: `Bearer ${accessStore.accessToken}`,
+    Accept: 'application/json',
+    'Content-Type': 'application/json',
+  };
+}
+
+async function loadCompanies() {
+  loading.value = true;
+  try {
+    const res = await axios.get(`${BASE_URL}/companies`, {
+      headers: getAuthHeaders(),
+    });
+    const raw = res.data?.data ?? [];
+    companyStore.companies = raw;
+  } catch {
+    message.error('Không thể tải danh sách công ty');
+  } finally {
+    loading.value = false;
+  }
+}
+
+onMounted(() => {
+  loadCompanies();
+});
 
 // Search State
 const searchVal = ref('');
@@ -91,38 +127,59 @@ function openEditModal(record: any) {
   showModal.value = true;
 }
 
-function handleDelete(id: any) {
-  companyStore.companies = companyStore.companies.filter(c => c.id !== id);
-  // Also delete departments associated with this company
-  companyStore.departments = companyStore.departments.filter(d => d.company_id !== id);
-  message.success('Xóa công ty thành công');
+async function handleDelete(id: any) {
+  try {
+    await axios.delete(`${BASE_URL}/companies/${id}`, {
+      headers: getAuthHeaders(),
+    });
+    companyStore.companies = companyStore.companies.filter(c => c.id !== id);
+    // Also delete departments associated with this company
+    companyStore.departments = companyStore.departments.filter(d => d.company_id !== id);
+    message.success('Xóa công ty thành công');
+  } catch {
+    message.error('Không thể xóa công ty');
+  }
 }
 
 async function handleOk() {
   try {
     await formRef.value.validateFields();
+    submitting.value = true;
+    
     if (isEditing.value && editId.value) {
+      const res = await axios.put(`${BASE_URL}/companies/${editId.value}`, {
+        name: formState.value.name,
+        contact: formState.value.contact,
+      }, {
+        headers: getAuthHeaders(),
+      });
+      const updated = res.data?.data ?? res.data;
       const idx = companyStore.companies.findIndex(c => c.id === editId.value);
       if (idx !== -1) {
-        companyStore.companies[idx] = {
-          id: editId.value,
-          name: formState.value.name,
-          contact: formState.value.contact
-        };
+        companyStore.companies[idx] = updated;
       }
       message.success('Cập nhật thông tin công ty thành công');
     } else {
-      const newCompany = {
-        id: String(Date.now()),
+      const res = await axios.post(`${BASE_URL}/companies`, {
         name: formState.value.name,
-        contact: formState.value.contact
-      };
-      companyStore.companies.push(newCompany);
+        contact: formState.value.contact,
+      }, {
+        headers: getAuthHeaders(),
+      });
+      const created = res.data?.data ?? res.data;
+      companyStore.companies.push(created);
       message.success('Thêm công ty thành công');
     }
     showModal.value = false;
-  } catch (error) {
-    console.error('Validation failed:', error);
+  } catch (error: any) {
+    if (error?.errorFields) {
+      // form validation failed
+    } else {
+      const msg = error?.response?.data?.message ?? 'Không thể lưu công ty';
+      message.error(msg);
+    }
+  } finally {
+    submitting.value = false;
   }
 }
 </script>
@@ -153,39 +210,42 @@ async function handleOk() {
 
     <!-- Table -->
     <div class="bg-card border border-border rounded-xl shadow-sm overflow-hidden">
-      <Table
-        :columns="columns"
-        :data-source="filteredCompanies"
-        row-key="id"
-        :pagination="{ pageSize: 5 }"
-        class="w-full"
-      >
-        <template #bodyCell="{ column, record }">
-          <template v-if="column.key === 'actions'">
-            <div class="space-x-2">
-              <Button size="small" class="rounded hover:border-primary hover:text-primary" @click="openEditModal(record)">
-                {{ $t('page.company.btnEdit') }}
-              </Button>
-              <Popconfirm
-                :title="$t('page.company.deleteConfirm')"
-                ok-text="Yes"
-                cancel-text="No"
-                @confirm="handleDelete(record.id)"
-              >
-                <Button size="small" danger class="rounded bg-red-50/50 hover:bg-red-500 hover:text-white border-red-200">
-                  {{ $t('page.company.btnDelete') }}
+      <Spin :spinning="loading">
+        <Table
+          :columns="columns"
+          :data-source="filteredCompanies"
+          row-key="id"
+          :pagination="{ pageSize: 5 }"
+          class="w-full"
+        >
+          <template #bodyCell="{ column, record }">
+            <template v-if="column.key === 'actions'">
+              <div class="space-x-2">
+                <Button size="small" class="rounded hover:border-primary hover:text-primary" @click="openEditModal(record)">
+                  {{ $t('page.company.btnEdit') }}
                 </Button>
-              </Popconfirm>
-            </div>
+                <Popconfirm
+                  :title="$t('page.company.deleteConfirm')"
+                  ok-text="Yes"
+                  cancel-text="No"
+                  @confirm="handleDelete(record.id)"
+                >
+                  <Button size="small" danger class="rounded bg-red-50/50 hover:bg-red-500 hover:text-white border-red-200">
+                    {{ $t('page.company.btnDelete') }}
+                  </Button>
+                </Popconfirm>
+              </div>
+            </template>
           </template>
-        </template>
-      </Table>
+        </Table>
+      </Spin>
     </div>
 
     <!-- Add/Edit Modal -->
     <Modal
       v-model:open="showModal"
       :title="isEditing ? $t('page.company.formTitleEditCompany') : $t('page.company.formTitleAddCompany')"
+      :confirm-loading="submitting"
       @ok="handleOk"
       @cancel="showModal = false"
       ok-text="Xác nhận"

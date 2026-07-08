@@ -10,6 +10,7 @@ import { notification } from 'ant-design-vue';
 import { defineStore } from 'pinia';
 
 import { getAccessCodesApi, getUserInfoApi, loginApi } from '#/api';
+import { LOGOUT_URL } from '#/api/config';
 import { $t } from '#/locales';
 
 export const useAuthStore = defineStore('auth', () => {
@@ -90,7 +91,7 @@ export const useAuthStore = defineStore('auth', () => {
     accessStore.setLoginExpired(false);
 
     // Redirect to backend session invalidator
-    window.location.href = 'http://localhost:8000/logout';
+    window.location.href = LOGOUT_URL;
   }
 
   function getRolesFromToken(token: string): string[] {

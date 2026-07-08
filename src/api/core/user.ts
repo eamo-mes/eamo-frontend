@@ -1,6 +1,7 @@
 import type { UserInfo } from '@vben/types';
 import axios from 'axios';
 import { useAccessStore } from '@vben/stores';
+import { API_BASE_URL } from '#/api/config';
 
 /**
  * 获取用户信息
@@ -10,7 +11,7 @@ export async function getUserInfoApi() {
   const token = accessStore.accessToken;
 
   try {
-    const response = await axios.get('http://localhost:8000/api/user', {
+    const response = await axios.get(`${API_BASE_URL}/user`, {
       headers: {
         Authorization: `Bearer ${token}`,
         Accept: 'application/json',
@@ -47,7 +48,7 @@ export async function updateUserInfoApi(data: any) {
   const accessStore = useAccessStore();
   const token = accessStore.accessToken;
 
-  const response = await axios.put('http://localhost:8000/api/user', data, {
+  const response = await axios.put(`${API_BASE_URL}/user`, data, {
     headers: {
       Authorization: `Bearer ${token}`,
       Accept: 'application/json',

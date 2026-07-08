@@ -1,7 +1,8 @@
 import axios from 'axios';
 import { useAccessStore } from '@vben/stores';
+import { API_BASE_URL } from '#/api/config';
 
-const BASE_URL = 'http://localhost:8000/api';
+const BASE_URL = API_BASE_URL;
 
 function getAuthHeaders() {
   const accessStore = useAccessStore();
@@ -18,6 +19,8 @@ export interface UserItem {
   email: string;
   roles: string[];
   department_id?: string | null;
+  department_name?: string | null;
+  company_name?: string | null;
   created_at: string;
   updated_at?: string;
 }

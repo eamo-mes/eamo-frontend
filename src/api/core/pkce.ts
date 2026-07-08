@@ -1,9 +1,10 @@
 import axios from 'axios';
+import { AUTH_AUTHORIZE_URL, AUTH_TOKEN_URL, API_LOGOUT_URL } from '#/api/config';
 
 const CLIENT_ID = import.meta.env.VITE_AUTH_CLIENT_ID as string;
 const REDIRECT_URI = import.meta.env.VITE_AUTH_REDIRECT_URI ?? 'http://localhost:5173/auth/callback';
-const AUTH_URL = import.meta.env.VITE_AUTH_AUTHORIZE_URL ?? 'http://localhost:8000/oauth/authorize';
-const TOKEN_URL = import.meta.env.VITE_AUTH_TOKEN_URL ?? 'http://localhost:8000/oauth/token';
+const AUTH_URL = import.meta.env.VITE_AUTH_AUTHORIZE_URL ?? AUTH_AUTHORIZE_URL;
+const TOKEN_URL = import.meta.env.VITE_AUTH_TOKEN_URL ?? AUTH_TOKEN_URL;
 
 if (!CLIENT_ID) {
   console.error('[pkce] VITE_AUTH_CLIENT_ID is not defined. Please set it in your .env file.');
@@ -83,7 +84,7 @@ export async function handleCallback(code: string): Promise<string> {
 
 export async function revokeTokenBackend(token: string) {
   try {
-    await axios.post('http://localhost:8000/api/logout', {}, {
+    await axios.post(API_LOGOUT_URL, {}, {
       headers: {
         Authorization: `Bearer ${token}`,
         Accept: 'application/json',

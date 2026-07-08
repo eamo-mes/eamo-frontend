@@ -23,6 +23,7 @@ import {
 } from '#/api/core/users';
 import axios from 'axios';
 import { useAccessStore } from '@vben/stores';
+import { API_BASE_URL } from '#/api/config';
 
 // ─── Companies & Departments for dropdown ─────────────────────────────────────
 interface DeptOption { id: string; name: string; company_id?: string }
@@ -34,7 +35,7 @@ const companies = ref<CompanyOption[]>([]);
 async function loadCompanies() {
   try {
     const accessStore = useAccessStore();
-    const res = await axios.get('http://localhost:8000/api/companies', {
+    const res = await axios.get(`${API_BASE_URL}/companies`, {
       headers: { Authorization: `Bearer ${accessStore.accessToken}`, Accept: 'application/json' },
     });
     const raw = res.data?.data ?? [];
@@ -47,7 +48,7 @@ async function loadCompanies() {
 async function loadDepartments() {
   try {
     const accessStore = useAccessStore();
-    const res = await axios.get('http://localhost:8000/api/departments', {
+    const res = await axios.get(`${API_BASE_URL}/departments`, {
       headers: { Authorization: `Bearer ${accessStore.accessToken}`, Accept: 'application/json' },
     });
     const raw = res.data?.data ?? [];
@@ -55,12 +56,6 @@ async function loadDepartments() {
   } catch {
     // silently fail, dropdown will be empty
   }
-}
-
-function getDeptName(id?: string | null) {
-  if (!id) return '—';
-  const found = departments.value.find(d => d.id === id);
-  return found ? found.name : id;
 }
 
 // ─── Role color map ───────────────────────────────────────────────────────────
@@ -125,8 +120,13 @@ const columns = computed(() => [
     key: 'email',
   },
   {
+    title: $t('page.company.users.colCompany'),
+    dataIndex: 'company_name',
+    key: 'company',
+  },
+  {
     title: $t('page.company.users.colDepartment'),
-    dataIndex: 'department_id',
+    dataIndex: 'department_name',
     key: 'department',
   },
   {
@@ -352,8 +352,11 @@ onMounted(() => {
           class="w-full"
         >
           <template #bodyCell="{ column, record }">
-            <template v-if="column.key === 'department'">
-              <span>{{ getDeptName(record.department_id) }}</span>
+            <template v-if="column.key === 'company'">
+              <span>{{ record.company_name || '—' }}</span>
+            </template>
+            <template v-else-if="column.key === 'department'">
+              <span>{{ record.department_name || '—' }}</span>
             </template>
             <template v-else-if="column.key === 'roles'">
               <Tag

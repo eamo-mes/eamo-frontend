@@ -1,7 +1,10 @@
 <script lang="ts" setup>
-import { ref, computed } from 'vue';
+import { ref, computed, onMounted } from 'vue';
 import { $t } from '#/locales';
 import { useCompanyStore } from '#/store/company';
+import { useAccessStore } from '@vben/stores';
+import { API_BASE_URL } from '#/api/config';
+import axios from 'axios';
 import { 
   Button, 
   Table, 
@@ -11,10 +14,56 @@ import {
   Form, 
   FormItem,
   Popconfirm,
-  message 
+  message,
+  Spin
 } from 'ant-design-vue';
 
 const companyStore = useCompanyStore();
+const loading = ref(false);
+const submitting = ref(false);
+
+const BASE_URL = API_BASE_URL;
+
+function getAuthHeaders() {
+  const accessStore = useAccessStore();
+  return {
+    Authorization: `Bearer ${accessStore.accessToken}`,
+    Accept: 'application/json',
+    'Content-Type': 'application/json',
+  };
+}
+
+async function loadCompanies() {
+  try {
+    const res = await axios.get(`${BASE_URL}/companies`, {
+      headers: getAuthHeaders(),
+    });
+    const raw = res.data?.data ?? [];
+    companyStore.companies = raw;
+  } catch {
+    // silently fail
+  }
+}
+
+async function loadDepartments() {
+  loading.value = true;
+  try {
+    const res = await axios.get(`${BASE_URL}/departments`, {
+      headers: getAuthHeaders(),
+    });
+    const raw = res.data?.data ?? [];
+    companyStore.departments = raw;
+  } catch {
+    message.error('Không thể tải danh sách phòng ban');
+  } finally {
+    loading.value = false;
+  }
+}
+
+onMounted(() => {
+  loadDepartments();
+  loadCompanies();
+});
 
 // Search State
 const searchVal = ref('');
@@ -63,7 +112,7 @@ const columns = computed(() => [
   },
   {
     title: $t('page.company.colCompany'),
-    dataIndex: 'company_id',
+    dataIndex: 'company_name',
     key: 'company_id'
   },
   {
@@ -79,8 +128,8 @@ const columns = computed(() => [
   }
 ]);
 
-function getCompanyName(companyId: string) {
-  const comp = companyStore.companies.find(c => c.id === companyId);
+function getCompanyName(companyId: string | number) {
+  const comp = companyStore.companies.find(c => String(c.id) === String(companyId));
   return comp ? comp.name : companyId;
 }
 
@@ -106,42 +155,59 @@ function openEditModal(record: any) {
   showModal.value = true;
 }
 
-function handleDelete(id: any) {
-  companyStore.departments = companyStore.departments.filter(d => d.id !== id);
-  message.success('Xóa phòng ban thành công');
+async function handleDelete(id: any) {
+  try {
+    await axios.delete(`${BASE_URL}/departments/${id}`, {
+      headers: getAuthHeaders(),
+    });
+    companyStore.departments = companyStore.departments.filter(d => d.id !== id);
+    message.success('Xóa phòng ban thành công');
+  } catch {
+    message.error('Không thể xóa phòng ban');
+  }
 }
 
 async function handleOk() {
   try {
     await formRef.value.validateFields();
+    submitting.value = true;
+    
     if (isEditing.value && editId.value) {
+      const res = await axios.put(`${BASE_URL}/departments/${editId.value}`, {
+        name: formState.value.name,
+        company_id: formState.value.company_id,
+        contact: formState.value.contact,
+      }, {
+        headers: getAuthHeaders(),
+      });
+      const updated = res.data?.data ?? res.data;
       const idx = companyStore.departments.findIndex(d => d.id === editId.value);
       if (idx !== -1) {
-        companyStore.departments[idx] = {
-          id: editId.value,
-          name: formState.value.name,
-          company_id: formState.value.company_id,
-          contact: formState.value.contact
-        };
+        companyStore.departments[idx] = updated;
       }
       message.success('Cập nhật thông tin phòng ban thành công');
     } else {
-      const uuid = typeof crypto.randomUUID === 'function' 
-        ? crypto.randomUUID() 
-        : Math.random().toString(36).substring(2) + Date.now().toString(36);
-        
-      const newDept = {
-        id: uuid,
+      const res = await axios.post(`${BASE_URL}/departments`, {
         name: formState.value.name,
         company_id: formState.value.company_id,
-        contact: formState.value.contact
-      };
-      companyStore.departments.push(newDept);
+        contact: formState.value.contact,
+      }, {
+        headers: getAuthHeaders(),
+      });
+      const created = res.data?.data ?? res.data;
+      companyStore.departments.push(created);
       message.success('Thêm phòng ban thành công');
     }
     showModal.value = false;
-  } catch (error) {
-    console.error('Validation failed:', error);
+  } catch (error: any) {
+    if (error?.errorFields) {
+      // form validation failed
+    } else {
+      const msg = error?.response?.data?.message ?? 'Không thể lưu phòng ban';
+      message.error(msg);
+    }
+  } finally {
+    submitting.value = false;
   }
 }
 </script>
@@ -172,42 +238,45 @@ async function handleOk() {
 
     <!-- Table -->
     <div class="bg-card border border-border rounded-xl shadow-sm overflow-hidden">
-      <Table
-        :columns="columns"
-        :data-source="filteredDepartments"
-        row-key="id"
-        :pagination="{ pageSize: 5 }"
-        class="w-full"
-      >
-        <template #bodyCell="{ column, record }">
-          <template v-if="column.key === 'company_id'">
-            <span>{{ getCompanyName(record.company_id) }}</span>
-          </template>
-          <template v-else-if="column.key === 'actions'">
-            <div class="space-x-2">
-              <Button size="small" class="rounded hover:border-primary hover:text-primary" @click="openEditModal(record)">
-                {{ $t('page.company.btnEdit') }}
-              </Button>
-              <Popconfirm
-                :title="$t('page.company.deleteConfirm')"
-                ok-text="Yes"
-                cancel-text="No"
-                @confirm="handleDelete(record.id)"
-              >
-                <Button size="small" danger class="rounded bg-red-50/50 hover:bg-red-500 hover:text-white border-red-200">
-                  {{ $t('page.company.btnDelete') }}
+      <Spin :spinning="loading">
+        <Table
+          :columns="columns"
+          :data-source="filteredDepartments"
+          row-key="id"
+          :pagination="{ pageSize: 5 }"
+          class="w-full"
+        >
+          <template #bodyCell="{ column, record }">
+            <template v-if="column.key === 'company_id'">
+              <span>{{ record.company_name || getCompanyName(record.company_id) }}</span>
+            </template>
+            <template v-else-if="column.key === 'actions'">
+              <div class="space-x-2">
+                <Button size="small" class="rounded hover:border-primary hover:text-primary" @click="openEditModal(record)">
+                  {{ $t('page.company.btnEdit') }}
                 </Button>
-              </Popconfirm>
-            </div>
+                <Popconfirm
+                  :title="$t('page.company.deleteConfirm')"
+                  ok-text="Yes"
+                  cancel-text="No"
+                  @confirm="handleDelete(record.id)"
+                >
+                  <Button size="small" danger class="rounded bg-red-50/50 hover:bg-red-500 hover:text-white border-red-200">
+                    {{ $t('page.company.btnDelete') }}
+                  </Button>
+                </Popconfirm>
+              </div>
+            </template>
           </template>
-        </template>
-      </Table>
+        </Table>
+      </Spin>
     </div>
 
     <!-- Add/Edit Modal -->
     <Modal
       v-model:open="showModal"
       :title="isEditing ? $t('page.company.formTitleEditDept') : $t('page.company.formTitleAddDept')"
+      :confirm-loading="submitting"
       @ok="handleOk"
       @cancel="showModal = false"
       ok-text="Xác nhận"
