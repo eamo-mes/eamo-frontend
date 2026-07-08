@@ -16,16 +16,17 @@ import axios from 'axios';
 import { useAccessStore } from '@vben/stores';
 import { API_BASE_URL } from '#/api/config';
 
-interface CategoryItem {
+interface UnitItem {
   id: string;
   code: string;
   name: string;
+  description: string | null;
   created_at?: string;
 }
 
 const loading = ref(false);
 const submitting = ref(false);
-const categories = ref<CategoryItem[]>([]);
+const units = ref<UnitItem[]>([]);
 const searchVal = ref('');
 const activeSearch = ref('');
 
@@ -38,16 +39,16 @@ function getAuthHeaders() {
   };
 }
 
-async function loadCategories() {
+async function loadUnits() {
   loading.value = true;
   try {
-    const res = await axios.get(`${API_BASE_URL}/v1/equipment-categories`, {
+    const res = await axios.get(`${API_BASE_URL}/v1/units`, {
       headers: getAuthHeaders(),
     });
     const raw = res.data?.data ?? res.data ?? [];
-    categories.value = Array.isArray(raw) ? raw : [];
+    units.value = Array.isArray(raw) ? raw : [];
   } catch (err: any) {
-    message.error(err?.response?.data?.message || 'Không thể tải danh sách loại thiết bị');
+    message.error(err?.response?.data?.message || 'Không thể tải danh sách đơn vị');
   } finally {
     loading.value = false;
   }
@@ -62,27 +63,33 @@ function handleReset() {
   activeSearch.value = '';
 }
 
-const filteredCategories = computed(() => {
+const filteredUnits = computed(() => {
   const q = activeSearch.value.toLowerCase();
-  if (!q) return categories.value;
-  return categories.value.filter(c => 
-    c.name.toLowerCase().includes(q) || 
-    (c.code && c.code.toLowerCase().includes(q))
+  if (!q) return units.value;
+  return units.value.filter(u =>
+    u.code.toLowerCase().includes(q) ||
+    u.name.toLowerCase().includes(q) ||
+    (u.description && u.description.toLowerCase().includes(q))
   );
 });
 
 const columns = computed(() => [
   {
-    title: $t('page.equipment.colCode') || 'Mã loại',
+    title: $t('page.equipment.colCode'),
     dataIndex: 'code',
     key: 'code',
-    sorter: (a: CategoryItem, b: CategoryItem) => (a.code || '').localeCompare(b.code || ''),
+    sorter: (a: UnitItem, b: UnitItem) => a.code.localeCompare(b.code),
   },
   {
     title: $t('page.equipment.colName'),
     dataIndex: 'name',
     key: 'name',
-    sorter: (a: CategoryItem, b: CategoryItem) => a.name.localeCompare(b.name),
+    sorter: (a: UnitItem, b: UnitItem) => a.name.localeCompare(b.name),
+  },
+  {
+    title: $t('page.equipment.colDescription'),
+    dataIndex: 'description',
+    key: 'description',
   },
   {
     title: $t('page.equipment.colActions'),
@@ -101,12 +108,13 @@ const formRef = ref();
 const formState = ref({
   code: '',
   name: '',
+  description: '',
 });
 
-const rules = {
-  code: [{ required: true, message: 'Vui lòng nhập mã loại thiết bị' }],
+const rules = computed(() => ({
+  code: [{ required: true, message: $t('page.equipment.validationCode') }],
   name: [{ required: true, message: $t('page.equipment.validationName') }],
-};
+}));
 
 function openAddModal() {
   isEditing.value = false;
@@ -114,29 +122,31 @@ function openAddModal() {
   formState.value = {
     code: '',
     name: '',
+    description: '',
   };
   showModal.value = true;
 }
 
-function openEditModal(record: CategoryItem) {
+function openEditModal(record: UnitItem) {
   isEditing.value = true;
   editId.value = record.id;
   formState.value = {
     code: record.code,
     name: record.name,
+    description: record.description || '',
   };
   showModal.value = true;
 }
 
 async function handleDelete(id: string) {
   try {
-    await axios.delete(`${API_BASE_URL}/v1/equipment-categories/${id}`, {
+    await axios.delete(`${API_BASE_URL}/v1/units/${id}`, {
       headers: getAuthHeaders(),
     });
-    categories.value = categories.value.filter(c => c.id !== id);
-    message.success('Xóa loại thiết bị thành công');
+    units.value = units.value.filter(u => u.id !== id);
+    message.success('Xóa đơn vị thành công');
   } catch (err: any) {
-    message.error(err?.response?.data?.message || 'Không thể xóa loại thiết bị');
+    message.error(err?.response?.data?.message || 'Không thể xóa đơn vị do đang có liên kết hoặc lỗi hệ thống');
   }
 }
 
@@ -145,34 +155,36 @@ async function handleOk() {
     await formRef.value.validateFields();
     submitting.value = true;
 
+    const payload = {
+      code: formState.value.code,
+      name: formState.value.name,
+      description: formState.value.description || null,
+    };
+
     if (isEditing.value && editId.value) {
-      const res = await axios.put(`${API_BASE_URL}/v1/equipment-categories/${editId.value}`, {
-        code: formState.value.code,
-        name: formState.value.name,
-      }, {
+      const res = await axios.put(`${API_BASE_URL}/v1/units/${editId.value}`, payload, {
         headers: getAuthHeaders(),
       });
-      const updated = res.data;
-      const idx = categories.value.findIndex(c => c.id === editId.value);
-      if (idx !== -1) categories.value[idx] = updated;
-      message.success('Cập nhật loại thiết bị thành công');
+      const updated = res.data?.data ?? res.data;
+      const idx = units.value.findIndex(u => u.id === editId.value);
+      if (idx !== -1 && updated) units.value[idx] = updated;
+      message.success('Cập nhật đơn vị thành công');
+      await loadUnits(); // Reload to be safe
     } else {
-      const res = await axios.post(`${API_BASE_URL}/v1/equipment-categories`, {
-        code: formState.value.code,
-        name: formState.value.name,
-      }, {
+      const res = await axios.post(`${API_BASE_URL}/v1/units`, payload, {
         headers: getAuthHeaders(),
       });
-      const created = res.data;
-      categories.value.push(created);
-      message.success('Thêm loại thiết bị thành công');
+      const created = res.data?.data ?? res.data;
+      if (created) units.value.push(created);
+      message.success('Thêm đơn vị thành công');
+      await loadUnits(); // Reload to be safe
     }
     showModal.value = false;
   } catch (err: any) {
     if (err?.errorFields) {
-      // Form validation failed
+      // Validation error
     } else {
-      const msg = err?.response?.data?.message || 'Không thể lưu loại thiết bị';
+      const msg = err?.response?.data?.message || 'Không thể lưu đơn vị';
       message.error(msg);
     }
   } finally {
@@ -181,7 +193,7 @@ async function handleOk() {
 }
 
 onMounted(() => {
-  loadCategories();
+  loadUnits();
 });
 </script>
 
@@ -208,7 +220,7 @@ onMounted(() => {
           class="bg-[#5c3e35] hover:bg-[#4b332b] border-[#5c3e35] rounded-md font-medium text-white h-full"
           @click="openAddModal"
         >
-          {{ $t('page.equipment.btnAddCategory') }}
+          {{ $t('page.equipment.btnAddUnit') }}
         </Button>
       </div>
     </div>
@@ -218,18 +230,21 @@ onMounted(() => {
       <Spin :spinning="loading">
         <Table
           :columns="columns"
-          :data-source="filteredCategories"
+          :data-source="filteredUnits"
           row-key="id"
           :pagination="{ pageSize: 10 }"
           class="w-full"
         >
           <template #bodyCell="{ column, record }">
-            <template v-if="column.key === 'actions'">
+            <template v-if="column.key === 'description'">
+              <span>{{ record.description || '—' }}</span>
+            </template>
+            <template v-else-if="column.key === 'actions'">
               <div class="space-x-2">
                 <Button
                   size="small"
                   class="rounded hover:border-primary hover:text-primary"
-                  @click="openEditModal(record as CategoryItem)"
+                  @click="openEditModal(record as UnitItem)"
                 >
                   {{ $t('page.company.btnEdit') }}
                 </Button>
@@ -257,7 +272,7 @@ onMounted(() => {
     <!-- Add/Edit Modal -->
     <Modal
       v-model:open="showModal"
-      :title="isEditing ? $t('page.equipment.btnEditCategory') : $t('page.equipment.btnAddCategory')"
+      :title="isEditing ? $t('page.equipment.btnEditUnit') : $t('page.equipment.btnAddUnit')"
       :confirm-loading="submitting"
       ok-text="Xác nhận"
       cancel-text="Hủy"
@@ -272,11 +287,14 @@ onMounted(() => {
         layout="vertical"
         class="mt-4"
       >
-        <FormItem :label="$t('page.equipment.colCode') || 'Mã loại'" name="code">
-          <Input v-model:value="formState.code" placeholder="Nhập mã loại thiết bị" />
+        <FormItem :label="$t('page.equipment.colCode')" name="code">
+          <Input v-model:value="formState.code" :placeholder="$t('page.equipment.placeholderCode')" :disabled="isEditing" />
         </FormItem>
         <FormItem :label="$t('page.equipment.colName')" name="name">
           <Input v-model:value="formState.name" :placeholder="$t('page.equipment.placeholderName')" />
+        </FormItem>
+        <FormItem :label="$t('page.equipment.colDescription')" name="description">
+          <Input.TextArea v-model:value="formState.description" :placeholder="$t('page.equipment.placeholderDescription')" :rows="3" />
         </FormItem>
       </Form>
     </Modal>

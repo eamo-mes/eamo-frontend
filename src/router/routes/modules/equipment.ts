@@ -31,6 +31,15 @@ const routes: RouteRecordRaw[] = [
         },
       },
       {
+        name: 'EquipmentDetail',
+        path: 'list/detail',
+        component: () => import('#/views/equipment/list/detail.vue'),
+        meta: {
+          hideInMenu: true,
+          title: $t('page.equipment.detail'),
+        },
+      },
+      {
         name: 'EquipmentErrors',
         path: 'errors',
         component: () => import('#/views/equipment/errors/index.vue'),
@@ -40,12 +49,12 @@ const routes: RouteRecordRaw[] = [
         },
       },
       {
-        name: 'IoTLogs',
-        path: 'iot-logs',
-        component: () => import('#/views/equipment/iot-logs/index.vue'),
+        name: 'EquipmentUnits',
+        path: 'units',
+        component: () => import('#/views/equipment/units/index.vue'),
         meta: {
-          icon: 'lucide:file-text',
-          title: $t('page.equipment.iotLogs'),
+          icon: 'lucide:box',
+          title: $t('page.equipment.units'),
         },
       },
     ],

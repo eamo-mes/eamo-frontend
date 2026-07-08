@@ -1,5 +1,6 @@
 <script lang="ts" setup>
 import { ref, computed, onMounted } from 'vue';
+import { useRouter } from 'vue-router';
 import { $t } from '#/locales';
 import {
   Button,
@@ -31,6 +32,18 @@ interface ErrorItem {
   fix?: string;
   protection_measures?: string;
   equipment?: EquipmentOption[];
+}
+
+const router = useRouter();
+
+function goToEquipment(id: string) {
+  router.push({ name: 'EquipmentDetail', query: { id } });
+}
+
+const expandedEquipment = ref<Record<string, boolean>>({});
+
+function toggleExpand(id: string) {
+  expandedEquipment.value[id] = !expandedEquipment.value[id];
 }
 
 const loading = ref(false);
@@ -120,6 +133,7 @@ const columns = computed(() => [
     title: $t('page.equipment.colEquipment'),
     dataIndex: 'equipment',
     key: 'equipment',
+    width: 320,
   },
   {
     title: $t('page.equipment.colActions'),
@@ -273,13 +287,32 @@ onMounted(() => {
         >
           <template #bodyCell="{ column, record }">
             <template v-if="column.key === 'equipment'">
-              <div class="flex flex-wrap gap-1">
-                <Tag v-for="eq in record.equipment" :key="eq.id" color="blue">
-                  {{ eq.name }} ({{ eq.code }})
-                </Tag>
-                <span v-if="!record.equipment || record.equipment.length === 0" class="text-gray-400">—</span>
-              </div>
-            </template>
+               <div class="flex flex-col gap-1 max-w-[320px]">
+                  <div
+                    class="flex flex-wrap gap-1 transition-all duration-300 ease-in-out overflow-hidden"
+                    :class="expandedEquipment[record.id] ? 'max-h-[1000px]' : 'max-h-[52px]'"
+                  >
+                    <Tag
+                      v-for="eq in record.equipment"
+                      :key="eq.id"
+                      color="blue"
+                      class="cursor-pointer transition-all duration-200 hover:bg-[#1890ff] hover:text-white hover:border-[#1890ff] hover:-translate-y-0.5 hover:shadow-sm max-w-full truncate"
+                      @click="goToEquipment(eq.id)"
+                    >
+                      {{ eq.name }} ({{ eq.code }})
+                    </Tag>
+                  </div>
+                 <div v-if="record.equipment && record.equipment.length > 3">
+                   <span
+                     class="text-xs text-blue-500 hover:text-blue-700 cursor-pointer font-semibold inline-block mt-0.5 select-none"
+                     @click="toggleExpand(record.id)"
+                   >
+                     {{ expandedEquipment[record.id] ? $t('page.equipment.btnCollapse') : $t('page.equipment.btnShowMore') }}
+                   </span>
+                 </div>
+                 <span v-if="!record.equipment || record.equipment.length === 0" class="text-gray-400">—</span>
+               </div>
+             </template>
             <template v-else-if="column.key === 'actions'">
               <div class="space-x-2">
                 <Button
