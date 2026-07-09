@@ -76,6 +76,21 @@ const equipments = ref<EquipmentItem[]>([]);
 const searchVal = ref('');
 const activeSearch = ref('');
 
+const expandedErrors = ref<Record<string, boolean>>({});
+const expandedParameters = ref<Record<string, boolean>>({});
+
+function toggleExpandErrors(id: string) {
+  expandedErrors.value[id] = !expandedErrors.value[id];
+}
+
+function toggleExpandParameters(id: string) {
+  expandedParameters.value[id] = !expandedParameters.value[id];
+}
+
+function goToErrorsPage() {
+  router.push({ name: 'EquipmentErrors' });
+}
+
 function getAuthHeaders() {
   const accessStore = useAccessStore();
   return {
@@ -145,11 +160,13 @@ const columns = computed(() => [
     title: $t('page.equipment.colErrors'),
     dataIndex: 'equipment_errors',
     key: 'equipment_errors',
+    width: 260,
   },
   {
     title: $t('page.equipment.parametersTitle') || 'Thông số',
     dataIndex: 'equipment_parameters',
     key: 'equipment_parameters',
+    width: 260,
   },
   {
     title: $t('page.equipment.colState'),
@@ -245,21 +262,58 @@ onMounted(() => {
               </Tag>
             </template>
             <template v-else-if="column.key === 'equipment_errors'">
-              <div class="flex flex-wrap gap-1">
-                <Tag v-for="err in record.equipment_errors" :key="err.id" color="red">
-                  {{ err.name }}
-                </Tag>
-                <span v-if="!record.equipment_errors || record.equipment_errors.length === 0" class="text-gray-400">—</span>
-              </div>
-            </template>
-            <template v-else-if="column.key === 'equipment_parameters'">
-              <div class="flex flex-wrap gap-1">
-                <Tag v-for="param in record.equipment_parameters" :key="param.id" color="blue">
-                  {{ param.code }}<span v-if="param.unit"> ({{ param.unit.name }})</span>
-                </Tag>
-                <span v-if="!record.equipment_parameters || record.equipment_parameters.length === 0" class="text-gray-400">—</span>
-              </div>
-            </template>
+               <div class="flex flex-col gap-1 max-w-[260px]">
+                 <div
+                   class="flex flex-wrap gap-1 transition-all duration-300 ease-in-out overflow-hidden"
+                   :class="expandedErrors[record.id] ? 'max-h-[1000px]' : 'max-h-[52px]'"
+                 >
+                   <Tag
+                     v-for="err in record.equipment_errors"
+                     :key="err.id"
+                     color="red"
+                     class="cursor-pointer transition-all duration-200 hover:bg-[#ff4d4f] hover:text-white hover:border-[#ff4d4f] hover:-translate-y-0.5 hover:shadow-sm max-w-full truncate"
+                     @click="goToErrorsPage"
+                   >
+                     {{ err.name }}
+                   </Tag>
+                 </div>
+                 <div v-if="record.equipment_errors && record.equipment_errors.length > 3">
+                   <span
+                     class="text-xs text-blue-500 hover:text-blue-700 cursor-pointer font-semibold inline-block mt-0.5 select-none"
+                     @click="toggleExpandErrors(record.id)"
+                   >
+                     {{ expandedErrors[record.id] ? $t('page.equipment.btnCollapse') : $t('page.equipment.btnShowMore') }}
+                   </span>
+                 </div>
+                 <span v-if="!record.equipment_errors || record.equipment_errors.length === 0" class="text-gray-400">—</span>
+               </div>
+             </template>
+             <template v-else-if="column.key === 'equipment_parameters'">
+               <div class="flex flex-col gap-1 max-w-[260px]">
+                 <div
+                   class="flex flex-wrap gap-1 transition-all duration-300 ease-in-out overflow-hidden"
+                   :class="expandedParameters[record.id] ? 'max-h-[1000px]' : 'max-h-[52px]'"
+                 >
+                   <Tag
+                     v-for="param in record.equipment_parameters"
+                     :key="param.id"
+                     color="blue"
+                     class="transition-all duration-200 hover:bg-[#1890ff] hover:text-white hover:border-[#1890ff] hover:shadow-sm max-w-full truncate"
+                   >
+                     {{ param.code }}<span v-if="param.unit"> ({{ param.unit.name }})</span>
+                   </Tag>
+                 </div>
+                 <div v-if="record.equipment_parameters && record.equipment_parameters.length > 3">
+                   <span
+                     class="text-xs text-blue-500 hover:text-blue-700 cursor-pointer font-semibold inline-block mt-0.5 select-none"
+                     @click="toggleExpandParameters(record.id)"
+                   >
+                     {{ expandedParameters[record.id] ? $t('page.equipment.btnCollapse') : $t('page.equipment.btnShowMore') }}
+                   </span>
+                 </div>
+                 <span v-if="!record.equipment_parameters || record.equipment_parameters.length === 0" class="text-gray-400">—</span>
+               </div>
+             </template>
             <template v-else-if="column.key === 'actions'">
               <div class="space-x-2">
                 <Button

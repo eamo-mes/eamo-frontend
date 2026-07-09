@@ -138,7 +138,7 @@ const fullLogoStyle = computed(() => ({
       <template v-if="shouldShowText">
         <slot name="text">
           <span class="text-foreground truncate font-semibold text-nowrap">
-            {{ text }}
+            EAMO ADMIN
           </span>
         </slot>
       </template>
