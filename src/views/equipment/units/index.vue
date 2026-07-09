@@ -39,14 +39,29 @@ function getAuthHeaders() {
   };
 }
 
-async function loadUnits() {
+// Pagination State
+const currentPage = ref(1);
+const pageSize = ref(10);
+const total = ref(0);
+
+async function loadUnits(page = currentPage.value, size = pageSize.value) {
   loading.value = true;
   try {
+    const params: Record<string, any> = {
+      page,
+      per_page: size,
+    };
+    if (activeSearch.value) {
+      params.q = activeSearch.value;
+    }
     const res = await axios.get(`${API_BASE_URL}/v1/units`, {
       headers: getAuthHeaders(),
+      params,
     });
     const raw = res.data?.data ?? res.data ?? [];
     units.value = Array.isArray(raw) ? raw : [];
+    total.value = res.data?.total ?? units.value.length;
+    currentPage.value = res.data?.current_page ?? page;
   } catch (err: any) {
     message.error(err?.response?.data?.message || 'Không thể tải danh sách đơn vị');
   } finally {
@@ -56,22 +71,24 @@ async function loadUnits() {
 
 function handleSearch() {
   activeSearch.value = searchVal.value;
+  currentPage.value = 1;
+  loadUnits(1);
 }
 
 function handleReset() {
   searchVal.value = '';
   activeSearch.value = '';
+  currentPage.value = 1;
+  loadUnits(1);
 }
 
-const filteredUnits = computed(() => {
-  const q = activeSearch.value.toLowerCase();
-  if (!q) return units.value;
-  return units.value.filter(u =>
-    u.code.toLowerCase().includes(q) ||
-    u.name.toLowerCase().includes(q) ||
-    (u.description && u.description.toLowerCase().includes(q))
-  );
-});
+function handleTableChange(pagination: any) {
+  currentPage.value = pagination.current;
+  pageSize.value = pagination.pageSize;
+  loadUnits(pagination.current, pagination.pageSize);
+}
+
+const filteredUnits = computed(() => units.value);
 
 const columns = computed(() => [
   {
@@ -200,7 +217,7 @@ onMounted(() => {
 <template>
   <div class="p-6 space-y-4">
     <!-- Action Bar -->
-    <div class="bg-card border border-border rounded-xl p-4 shadow-sm flex flex-wrap items-center gap-3">
+    <div class="bg-card border border-border rounded-xl p-4 shadow-sm flex flex-nowrap items-center gap-3 overflow-x-auto w-full">
       <Input
         v-model:value="searchVal"
         :placeholder="$t('page.equipment.placeholderName')"
@@ -232,8 +249,16 @@ onMounted(() => {
           :columns="columns"
           :data-source="filteredUnits"
           row-key="id"
-          :pagination="{ pageSize: 10 }"
+          :scroll="{ x: 'max-content' }"
+          :pagination="{
+            current: currentPage,
+            pageSize: pageSize,
+            total: total,
+            showSizeChanger: true,
+            showTotal: (tot: number) => `Tổng ${tot} bản ghi`,
+          }"
           class="w-full"
+          @change="handleTableChange"
         >
           <template #bodyCell="{ column, record }">
             <template v-if="column.key === 'description'">

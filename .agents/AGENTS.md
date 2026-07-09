@@ -13,3 +13,6 @@ These rules apply to all AI agents working on this project.
 ## 3. Maximize Ant Design Components Usage
 * **Requirement**: Always prefer and maximize the use of components from the **Ant Design Vue** library for building user interfaces.
 * **Constraint**: Do not build custom UI components (like dropdowns, tables, modals) using basic HTML/Tailwind elements if equivalent Ant Design components are available.
+
+## 4. No `any` type in TypeScript
+* **Constraint**: Do not use the `any` type in TypeScript under any circumstances. Always write explicit, type-safe definitions or use helper types.

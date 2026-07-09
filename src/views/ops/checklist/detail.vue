@@ -6,6 +6,7 @@ import { $t } from '#/locales';
 import {
   Breadcrumb,
   Button,
+  DatePicker,
   Input,
   Select,
   Form,
@@ -48,6 +49,7 @@ const users = ref<any[]>([]);
 
 const formState = ref({
   id: '',
+  name: '',
   equipment_id: undefined as string | undefined,
   user_ids: [] as string[],
   session_date: '',
@@ -75,6 +77,7 @@ async function loadEquipments() {
   try {
     const res = await axios.get(`${API_BASE_URL}/v1/equipment`, {
       headers: getAuthHeaders(),
+      params: { per_page: 1000 },
     });
     const raw = res.data?.data ?? res.data ?? [];
     equipments.value = Array.isArray(raw) ? raw : [];
@@ -85,7 +88,7 @@ async function loadEquipments() {
 
 async function loadUsers() {
   try {
-    users.value = await listUsersApi();
+    users.value = await listUsersApi({ per_page: 1000 });
   } catch (err: any) {
     console.error('loadUsers error:', err);
     message.error('Không thể tải danh sách người dùng: ' + (err?.response?.data?.message || err.message));
@@ -102,6 +105,7 @@ async function loadChecklistDetail(id: string) {
     if (record) {
       formState.value = {
         id: record.id,
+        name: record.name || '',
         equipment_id: record.equipment_id || undefined,
         user_ids: record.users?.map((u: any) => u.id) || [],
         session_date: record.session_date ? record.session_date.substring(0, 16).replace('T', ' ') : '',
@@ -113,6 +117,8 @@ async function loadChecklistDetail(id: string) {
           result: detail.result || 'pass',
         })) || [],
       };
+
+      sortChecklistDetails();
 
       // Calculate status dynamically if not present on model
       if (!record.status && record.details) {
@@ -130,6 +136,14 @@ async function loadChecklistDetail(id: string) {
   } finally {
     loading.value = false;
   }
+}
+
+function sortChecklistDetails() {
+  formState.value.checklist_details.sort((a, b) => {
+    if (a.result === 'fail' && b.result !== 'fail') return -1;
+    if (a.result !== 'fail' && b.result === 'fail') return 1;
+    return 0;
+  });
 }
 
 function addDetailRow() {
@@ -162,8 +176,9 @@ async function removeDetailRow(index: number) {
 const formRef = ref();
 
 const rules = computed(() => ({
+  name: [{ required: true, message: $t('page.ops.validationName') }],
   equipment_id: [{ required: true, message: $t('page.ops.validationEquipment') }],
-  session_date: [{ required: true, message: 'Vui lòng chọn ngày kiểm tra' }],
+  session_date: [{ required: true, message: $t('page.ops.validationDate') }],
 }));
 
 async function handleSubmit() {
@@ -174,6 +189,7 @@ async function handleSubmit() {
     if (isEditing.value && editId.value) {
       // 1. Update checklist session properties
       const sessionPayload = {
+        name: formState.value.name,
         equipment_id: formState.value.equipment_id,
         session_date: formState.value.session_date,
         user_ids: formState.value.user_ids,
@@ -199,6 +215,7 @@ async function handleSubmit() {
     } else {
       // Create session
       const createPayload = {
+        name: formState.value.name,
         equipment_id: formState.value.equipment_id,
         session_date: formState.value.session_date,
         user_ids: formState.value.user_ids,
@@ -226,28 +243,13 @@ async function handleSubmit() {
   }
 }
 
-async function handleDeleteSession() {
-  if (!editId.value) return;
-  try {
-    submitting.value = true;
-    await axios.delete(`${API_BASE_URL}/v1/checklist-sessions/${editId.value}`, {
-      headers: getAuthHeaders(),
-    });
-    message.success('Xóa phiên kiểm tra thành công');
-    goBack();
-  } catch (err: any) {
-    message.error(err?.response?.data?.message || 'Không thể xóa phiên kiểm tra');
-  } finally {
-    submitting.value = false;
-  }
-}
-
 function goBack() {
   router.push({ name: 'OpsCheckList' });
 }
 
-onMounted(async () => {
-  await Promise.all([loadEquipments(), loadUsers()]);
+onMounted(() => {
+  loadEquipments();
+  loadUsers();
 
   const id = route.query.id as string;
   if (id) {
@@ -287,17 +289,6 @@ onMounted(async () => {
         </h1>
       </div>
       <div class="flex gap-2">
-        <Popconfirm
-          v-if="isEditing"
-          :title="$t('page.ops.deleteConfirm')"
-          :ok-text="$t('page.ops.btnConfirm')"
-          :cancel-text="$t('page.ops.btnCancel')"
-          @confirm="handleDeleteSession"
-        >
-          <Button type="primary" danger :loading="submitting">
-            Xóa phiên
-          </Button>
-        </Popconfirm>
         <Button type="default" @click="goBack" :disabled="submitting">
           {{ $t('page.ops.btnCancel') }}
         </Button>
@@ -317,8 +308,8 @@ onMounted(async () => {
           layout="vertical"
         >
           <div class="grid grid-cols-2 gap-x-4">
-            <FormItem v-if="isEditing" :label="$t('page.ops.colCode') + ' (ID)'" name="id" class="col-span-2">
-              <Input v-model:value="formState.id" disabled class="font-mono bg-gray-50" />
+            <FormItem :label="$t('page.ops.colName')" name="name" class="col-span-2">
+              <Input v-model:value="formState.name" :placeholder="$t('page.ops.placeholderName')" />
             </FormItem>
 
             <FormItem :label="$t('page.ops.colEquipment')" name="equipment_id" class="col-span-1">
@@ -334,14 +325,21 @@ onMounted(async () => {
             </FormItem>
 
             <FormItem :label="$t('page.ops.colDate')" name="session_date" class="col-span-1">
-              <Input v-model:value="formState.session_date" placeholder="YYYY-MM-DD HH:mm" />
+              <DatePicker
+                v-model:value="formState.session_date"
+                show-time
+                value-format="YYYY-MM-DD HH:mm"
+                format="YYYY-MM-DD HH:mm"
+                class="w-full"
+                :placeholder="$t('page.ops.placeholderDate')"
+              />
             </FormItem>
 
-            <FormItem label="Người thực hiện" name="user_ids" class="col-span-2">
+            <FormItem :label="$t('page.ops.colExecutor')" name="user_ids" class="col-span-2">
               <Select
                 v-model:value="formState.user_ids"
                 mode="multiple"
-                placeholder="Chọn người thực hiện"
+                :placeholder="$t('page.ops.placeholderExecutor')"
                 allow-clear
                 option-filter-prop="label"
               >
@@ -374,7 +372,12 @@ onMounted(async () => {
               </div>
 
               <div v-else class="space-y-3">
-                <div v-for="(item, index) in formState.checklist_details" :key="index" class="flex flex-wrap md:flex-nowrap gap-2 items-center bg-gray-50/50 p-3 rounded-lg border border-gray-100">
+                <div
+                  v-for="(item, index) in formState.checklist_details"
+                  :key="item.checklist_id"
+                  class="flex flex-wrap md:flex-nowrap gap-2 items-center p-3 rounded-lg border transition-all duration-200"
+                  :class="item.result === 'fail' ? 'bg-red-50/60 border-red-200' : 'bg-gray-50/50 border-gray-100'"
+                >
                   <div class="flex-1 min-w-[200px]">
                     <span class="text-xs text-gray-500 block mb-1 font-medium">{{ $t('page.ops.itemName') }}</span>
                     <Input v-model:value="item.description" :placeholder="$t('page.ops.itemNamePlaceholder')" />
@@ -382,7 +385,7 @@ onMounted(async () => {
 
                   <div class="w-[180px]">
                     <span class="text-xs text-gray-500 block mb-1 font-medium">{{ $t('page.ops.colStatus') }}</span>
-                    <Select v-model:value="item.result" class="w-full">
+                    <Select v-model:value="item.result" class="w-full" @change="sortChecklistDetails">
                       <Select.Option value="pass">Pass (Đạt)</Select.Option>
                       <Select.Option value="fail">Fail (Lỗi)</Select.Option>
                     </Select>

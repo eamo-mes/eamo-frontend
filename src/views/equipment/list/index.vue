@@ -6,6 +6,7 @@ import {
   Button,
   Table,
   Input,
+  Select,
   Popconfirm,
   Tag,
   message,
@@ -59,6 +60,7 @@ interface EquipmentItem {
   is_active: boolean;
   equipment_errors?: ErrorOption[];
   equipment_parameters?: ParameterItem[];
+  checklist_details_count?: number;
 }
 
 const router = useRouter();
@@ -100,14 +102,52 @@ function getAuthHeaders() {
   };
 }
 
-async function loadEquipments() {
+// Pagination State
+const currentPage = ref(1);
+const pageSize = ref(10);
+const total = ref(0);
+
+const filterCategoryId = ref<string | undefined>(undefined);
+const filterActive = ref<string | undefined>(undefined);
+const categories = ref<CategoryOption[]>([]);
+
+async function loadCategories() {
+  try {
+    const res = await axios.get(`${API_BASE_URL}/v1/equipment-categories`, {
+      headers: getAuthHeaders(),
+      params: { per_page: 1000 },
+    });
+    const raw = res.data?.data ?? res.data ?? [];
+    categories.value = Array.isArray(raw) ? raw : [];
+  } catch {
+    // silently fail
+  }
+}
+
+async function loadEquipments(page = currentPage.value, size = pageSize.value) {
   loading.value = true;
   try {
+    const params: Record<string, any> = {
+      page,
+      per_page: size,
+    };
+    if (filterCategoryId.value) {
+      params.equipment_category_id = filterCategoryId.value;
+    }
+    if (filterActive.value !== undefined) {
+      params.is_active = filterActive.value;
+    }
+    if (activeSearch.value) {
+      params.q = activeSearch.value;
+    }
     const res = await axios.get(`${API_BASE_URL}/v1/equipment`, {
       headers: getAuthHeaders(),
+      params,
     });
     const raw = res.data?.data ?? res.data ?? [];
     equipments.value = Array.isArray(raw) ? raw : [];
+    total.value = res.data?.total ?? equipments.value.length;
+    currentPage.value = res.data?.current_page ?? page;
   } catch (err: any) {
     message.error(err?.response?.data?.message || 'Không thể tải danh sách thiết bị');
   } finally {
@@ -117,21 +157,31 @@ async function loadEquipments() {
 
 function handleSearch() {
   activeSearch.value = searchVal.value;
+  currentPage.value = 1;
+  loadEquipments(1);
 }
 
 function handleReset() {
   searchVal.value = '';
   activeSearch.value = '';
+  filterCategoryId.value = undefined;
+  filterActive.value = undefined;
+  currentPage.value = 1;
+  loadEquipments(1);
 }
 
-const filteredEquipments = computed(() => {
-  const q = activeSearch.value.toLowerCase();
-  if (!q) return equipments.value;
-  return equipments.value.filter(e =>
-    e.code.toLowerCase().includes(q) ||
-    (e.name && e.name.toLowerCase().includes(q))
-  );
-});
+function handleFilterChange() {
+  currentPage.value = 1;
+  loadEquipments(1);
+}
+
+function handleTableChange(pagination: any) {
+  currentPage.value = pagination.current;
+  pageSize.value = pagination.pageSize;
+  loadEquipments(pagination.current, pagination.pageSize);
+}
+
+const filteredEquipments = computed(() => equipments.value);
 
 const columns = computed(() => [
   {
@@ -174,6 +224,12 @@ const columns = computed(() => [
     key: 'equipment_state',
   },
   {
+    title: $t('page.equipment.colChecklist'),
+    dataIndex: 'checklist_details_count',
+    key: 'checklist_details_count',
+    sorter: (a: EquipmentItem, b: EquipmentItem) => (a.checklist_details_count || 0) - (b.checklist_details_count || 0),
+  },
+  {
     title: $t('page.equipment.colActions'),
     key: 'actions',
     width: 160,
@@ -203,13 +259,14 @@ async function handleDelete(id: string) {
 
 onMounted(() => {
   loadEquipments();
+  loadCategories();
 });
 </script>
 
 <template>
   <div class="p-6 space-y-4">
     <!-- Action Bar -->
-    <div class="bg-card border border-border rounded-xl p-4 shadow-sm flex flex-wrap items-center gap-3">
+    <div class="bg-card border border-border rounded-xl p-4 shadow-sm flex flex-nowrap items-center gap-3 overflow-x-auto w-full">
       <Input
         v-model:value="searchVal"
         :placeholder="$t('page.equipment.placeholderName')"
@@ -217,6 +274,27 @@ onMounted(() => {
         allow-clear
         @press-enter="handleSearch"
       />
+      <Select
+        v-model:value="filterCategoryId"
+        :placeholder="$t('page.equipment.filterCategoryPlaceholder')"
+        class="min-w-[180px]"
+        allow-clear
+        @change="handleFilterChange"
+      >
+        <Select.Option v-for="c in categories" :key="c.id" :value="c.id">
+          {{ c.name }}
+        </Select.Option>
+      </Select>
+      <Select
+        v-model:value="filterActive"
+        :placeholder="$t('page.equipment.filterActivePlaceholder')"
+        class="min-w-[150px]"
+        allow-clear
+        @change="handleFilterChange"
+      >
+        <Select.Option value="true">{{ $t('page.equipment.statusActive') }}</Select.Option>
+        <Select.Option value="false">{{ $t('page.equipment.statusInactive') }}</Select.Option>
+      </Select>
       <Button type="default" @click="handleSearch">
         {{ $t('page.company.btnFilter') }}
       </Button>
@@ -241,8 +319,16 @@ onMounted(() => {
           :columns="columns"
           :data-source="filteredEquipments"
           row-key="id"
-          :pagination="{ pageSize: 10 }"
+          :scroll="{ x: 'max-content' }"
+          :pagination="{
+            current: currentPage,
+            pageSize: pageSize,
+            total: total,
+            showSizeChanger: true,
+            showTotal: (tot: number) => `Tổng ${tot} bản ghi`,
+          }"
           class="w-full"
+          @change="handleTableChange"
         >
           <template #bodyCell="{ column, record }">
             <template v-if="column.key === 'equipment_category'">
@@ -313,8 +399,11 @@ onMounted(() => {
                  </div>
                  <span v-if="!record.equipment_parameters || record.equipment_parameters.length === 0" class="text-gray-400">—</span>
                </div>
+              </template>
+             <template v-else-if="column.key === 'checklist_details_count'">
+               <span>{{ record.checklist_details_count ?? 0 }}</span>
              </template>
-            <template v-else-if="column.key === 'actions'">
+             <template v-else-if="column.key === 'actions'">
               <div class="space-x-2">
                 <Button
                   size="small"

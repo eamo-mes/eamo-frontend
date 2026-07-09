@@ -15,7 +15,6 @@ import {
   Spin,
 } from 'ant-design-vue';
 import {
-  listUsersApi,
   storeUserApi,
   updateUserApi,
   destroyUserApi,
@@ -37,6 +36,7 @@ async function loadCompanies() {
     const accessStore = useAccessStore();
     const res = await axios.get(`${API_BASE_URL}/companies`, {
       headers: { Authorization: `Bearer ${accessStore.accessToken}`, Accept: 'application/json' },
+      params: { per_page: 1000 },
     });
     const raw = res.data?.data ?? [];
     companies.value = raw.map((c: any) => ({ id: c.id, name: c.name }));
@@ -50,6 +50,7 @@ async function loadDepartments() {
     const accessStore = useAccessStore();
     const res = await axios.get(`${API_BASE_URL}/departments`, {
       headers: { Authorization: `Bearer ${accessStore.accessToken}`, Accept: 'application/json' },
+      params: { per_page: 1000 },
     });
     const raw = res.data?.data ?? [];
     departments.value = raw.map((d: any) => ({ id: d.id, name: d.name, company_id: d.company_id }));
@@ -76,10 +77,62 @@ const users = ref<UserItem[]>([]);
 const searchVal = ref('');
 const activeSearch = ref('');
 
-async function loadUsers() {
+// Pagination State
+const currentPage = ref(1);
+const pageSize = ref(10);
+const total = ref(0);
+
+const filterCompanyId = ref<string | undefined>(undefined);
+const filterDepartmentId = ref<string | undefined>(undefined);
+const filterRole = ref<string | undefined>(undefined);
+
+// Computed options for department filter selector
+const filterDeptOptions = computed(() => {
+  if (!filterCompanyId.value) {
+    // Show all departments with company name in parentheses
+    return departments.value.map(d => {
+      const comp = companies.value.find(c => String(c.id) === String(d.company_id));
+      const label = comp ? `${d.name} (${comp.name})` : d.name;
+      return { id: d.id, name: label };
+    });
+  }
+  // Show departments belonging to the selected company
+  return departments.value
+    .filter(d => String(d.company_id) === String(filterCompanyId.value))
+    .map(d => ({ id: d.id, name: d.name }));
+});
+
+async function loadUsers(page = currentPage.value, size = pageSize.value) {
   loading.value = true;
   try {
-    users.value = await listUsersApi();
+    const accessStore = useAccessStore();
+    const params: Record<string, any> = {
+      page,
+      per_page: size,
+    };
+    if (filterCompanyId.value) {
+      params.company_id = filterCompanyId.value;
+    }
+    if (filterDepartmentId.value) {
+      params.department_id = filterDepartmentId.value;
+    }
+    if (filterRole.value) {
+      params.role = filterRole.value;
+    }
+    if (activeSearch.value) {
+      params.search = activeSearch.value;
+    }
+    const res = await axios.get(`${API_BASE_URL}/users`, {
+      headers: {
+        Authorization: `Bearer ${accessStore.accessToken}`,
+        Accept: 'application/json',
+      },
+      params,
+    });
+    const raw = res.data?.data ?? [];
+    users.value = raw;
+    total.value = res.data?.meta?.total ?? raw.length;
+    currentPage.value = res.data?.meta?.current_page ?? page;
   } catch {
     message.error($t('page.company.users.loadError'));
   } finally {
@@ -89,22 +142,38 @@ async function loadUsers() {
 
 function handleSearch() {
   activeSearch.value = searchVal.value;
+  currentPage.value = 1;
+  loadUsers(1);
 }
 
 function handleReset() {
   searchVal.value = '';
   activeSearch.value = '';
+  filterCompanyId.value = undefined;
+  filterDepartmentId.value = undefined;
+  filterRole.value = undefined;
+  currentPage.value = 1;
+  loadUsers(1);
 }
 
-const filteredUsers = computed(() => {
-  const q = activeSearch.value.toLowerCase();
-  if (!q) return users.value;
-  return users.value.filter(u =>
-    u.name.toLowerCase().includes(q) ||
-    u.email.toLowerCase().includes(q) ||
-    (u.roles ?? []).some(r => r.toLowerCase().includes(q)),
-  );
-});
+function handleCompanyFilterChange() {
+  filterDepartmentId.value = undefined; // Reset department when company changes
+  currentPage.value = 1;
+  loadUsers(1);
+}
+
+function handleFilterChange() {
+  currentPage.value = 1;
+  loadUsers(1);
+}
+
+function handleTableChange(pagination: any) {
+  currentPage.value = pagination.current;
+  pageSize.value = pagination.pageSize;
+  loadUsers(pagination.current, pagination.pageSize);
+}
+
+const filteredUsers = computed(() => users.value);
 
 // ─── Table columns ────────────────────────────────────────────────────────────
 const columns = computed(() => [
@@ -316,7 +385,7 @@ onMounted(() => {
 <template>
   <div class="p-6 space-y-4">
     <!-- Action Bar -->
-    <div class="bg-card border border-border rounded-xl p-4 shadow-sm flex flex-wrap items-center gap-3">
+    <div class="bg-card border border-border rounded-xl p-4 shadow-sm flex flex-nowrap items-center gap-3 overflow-x-auto w-full">
       <Input
         v-model:value="searchVal"
         :placeholder="$t('page.company.users.searchPlaceholder')"
@@ -324,6 +393,39 @@ onMounted(() => {
         allow-clear
         @press-enter="handleSearch"
       />
+      <Select
+        v-model:value="filterCompanyId"
+        :placeholder="$t('page.company.users.selectCompanyPlaceholder') || 'Lọc theo công ty'"
+        class="min-w-[180px]"
+        allow-clear
+        @change="handleCompanyFilterChange"
+      >
+        <Select.Option v-for="c in companies" :key="c.id" :value="c.id">
+          {{ c.name }}
+        </Select.Option>
+      </Select>
+      <Select
+        v-model:value="filterDepartmentId"
+        :placeholder="$t('page.company.users.selectDeptPlaceholder') || 'Lọc theo phòng ban'"
+        class="min-w-[200px]"
+        allow-clear
+        @change="handleFilterChange"
+      >
+        <Select.Option v-for="d in filterDeptOptions" :key="d.id" :value="d.id">
+          {{ d.name }}
+        </Select.Option>
+      </Select>
+      <Select
+        v-model:value="filterRole"
+        :placeholder="$t('page.company.users.filterRolePlaceholder')"
+        class="min-w-[150px]"
+        allow-clear
+        @change="handleFilterChange"
+      >
+        <Select.Option v-for="opt in roleOptions" :key="opt.value" :value="opt.value">
+          {{ opt.label }}
+        </Select.Option>
+      </Select>
       <Button type="default" @click="handleSearch">
         {{ $t('page.company.btnFilter') }}
       </Button>
@@ -348,8 +450,16 @@ onMounted(() => {
           :columns="columns"
           :data-source="filteredUsers"
           row-key="id"
-          :pagination="{ pageSize: 10 }"
+          :scroll="{ x: 'max-content' }"
+          :pagination="{
+            current: currentPage,
+            pageSize: pageSize,
+            total: total,
+            showSizeChanger: true,
+            showTotal: (tot: number) => `Tổng ${tot} bản ghi`,
+          }"
           class="w-full"
+          @change="handleTableChange"
         >
           <template #bodyCell="{ column, record }">
             <template v-if="column.key === 'company'">

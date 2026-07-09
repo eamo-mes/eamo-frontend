@@ -38,14 +38,29 @@ function getAuthHeaders() {
   };
 }
 
-async function loadCategories() {
+// Pagination State
+const currentPage = ref(1);
+const pageSize = ref(10);
+const total = ref(0);
+
+async function loadCategories(page = currentPage.value, size = pageSize.value) {
   loading.value = true;
   try {
+    const params: Record<string, any> = {
+      page,
+      per_page: size,
+    };
+    if (activeSearch.value) {
+      params.q = activeSearch.value;
+    }
     const res = await axios.get(`${API_BASE_URL}/v1/equipment-categories`, {
       headers: getAuthHeaders(),
+      params,
     });
     const raw = res.data?.data ?? res.data ?? [];
     categories.value = Array.isArray(raw) ? raw : [];
+    total.value = res.data?.total ?? categories.value.length;
+    currentPage.value = res.data?.current_page ?? page;
   } catch (err: any) {
     message.error(err?.response?.data?.message || 'Không thể tải danh sách loại thiết bị');
   } finally {
@@ -55,21 +70,24 @@ async function loadCategories() {
 
 function handleSearch() {
   activeSearch.value = searchVal.value;
+  currentPage.value = 1;
+  loadCategories(1);
 }
 
 function handleReset() {
   searchVal.value = '';
   activeSearch.value = '';
+  currentPage.value = 1;
+  loadCategories(1);
 }
 
-const filteredCategories = computed(() => {
-  const q = activeSearch.value.toLowerCase();
-  if (!q) return categories.value;
-  return categories.value.filter(c => 
-    c.name.toLowerCase().includes(q) || 
-    (c.code && c.code.toLowerCase().includes(q))
-  );
-});
+function handleTableChange(pagination: any) {
+  currentPage.value = pagination.current;
+  pageSize.value = pagination.pageSize;
+  loadCategories(pagination.current, pagination.pageSize);
+}
+
+const filteredCategories = computed(() => categories.value);
 
 const columns = computed(() => [
   {
@@ -188,7 +206,7 @@ onMounted(() => {
 <template>
   <div class="p-6 space-y-4">
     <!-- Action Bar -->
-    <div class="bg-card border border-border rounded-xl p-4 shadow-sm flex flex-wrap items-center gap-3">
+    <div class="bg-card border border-border rounded-xl p-4 shadow-sm flex flex-nowrap items-center gap-3 overflow-x-auto w-full">
       <Input
         v-model:value="searchVal"
         :placeholder="$t('page.equipment.placeholderName')"
@@ -220,8 +238,16 @@ onMounted(() => {
           :columns="columns"
           :data-source="filteredCategories"
           row-key="id"
-          :pagination="{ pageSize: 10 }"
+          :scroll="{ x: 'max-content' }"
+          :pagination="{
+            current: currentPage,
+            pageSize: pageSize,
+            total: total,
+            showSizeChanger: true,
+            showTotal: (tot: number) => `Tổng ${tot} bản ghi`,
+          }"
           class="w-full"
+          @change="handleTableChange"
         >
           <template #bodyCell="{ column, record }">
             <template v-if="column.key === 'actions'">

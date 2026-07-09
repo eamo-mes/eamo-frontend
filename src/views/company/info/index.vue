@@ -32,14 +32,29 @@ function getAuthHeaders() {
   };
 }
 
-async function loadCompanies() {
+// Pagination State
+const currentPage = ref(1);
+const pageSize = ref(10);
+const total = ref(0);
+
+async function loadCompanies(page = currentPage.value, size = pageSize.value) {
   loading.value = true;
   try {
+    const params: Record<string, any> = {
+      page,
+      per_page: size,
+    };
+    if (activeSearch.value) {
+      params.search = activeSearch.value;
+    }
     const res = await axios.get(`${BASE_URL}/companies`, {
       headers: getAuthHeaders(),
+      params,
     });
     const raw = res.data?.data ?? [];
     companyStore.companies = raw;
+    total.value = res.data?.meta?.total ?? raw.length;
+    currentPage.value = res.data?.meta?.current_page ?? page;
   } catch {
     message.error('Không thể tải danh sách công ty');
   } finally {
@@ -57,20 +72,24 @@ const activeSearch = ref('');
 
 function handleSearch() {
   activeSearch.value = searchVal.value;
+  currentPage.value = 1;
+  loadCompanies(1);
 }
 
 function handleReset() {
   searchVal.value = '';
   activeSearch.value = '';
+  currentPage.value = 1;
+  loadCompanies(1);
 }
 
-const filteredCompanies = computed(() => {
-  return companyStore.companies.filter(item => {
-    return !activeSearch.value || 
-      item.name.toLowerCase().includes(activeSearch.value.toLowerCase()) ||
-      (item.contact && item.contact.toLowerCase().includes(activeSearch.value.toLowerCase()));
-  });
-});
+function handleTableChange(pagination: any) {
+  currentPage.value = pagination.current;
+  pageSize.value = pagination.pageSize;
+  loadCompanies(pagination.current, pagination.pageSize);
+}
+
+const filteredCompanies = computed(() => companyStore.companies);
 
 // Modal & Form State
 const showModal = ref(false);
@@ -187,7 +206,7 @@ async function handleOk() {
 <template>
   <div class="p-6 space-y-4">
     <!-- Action Bar -->
-    <div class="bg-card border border-border rounded-xl p-4 shadow-sm flex flex-wrap items-center gap-3">
+    <div class="bg-card border border-border rounded-xl p-4 shadow-sm flex flex-nowrap items-center gap-3 overflow-x-auto w-full">
       <Input
         v-model:value="searchVal"
         :placeholder="$t('page.company.searchPlaceholderInfo')"
@@ -215,8 +234,16 @@ async function handleOk() {
           :columns="columns"
           :data-source="filteredCompanies"
           row-key="id"
-          :pagination="{ pageSize: 5 }"
+          :scroll="{ x: 'max-content' }"
+          :pagination="{
+            current: currentPage,
+            pageSize: pageSize,
+            total: total,
+            showSizeChanger: true,
+            showTotal: (tot: number) => `Tổng ${tot} bản ghi`,
+          }"
           class="w-full"
+          @change="handleTableChange"
         >
           <template #bodyCell="{ column, record }">
             <template v-if="column.key === 'actions'">

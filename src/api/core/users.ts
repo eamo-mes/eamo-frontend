@@ -46,9 +46,10 @@ export interface UpdateUserPayload {
 /**
  * List all users
  */
-export async function listUsersApi(): Promise<UserItem[]> {
+export async function listUsersApi(params?: Record<string, any>): Promise<UserItem[]> {
   const response = await axios.get(`${BASE_URL}/users`, {
     headers: getAuthHeaders(),
+    params,
   });
   // The backend wraps list resources as { data: [...] }
   const data = response.data?.data ?? response.data ?? [];

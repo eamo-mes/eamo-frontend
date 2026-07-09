@@ -33,10 +33,17 @@ function getAuthHeaders() {
   };
 }
 
+// Pagination State
+const currentPage = ref(1);
+const pageSize = ref(10);
+const total = ref(0);
+const filterCompanyId = ref<string | undefined>(undefined);
+
 async function loadCompanies() {
   try {
     const res = await axios.get(`${BASE_URL}/companies`, {
       headers: getAuthHeaders(),
+      params: { per_page: 1000 },
     });
     const raw = res.data?.data ?? [];
     companyStore.companies = raw;
@@ -45,14 +52,27 @@ async function loadCompanies() {
   }
 }
 
-async function loadDepartments() {
+async function loadDepartments(page = currentPage.value, size = pageSize.value) {
   loading.value = true;
   try {
+    const params: Record<string, any> = {
+      page,
+      per_page: size,
+    };
+    if (filterCompanyId.value) {
+      params.company_id = filterCompanyId.value;
+    }
+    if (activeSearch.value) {
+      params.search = activeSearch.value;
+    }
     const res = await axios.get(`${BASE_URL}/departments`, {
       headers: getAuthHeaders(),
+      params,
     });
     const raw = res.data?.data ?? [];
     companyStore.departments = raw;
+    total.value = res.data?.meta?.total ?? raw.length;
+    currentPage.value = res.data?.meta?.current_page ?? page;
   } catch {
     message.error('Không thể tải danh sách phòng ban');
   } finally {
@@ -71,20 +91,30 @@ const activeSearch = ref('');
 
 function handleSearch() {
   activeSearch.value = searchVal.value;
+  currentPage.value = 1;
+  loadDepartments(1);
 }
 
 function handleReset() {
   searchVal.value = '';
   activeSearch.value = '';
+  filterCompanyId.value = undefined;
+  currentPage.value = 1;
+  loadDepartments(1);
 }
 
-const filteredDepartments = computed(() => {
-  return companyStore.departments.filter(item => {
-    return !activeSearch.value || 
-      item.name.toLowerCase().includes(activeSearch.value.toLowerCase()) ||
-      (item.contact && item.contact.toLowerCase().includes(activeSearch.value.toLowerCase()));
-  });
-});
+function handleCompanyFilterChange() {
+  currentPage.value = 1;
+  loadDepartments(1);
+}
+
+function handleTableChange(pagination: any) {
+  currentPage.value = pagination.current;
+  pageSize.value = pagination.pageSize;
+  loadDepartments(pagination.current, pagination.pageSize);
+}
+
+const filteredDepartments = computed(() => companyStore.departments);
 
 // Modal & Form State
 const showModal = ref(false);
@@ -215,7 +245,7 @@ async function handleOk() {
 <template>
   <div class="p-6 space-y-4">
     <!-- Action Bar -->
-    <div class="bg-card border border-border rounded-xl p-4 shadow-sm flex flex-wrap items-center gap-3">
+    <div class="bg-card border border-border rounded-xl p-4 shadow-sm flex flex-nowrap items-center gap-3 overflow-x-auto w-full">
       <Input
         v-model:value="searchVal"
         :placeholder="$t('page.company.searchPlaceholderDept')"
@@ -223,6 +253,17 @@ async function handleOk() {
         allow-clear
         @press-enter="handleSearch"
       />
+      <Select
+        v-model:value="filterCompanyId"
+        :placeholder="$t('page.company.pleaseSelectCompany') || 'Chọn công ty'"
+        class="min-w-[180px]"
+        allow-clear
+        @change="handleCompanyFilterChange"
+      >
+        <Select.Option v-for="c in companyStore.companies" :key="c.id" :value="c.id">
+          {{ c.name }}
+        </Select.Option>
+      </Select>
       <Button type="default" @click="handleSearch">
         {{ $t('page.company.btnFilter') }}
       </Button>
@@ -243,8 +284,16 @@ async function handleOk() {
           :columns="columns"
           :data-source="filteredDepartments"
           row-key="id"
-          :pagination="{ pageSize: 5 }"
+          :scroll="{ x: 'max-content' }"
+          :pagination="{
+            current: currentPage,
+            pageSize: pageSize,
+            total: total,
+            showSizeChanger: true,
+            showTotal: (tot: number) => `Tổng ${tot} bản ghi`,
+          }"
           class="w-full"
+          @change="handleTableChange"
         >
           <template #bodyCell="{ column, record }">
             <template v-if="column.key === 'company_id'">

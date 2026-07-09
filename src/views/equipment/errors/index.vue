@@ -1,5 +1,5 @@
 <script lang="ts" setup>
-import { ref, computed, onMounted } from 'vue';
+import { ref, computed, onMounted, nextTick } from 'vue';
 import { useRouter } from 'vue-router';
 import { $t } from '#/locales';
 import {
@@ -18,6 +18,8 @@ import {
 import axios from 'axios';
 import { useAccessStore } from '@vben/stores';
 import { API_BASE_URL } from '#/api/config';
+import { EchartsUI, useEcharts } from '@vben/plugins/echarts';
+import type { EchartsUIType } from '@vben/plugins/echarts';
 
 interface EquipmentOption {
   id: string;
@@ -53,6 +55,126 @@ const equipments = ref<EquipmentOption[]>([]);
 const searchVal = ref('');
 const activeSearch = ref('');
 
+// Chart States
+const showCharts = ref(false);
+const chartsLoading = ref(false);
+const barChartRef = ref<EchartsUIType>();
+const pieChartRef = ref<EchartsUIType>();
+const { renderEcharts: renderBarChart } = useEcharts(barChartRef);
+const { renderEcharts: renderPieChart } = useEcharts(pieChartRef);
+
+async function loadChartData() {
+  chartsLoading.value = true;
+  try {
+    const res = await axios.get(`${API_BASE_URL}/v1/equipment-errors`, {
+      headers: getAuthHeaders(),
+      params: { per_page: 1000 },
+    });
+    const raw = res.data?.data ?? res.data ?? [];
+    const data = Array.isArray(raw) ? raw : [];
+    
+    // Count associated equipments
+    const mapped = data.map((d: ErrorItem) => ({
+      name: d.name,
+      count: d.equipment ? d.equipment.length : 0,
+    }));
+    
+    // Sort ascending for chart (horizontal bar chart places first item at the bottom)
+    mapped.sort((a: any, b: any) => a.count - b.count);
+    
+    const names = mapped.map((d: any) => d.name);
+    const counts = mapped.map((d: any) => d.count);
+    
+    chartsLoading.value = false;
+    await nextTick();
+    await new Promise((resolve) => setTimeout(resolve, 100));
+    
+    if (!barChartRef.value || !pieChartRef.value) {
+      return;
+    }
+    
+    renderBarChart({
+      textStyle: {
+        fontFamily: 'system-ui, -apple-system, sans-serif'
+      },
+      tooltip: {
+        trigger: 'axis',
+        axisPointer: { type: 'shadow' }
+      },
+      grid: {
+        left: '3%',
+        right: '4%',
+        bottom: '3%',
+        containLabel: true
+      },
+      xAxis: {
+        type: 'value',
+        minInterval: 1,
+      },
+      yAxis: {
+        type: 'category',
+        data: names,
+        axisLabel: {
+          fontSize: 11,
+          width: 150,
+          overflow: 'truncate',
+        }
+      },
+      series: [
+        {
+          name: $t('page.equipment.chartErrorCount'),
+          type: 'bar',
+          data: counts,
+          itemStyle: {
+            color: '#0050b3', // Match deep blue color
+            borderRadius: [0, 4, 4, 0]
+          }
+        }
+      ]
+    });
+
+    renderPieChart({
+      color: ['#002766', '#003a8c', '#0050b3', '#096dd9', '#1890ff', '#40a9ff'],
+      textStyle: {
+        fontFamily: 'system-ui, -apple-system, sans-serif'
+      },
+      tooltip: {
+        trigger: 'item',
+        formatter: '{a} <br/>{b} : {c} ({d}%)'
+      },
+      series: [
+        {
+          name: $t('page.equipment.chartErrorCount'),
+          type: 'pie',
+          radius: ['40%', '70%'],
+          center: ['50%', '50%'],
+          data: mapped.map((d: any) => ({
+            name: d.name,
+            value: d.count,
+          })),
+          emphasis: {
+            itemStyle: {
+              shadowBlur: 10,
+              shadowOffsetX: 0,
+              shadowColor: 'rgba(0, 0, 0, 0.5)'
+            }
+          }
+        }
+      ]
+    });
+  } catch (err) {
+    message.error($t('page.ops.chartLoadError'));
+    chartsLoading.value = false;
+  }
+}
+
+async function toggleCharts() {
+  showCharts.value = !showCharts.value;
+  if (showCharts.value) {
+    await loadChartData();
+  }
+}
+
 function getAuthHeaders() {
   const accessStore = useAccessStore();
   return {
@@ -62,10 +184,16 @@ function getAuthHeaders() {
   };
 }
 
+// Pagination State
+const currentPage = ref(1);
+const pageSize = ref(10);
+const total = ref(0);
+
 async function loadEquipments() {
   try {
     const res = await axios.get(`${API_BASE_URL}/v1/equipment`, {
       headers: getAuthHeaders(),
+      params: { per_page: 1000 },
     });
     const raw = res.data?.data ?? res.data ?? [];
     equipments.value = Array.isArray(raw) ? raw : [];
@@ -74,14 +202,24 @@ async function loadEquipments() {
   }
 }
 
-async function loadErrors() {
+async function loadErrors(page = currentPage.value, size = pageSize.value) {
   loading.value = true;
   try {
+    const params: Record<string, any> = {
+      page,
+      per_page: size,
+    };
+    if (activeSearch.value) {
+      params.q = activeSearch.value;
+    }
     const res = await axios.get(`${API_BASE_URL}/v1/equipment-errors`, {
       headers: getAuthHeaders(),
+      params,
     });
     const raw = res.data?.data ?? res.data ?? [];
     errorsList.value = Array.isArray(raw) ? raw : [];
+    total.value = res.data?.total ?? errorsList.value.length;
+    currentPage.value = res.data?.current_page ?? page;
   } catch (err: any) {
     message.error(err?.response?.data?.message || 'Không thể tải danh sách báo lỗi');
   } finally {
@@ -91,21 +229,24 @@ async function loadErrors() {
 
 function handleSearch() {
   activeSearch.value = searchVal.value;
+  currentPage.value = 1;
+  loadErrors(1);
 }
 
 function handleReset() {
   searchVal.value = '';
   activeSearch.value = '';
+  currentPage.value = 1;
+  loadErrors(1);
 }
 
-const filteredErrors = computed(() => {
-  const q = activeSearch.value.toLowerCase();
-  if (!q) return errorsList.value;
-  return errorsList.value.filter(e =>
-    e.name.toLowerCase().includes(q) ||
-    (e.reason && e.reason.toLowerCase().includes(q))
-  );
-});
+function handleTableChange(pagination: any) {
+  currentPage.value = pagination.current;
+  pageSize.value = pagination.pageSize;
+  loadErrors(pagination.current, pagination.pageSize);
+}
+
+const filteredErrors = computed(() => errorsList.value);
 
 const columns = computed(() => [
   {
@@ -118,16 +259,19 @@ const columns = computed(() => [
     title: $t('page.equipment.colReason'),
     dataIndex: 'reason',
     key: 'reason',
+    width: 280,
   },
   {
     title: $t('page.equipment.colFix'),
     dataIndex: 'fix',
     key: 'fix',
+    width: 280,
   },
   {
     title: $t('page.equipment.colProtection'),
     dataIndex: 'protection_measures',
     key: 'protection_measures',
+    width: 280,
   },
   {
     title: $t('page.equipment.colEquipment'),
@@ -249,8 +393,22 @@ onMounted(() => {
 
 <template>
   <div class="p-6 space-y-4">
+    <!-- Chart Panel -->
+    <div v-if="showCharts" class="bg-card border border-border rounded-xl p-4 shadow-sm relative min-h-[350px]">
+      <div class="font-semibold text-base mb-4 flex items-center gap-2">
+        <span class="w-1.5 h-4 rounded-full"></span>
+        {{ $t('page.equipment.chartErrorTitle') }}
+      </div>
+      <Spin :spinning="chartsLoading">
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+          <EchartsUI ref="barChartRef" height="300px" />
+          <EchartsUI ref="pieChartRef" height="300px" />
+        </div>
+      </Spin>
+    </div>
+
     <!-- Action Bar -->
-    <div class="bg-card border border-border rounded-xl p-4 shadow-sm flex flex-wrap items-center gap-3">
+    <div class="bg-card border border-border rounded-xl p-4 shadow-sm flex flex-nowrap items-center gap-3 overflow-x-auto w-full">
       <Input
         v-model:value="searchVal"
         :placeholder="$t('page.equipment.placeholderName')"
@@ -264,7 +422,11 @@ onMounted(() => {
       <Button type="default" @click="handleReset">
         {{ $t('page.company.btnReset') }}
       </Button>
-      <div class="ml-auto">
+
+      <div class="ml-auto flex items-center gap-2">
+        <Button type="default" @click="toggleCharts" :class="{ 'border-[#5c3e35] text-[#5c3e35]': showCharts }">
+          {{ showCharts ? $t('page.ops.btnHideCharts') : $t('page.ops.btnShowCharts') }}
+        </Button>
         <Button
           type="primary"
           class="bg-[#5c3e35] hover:bg-[#4b332b] border-[#5c3e35] rounded-md font-medium text-white h-full"
@@ -282,8 +444,16 @@ onMounted(() => {
           :columns="columns"
           :data-source="filteredErrors"
           row-key="id"
-          :pagination="{ pageSize: 10 }"
+          :scroll="{ x: 'max-content' }"
+          :pagination="{
+            current: currentPage,
+            pageSize: pageSize,
+            total: total,
+            showSizeChanger: true,
+            showTotal: (tot: number) => `Tổng ${tot} bản ghi`,
+          }"
           class="w-full"
+          @change="handleTableChange"
         >
           <template #bodyCell="{ column, record }">
             <template v-if="column.key === 'equipment'">

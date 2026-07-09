@@ -35,6 +35,7 @@ interface ChecklistDetailItem {
 
 interface ChecklistSession {
   id: string;
+  name?: string;
   equipment_id: string | null;
   equipment?: EquipmentDetail | null;
   session_date: string | null;
@@ -50,7 +51,7 @@ const activeSearch = ref('');
 
 // Pagination state
 const currentPage = ref(1);
-const pageSize = ref(15);
+const pageSize = ref(10);
 const total = ref(0);
 
 // Charts States
@@ -117,10 +118,12 @@ async function loadChartData() {
     });
     const raw = res.data?.data ?? res.data ?? [];
     chartSessions.value = Array.isArray(raw) ? raw : [];
+    chartsLoading.value = false;
+    await nextTick();
+    await new Promise((resolve) => setTimeout(resolve, 100));
     await renderCharts();
   } catch (err: any) {
     message.error($t('page.ops.chartLoadError'));
-  } finally {
     chartsLoading.value = false;
   }
 }
@@ -156,6 +159,11 @@ const filteredSessions = computed(() => sessions.value);
 
 const columns = computed(() => [
   {
+    title: $t('page.ops.colName'),
+    dataIndex: 'name',
+    key: 'name',
+  },
+  {
     title: $t('page.ops.colEquipment'),
     dataIndex: 'equipment_id',
     key: 'equipment',
@@ -164,10 +172,20 @@ const columns = computed(() => [
     title: $t('page.ops.colDate'),
     dataIndex: 'session_date',
     key: 'session_date',
+    sorter: (a: any, b: any) => {
+      const timeA = a.session_date ? new Date(a.session_date).getTime() : 0;
+      const timeB = b.session_date ? new Date(b.session_date).getTime() : 0;
+      return timeA - timeB;
+    },
   },
   {
     title: $t('page.ops.colStatus'),
     key: 'status',
+    sorter: (a: any, b: any) => {
+      const statusA = getSessionStatusText(a);
+      const statusB = getSessionStatusText(b);
+      return statusA.localeCompare(statusB);
+    },
   },
   {
     title: $t('page.ops.colActions'),
@@ -410,7 +428,7 @@ onMounted(() => {
     </div>
 
     <!-- Action Bar -->
-    <div class="bg-card border border-border rounded-xl p-4 shadow-sm flex flex-wrap items-center gap-3">
+    <div class="bg-card border border-border rounded-xl p-4 shadow-sm flex flex-nowrap items-center gap-3 overflow-x-auto w-full">
       <Input
         v-model:value="searchVal"
         :placeholder="$t('page.ops.searchPlaceholder')"
@@ -445,6 +463,7 @@ onMounted(() => {
           :columns="columns"
           :data-source="filteredSessions"
           row-key="id"
+          :scroll="{ x: 'max-content' }"
           :pagination="{
             current: currentPage,
             pageSize: pageSize,
@@ -457,10 +476,10 @@ onMounted(() => {
         >
           <template #bodyCell="{ column, record }">
             <template v-if="column.key === 'equipment'">
-              <span v-if="record.equipment" class="font-medium text-gray-800">
-                {{ record.equipment.code }}
+              <span v-if="record.equipment">
+                {{ record.equipment.name }} ({{ record.equipment.code }})
               </span>
-              <span v-else-if="record.equipment_id" class="text-xs text-gray-500 font-mono">
+              <span v-else-if="record.equipment_id">
                 {{ record.equipment_id }}
               </span>
               <span v-else class="text-gray-400">—</span>
