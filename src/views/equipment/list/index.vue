@@ -55,7 +55,6 @@ interface EquipmentItem {
   name: string | null;
   equipment_category_id: string | null;
   equipment_category?: CategoryOption | null;
-  equipment_state?: EquipmentStateOption | null;
   equipment_images?: EquipmentImageOption[];
   is_active: boolean;
   equipment_errors?: ErrorOption[];
@@ -64,14 +63,6 @@ interface EquipmentItem {
 }
 
 const router = useRouter();
-
-const stateConfig = computed<Record<string, { color: string; label: string }>>(() => ({
-  'Running':           { color: 'green',  label: $t('page.equipment.stateRunning') },
-  'Idle':              { color: 'blue',   label: $t('page.equipment.stateIdle') },
-  'Under Maintenance': { color: 'orange', label: $t('page.equipment.stateMaintenance') },
-  'Stopped':           { color: 'red',    label: $t('page.equipment.stateStopped') },
-  'Fault':             { color: 'purple', label: $t('page.equipment.stateFault') },
-}));
 
 const loading = ref(false);
 const equipments = ref<EquipmentItem[]>([]);
@@ -219,11 +210,6 @@ const columns = computed(() => [
     width: 260,
   },
   {
-    title: $t('page.equipment.colState'),
-    dataIndex: 'equipment_state',
-    key: 'equipment_state',
-  },
-  {
     title: $t('page.equipment.colChecklist'),
     dataIndex: 'checklist_details_count',
     key: 'checklist_details_count',
@@ -332,14 +318,7 @@ onMounted(() => {
         >
           <template #bodyCell="{ column, record }">
             <template v-if="column.key === 'equipment_category'">
-              <span>{{ record.equipment_category?.code || '—' }}</span>
-            </template>
-            <template v-else-if="column.key === 'equipment_state'">
-              <template v-if="record.equipment_state?.state">
-                <Tag :color="stateConfig[record.equipment_state.state as string]?.color ?? 'default'">
-                  {{ stateConfig[record.equipment_state.state as string]?.label ?? record.equipment_state.state }}
-                </Tag>
-              </template>
+               <span>{{ record.equipment_category?.code || '—' }}</span>
             </template>
 
             <template v-else-if="column.key === 'is_active'">

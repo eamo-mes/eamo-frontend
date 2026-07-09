@@ -62,7 +62,6 @@ const formState = ref({
   code: '',
   name: '',
   equipment_category_id: undefined as string | undefined,
-  state: '',
   is_active: true,
   equipment_error_ids: [] as string[],
   equipment_parameters: [] as { id?: string; code: string; name: string; unit_id: string | undefined; standard?: number; standard_max?: number; standard_min?: number }[],
@@ -149,7 +148,6 @@ async function loadEquipmentDetail(id: string) {
         code: record.code,
         name: record.name || '',
         equipment_category_id: record.equipment_category_id || undefined,
-        state: record.equipment_state?.state || '',
         is_active: !!record.is_active,
         equipment_error_ids: record.equipment_errors?.map((err: any) => err.id) || [],
         equipment_parameters: record.equipment_parameters?.map((param: any) => ({
@@ -240,14 +238,6 @@ async function removeExistingImage(index: number) {
   }
 }
 
-const stateOptions = [
-  { value: 'Running',          label: 'Đang chạy' },
-  { value: 'Idle',             label: 'Chờ' },
-  { value: 'Under Maintenance', label: 'Đang bảo trì' },
-  { value: 'Stopped',          label: 'Đã dừng' },
-  { value: 'Fault',            label: 'Lỗi' },
-];
-
 const formRef = ref();
 
 const rules = computed(() => ({
@@ -276,9 +266,6 @@ function buildBaseFormData() {
   fd.append('name', formState.value.name || '');
   if (formState.value.equipment_category_id) {
     fd.append('equipment_category_id', formState.value.equipment_category_id);
-  }
-  if (formState.value.state) {
-    fd.append('state', formState.value.state);
   }
   fd.append('is_active', formState.value.is_active ? '1' : '0');
   
@@ -480,22 +467,6 @@ onMounted(() => {
                   {{ c.name }}
                 </Select.Option>
               </Select>
-            </FormItem>
-            <FormItem label="Trạng thái" name="state" class="col-span-1">
-              <AutoComplete
-                v-model:value="formState.state"
-                :options="stateOptions"
-                placeholder="Chọn hoặc nhập trạng thái"
-                allow-clear
-                :filter-option="(input: string, option: { value: string; label: string }) =>
-                  option.value.toLowerCase().includes(input.toLowerCase()) ||
-                  option.label.toLowerCase().includes(input.toLowerCase())"
-              >
-                <template #option="{ value: val, label }">
-                  <span>{{ label }}</span>
-                  <span class="ml-2 text-xs text-gray-400">{{ val }}</span>
-                </template>
-              </AutoComplete>
             </FormItem>
             <FormItem :label="$t('page.equipment.colActive')" name="is_active" class="col-span-1">
               <Switch v-model:checked="formState.is_active" />
