@@ -12,7 +12,8 @@ import {
   Spin,
   Modal,
   Select,
-  Space
+  Space,
+  DatePicker
 } from 'ant-design-vue';
 import axios from 'axios';
 import { useAccessStore } from '@vben/stores';
@@ -49,6 +50,14 @@ const sessions = ref<ChecklistSession[]>([]);
 const searchVal = ref('');
 const activeSearch = ref('');
 
+// Equipment filter
+const equipments = ref<EquipmentDetail[]>([]);
+const selectedEquipmentId = ref<string | undefined>(undefined);
+
+// Date filters
+const startDate = ref<string | undefined>(undefined);
+const endDate = ref<string | undefined>(undefined);
+
 // Pagination state
 const currentPage = ref(1);
 const pageSize = ref(10);
@@ -83,16 +92,37 @@ function getAuthHeaders() {
   };
 }
 
+async function loadEquipments() {
+  try {
+    const res = await axios.get(`${API_BASE_URL}/v1/equipment`, {
+      headers: getAuthHeaders(),
+    });
+    const raw = res.data?.data ?? res.data ?? [];
+    equipments.value = Array.isArray(raw) ? raw : [];
+  } catch {
+    // silently fail
+  }
+}
+
 async function loadSessions(page = currentPage.value, size = pageSize.value) {
   loading.value = true;
   try {
-    const params: Record<string, any> = {
+    const params: Record<string, string | number | boolean> = {
       include_details: true,
       page,
       per_page: size,
     };
     if (activeSearch.value) {
-      params.search = activeSearch.value;
+      params['search'] = activeSearch.value;
+    }
+    if (selectedEquipmentId.value) {
+      params['equipment_id'] = selectedEquipmentId.value;
+    }
+    if (startDate.value) {
+      params['start_date'] = startDate.value;
+    }
+    if (endDate.value) {
+      params['end_date'] = endDate.value;
     }
     const res = await axios.get(`${API_BASE_URL}/v1/checklist-sessions`, {
       headers: getAuthHeaders(),
@@ -108,6 +138,17 @@ async function loadSessions(page = currentPage.value, size = pageSize.value) {
   } finally {
     loading.value = false;
   }
+}
+
+function handleDateChange() {
+  currentPage.value = 1;
+  loadSessions(1);
+}
+
+function handleEquipmentFilter(val: unknown) {
+  selectedEquipmentId.value = typeof val === 'string' ? val : undefined;
+  currentPage.value = 1;
+  loadSessions(1);
 }
 
 async function loadChartData() {
@@ -144,6 +185,9 @@ function handleSearch() {
 function handleReset() {
   searchVal.value = '';
   activeSearch.value = '';
+  selectedEquipmentId.value = undefined;
+  startDate.value = undefined;
+  endDate.value = undefined;
   currentPage.value = 1;
   loadSessions(1);
 }
@@ -395,6 +439,7 @@ async function renderCharts() {
 }
 
 onMounted(() => {
+  loadEquipments();
   loadSessions();
 });
 </script>
@@ -428,21 +473,56 @@ onMounted(() => {
     </div>
 
     <!-- Action Bar -->
-    <div class="bg-card border border-border rounded-xl p-4 shadow-sm flex flex-nowrap items-center gap-3 overflow-x-auto w-full">
+    <div class="bg-card border border-border rounded-xl p-4 shadow-sm flex flex-nowrap items-center gap-3 overflow-x-auto">
       <Input
         v-model:value="searchVal"
         :placeholder="$t('page.ops.searchPlaceholder')"
-        class="max-w-[320px]"
+        class="w-[180px] shrink-0 flex-1"
         allow-clear
         @press-enter="handleSearch"
       />
-      <Button type="default" @click="handleSearch">
+      <Select
+        v-model:value="selectedEquipmentId"
+        :placeholder="$t('page.ops.filterByEquipment')"
+        class="w-[200px] shrink-0"
+        allow-clear
+        option-filter-prop="label"
+        show-search
+        @change="handleEquipmentFilter"
+        @clear="handleEquipmentFilter(undefined)"
+      >
+        <Select.Option
+          v-for="eq in equipments"
+          :key="eq.id"
+          :value="eq.id"
+          :label="`${eq.name} (${eq.code})`"
+        >
+          {{ eq.name }} <span class="text-gray-400 text-xs">({{ eq.code }})</span>
+        </Select.Option>
+      </Select>
+      <DatePicker
+        v-model:value="startDate"
+        value-format="YYYY-MM-DD"
+        format="YYYY-MM-DD"
+        :placeholder="$t('page.ops.startDate')"
+        class="w-[140px] shrink-0"
+        @change="handleDateChange"
+      />
+      <DatePicker
+        v-model:value="endDate"
+        value-format="YYYY-MM-DD"
+        format="YYYY-MM-DD"
+        :placeholder="$t('page.ops.endDate')"
+        class="w-[140px] shrink-0"
+        @change="handleDateChange"
+      />
+      <Button type="default" class="shrink-0" @click="handleSearch">
         {{ $t('page.company.btnFilter') }}
       </Button>
-      <Button type="default" @click="handleReset">
+      <Button type="default" class="shrink-0" @click="handleReset">
         {{ $t('page.company.btnReset') }}
       </Button>
-      <div class="ml-auto flex gap-2">
+      <div class="ml-auto flex gap-2 shrink-0">
         <Button type="default" @click="toggleCharts" :class="{ 'border-primary text-primary': showCharts }">
           {{ showCharts ? $t('page.ops.btnHideCharts') : $t('page.ops.btnShowCharts') }}
         </Button>

@@ -31,12 +31,30 @@ const routes: RouteRecordRaw[] = [
         },
       },
       {
-        name: 'OpsMaintenance',
-        path: 'maintenance',
-        component: () => import('#/views/ops/maintenance/index.vue'),
+        name: 'OpsMaintenanceCategories',
+        path: 'maintenance-categories',
+        component: () => import('#/views/ops/maintenance-categories/index.vue'),
         meta: {
           icon: 'lucide:wrench',
-          title: $t('page.ops.maintenance'),
+          title: $t('page.ops.maintenanceCategories'),
+        },
+      },
+      {
+        name: 'OpsMaintenancePlans',
+        path: 'maintenance-plans',
+        component: () => import('#/views/ops/maintenance-plans/index.vue'),
+        meta: {
+          icon: 'lucide:clipboard-check',
+          title: $t('page.ops.maintenancePlans'),
+        },
+      },
+      {
+        name: 'OpsMaintenancePlanDetail',
+        path: 'maintenance-plans/detail',
+        component: () => import('#/views/ops/maintenance-plans/detail.vue'),
+        meta: {
+          hideInMenu: true,
+          title: $t('page.ops.maintenancePlanDetail'),
         },
       },
       {

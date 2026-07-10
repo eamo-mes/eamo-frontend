@@ -225,12 +225,15 @@ async function handleSubmit() {
           description: item.description,
         })),
       };
-      await axios.post(`${API_BASE_URL}/v1/checklist-sessions`, createPayload, {
+      const res = await axios.post(`${API_BASE_URL}/v1/checklist-sessions`, createPayload, {
         headers: getAuthHeaders(),
       });
       message.success('Thêm mới phiên kiểm tra thành công');
+      const created = res.data?.data ?? res.data;
+      if (created?.id) {
+        router.replace({ name: 'OpsCheckListDetail', query: { id: created.id } });
+      }
     }
-    goBack();
   } catch (err: any) {
     if (err?.errorFields) {
       // Form validation failed

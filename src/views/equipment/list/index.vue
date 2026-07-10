@@ -22,11 +22,6 @@ interface CategoryOption {
   name: string;
 }
 
-interface EquipmentStateOption {
-  id: string;
-  state: string | null;
-}
-
 interface ErrorOption {
   id: string;
   name: string;

@@ -4,7 +4,6 @@ import { useRoute, useRouter } from 'vue-router';
 import { ChevronLeft } from '@vben/icons';
 import { $t } from '#/locales';
 import {
-  AutoComplete,
   Breadcrumb,
   Button,
   Input,
@@ -375,8 +374,9 @@ async function handleSubmit() {
         }
       }
     }
-
-    goBack();
+    if (!isEditing.value && currentEquipmentId) {
+      router.replace({ name: 'EquipmentDetail', query: { id: currentEquipmentId } });
+    }
   } catch (err: any) {
     if (err?.errorFields) {
       // Form validation failed
