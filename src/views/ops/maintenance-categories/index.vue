@@ -5,6 +5,7 @@ import {
   Button,
   Table,
   Input,
+  Select,
   Modal,
   Form,
   FormItem,
@@ -15,6 +16,7 @@ import {
 import axios from 'axios';
 import { useAccessStore } from '@vben/stores';
 import { API_BASE_URL } from '#/api/config';
+import { listUsersApi, type UserItem } from '#/api/core/users';
 
 interface CategoryItem {
   id: string;
@@ -24,6 +26,10 @@ interface CategoryItem {
     id: string;
     name: string;
     description: string | null;
+    users?: {
+      id: string;
+      name: string;
+    }[];
   }[];
   created_at?: string;
 }
@@ -32,6 +38,7 @@ interface MaintenanceItemRow {
   id?: string;
   name: string;
   description: string;
+  user_ids: string[];
   _key: string;
 }
 
@@ -159,6 +166,7 @@ function addItemRow(): void {
   formState.value.items.push({
     name: '',
     description: '',
+    user_ids: [],
     _key: generateKey(),
   });
 }
@@ -188,6 +196,7 @@ function openEditModal(record: CategoryItem): void {
       id: item.id,
       name: item.name,
       description: item.description ?? '',
+      user_ids: (item.users ?? []).map(u => u.id),
       _key: generateKey(),
     })),
   };
@@ -224,6 +233,7 @@ async function handleOk(): Promise<void> {
         id: item.id,
         name: item.name,
         description: item.description,
+        user_ids: item.user_ids,
       })),
     };
 
@@ -255,8 +265,26 @@ async function handleOk(): Promise<void> {
   }
 }
 
+const users = ref<UserItem[]>([]);
+
+const userOptions = computed(() =>
+  users.value.map(u => ({
+    label: u.name,
+    value: u.id,
+  }))
+);
+
+async function loadUsers(): Promise<void> {
+  try {
+    users.value = await listUsersApi({ per_page: 1000 });
+  } catch {
+    // silently fail
+  }
+}
+
 onMounted(() => {
   loadCategories();
+  loadUsers();
 });
 </script>
 
@@ -399,6 +427,21 @@ onMounted(() => {
                 <Input
                   v-model:value="item.description"
                   :placeholder="$t('page.ops.placeholderItemDesc')"
+                />
+              </div>
+
+              <!-- Kỹ thuật viên thực hiện -->
+              <div class="flex-1 min-w-[200px]">
+                <span class="text-xs text-gray-500 block mb-1 font-medium">{{ $t('page.ops.assignedTechnicians') }}</span>
+                <Select
+                  v-model:value="item.user_ids"
+                  :options="userOptions"
+                  :placeholder="$t('page.ops.placeholderAssignedUsers')"
+                  mode="multiple"
+                  option-filter-prop="label"
+                  show-search
+                  allow-clear
+                  class="w-full"
                 />
               </div>
 

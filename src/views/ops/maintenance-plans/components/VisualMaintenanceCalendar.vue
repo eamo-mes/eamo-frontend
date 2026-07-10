@@ -239,7 +239,7 @@ const selectedItemDetails = computed(() => {
           <Tag color="blue" class="px-2.5 py-0.5 rounded-full text-xs font-semibold uppercase tracking-wider border-blue-200 text-blue-700 bg-blue-50/60 dark:bg-blue-950/20 dark:text-blue-300 dark:border-blue-850">
             {{ getCategoryName(selectedSchedule!) }}
           </Tag>
-          <h3 class="text-lg font-extrabold text-gray-900 dark:text-gray-100 leading-snug mt-2">
+          <h3 class="text-lg font-semibold text-gray-900 dark:text-gray-100 leading-snug mt-2">
             {{ getItemName(selectedSchedule!) }}
           </h3>
         </div>
