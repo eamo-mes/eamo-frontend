@@ -275,8 +275,8 @@ onMounted(() => {
     <!-- Breadcrumb -->
     <Breadcrumb
       :items="[
-        { title: $t('page.ops.title') },
-        { title: $t('page.ops.checklist'), href: '/ops/checklist' },
+        { title: $t('page.ops.maintenanceTitle') },
+        { title: $t('page.ops.checklist'), href: '/maintenance/checklist' },
         { title: isEditing ? $t('page.ops.checklistDetail') : $t('page.ops.detailTitleAdd') },
       ]"
     />

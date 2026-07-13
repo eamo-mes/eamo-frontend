@@ -487,8 +487,8 @@ onMounted(async () => {
     <!-- Breadcrumb -->
     <Breadcrumb
       :items="[
-        { title: $t('page.ops.title') },
-        { title: $t('page.ops.maintenancePlans'), href: '/ops/maintenance-plans' },
+        { title: $t('page.ops.maintenanceTitle') },
+        { title: $t('page.ops.maintenancePlans'), href: '/maintenance/maintenance-plans' },
         { title: isEditing ? $t('page.ops.editPlan') : $t('page.ops.addNewPlan') },
       ]"
     />

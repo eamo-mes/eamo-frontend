@@ -5,12 +5,12 @@ import { $t } from '#/locales';
 const routes: RouteRecordRaw[] = [
   {
     meta: {
-      icon: 'lucide:settings',
-      order: 30,
-      title: $t('page.ops.title'),
+      icon: 'lucide:wrench',
+      order: 40,
+      title: $t('page.ops.maintenanceTitle'),
     },
-    name: 'OpsManagement',
-    path: '/ops',
+    name: 'MaintenanceManagement',
+    path: '/maintenance',
     children: [
       {
         name: 'OpsCheckList',
@@ -55,24 +55,6 @@ const routes: RouteRecordRaw[] = [
         meta: {
           hideInMenu: true,
           title: $t('page.ops.maintenancePlanDetail'),
-        },
-      },
-      {
-        name: 'OpsParameterLog',
-        path: 'parameter-log',
-        component: () => import('#/views/ops/parameter-log/index.vue'),
-        meta: {
-          icon: 'lucide:database',
-          title: $t('page.ops.parameterLog'),
-        },
-      },
-      {
-        name: 'OpsErrorMonitoring',
-        path: 'error-monitoring',
-        component: () => import('#/views/ops/error-monitoring/index.vue'),
-        meta: {
-          icon: 'lucide:alert-triangle',
-          title: $t('page.ops.errorMonitoring'),
         },
       },
     ],
