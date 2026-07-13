@@ -11,7 +11,6 @@ import {
   Popconfirm,
   message,
   Spin,
-  Space,
   Tag,
   Input
 } from 'ant-design-vue';
@@ -46,15 +45,17 @@ interface ErrorLogItem {
   occurred_at: string;
   restarted_at?: string;
   handled_at?: string;
-  handler_id?: string;
+  handler_ids?: string[];
   handled_time?: number;
   equipment?: { name: string; code: string };
   equipment_error?: { name: string };
-  handler?: { name: string };
+  handlers?: Array<{ id: string; name: string }>;
 }
 
 const loading = ref(false);
 const submitting = ref(false);
+const syncingAll = ref(false);
+const syncingId = ref<string | null>(null);
 const items = ref<ErrorLogItem[]>([]);
 const equipments = ref<EquipmentOption[]>([]);
 const users = ref<UserOption[]>([]);
@@ -71,7 +72,7 @@ const formState = ref({
   occurred_at: undefined as Dayjs | undefined,
   restarted_at: undefined as Dayjs | undefined,
   handled_at: undefined as Dayjs | undefined,
-  handler_id: undefined as string | undefined,
+  handler_ids: [] as string[],
 });
 
 const rules = computed(() => ({
@@ -147,16 +148,20 @@ function getEquipmentName(id: string) {
   return equip ? `${equip.name} (${equip.code})` : id;
 }
 
-function getErrorName(equipId: string, errorId: string) {
-  const equip = equipments.value.find(e => e.id === equipId);
-  const err = equip?.equipment_errors?.find(e => e.id === errorId);
-  return err ? err.name : errorId;
+function getErrorName(record: ErrorLogItem) {
+  if (record.equipment_error?.name) {
+    return record.equipment_error.name;
+  }
+  const equip = equipments.value.find(e => e.id === record.equipment_id);
+  const err = equip?.equipment_errors?.find(e => e.id === record.equipment_error_id);
+  return err ? err.name : record.equipment_error_id;
 }
 
-function getHandlerName(handlerId: string | null | undefined) {
-  if (!handlerId) return '-';
-  const u = users.value.find(user => user.id === handlerId);
-  return u ? u.name : handlerId;
+function getHandlersText(record: ErrorLogItem) {
+  if (record.handlers && record.handlers.length > 0) {
+    return record.handlers.map(h => h.name).join(', ');
+  }
+  return '-';
 }
 
 onMounted(() => {
@@ -178,8 +183,8 @@ const filteredItems = computed(() => {
   const q = activeSearch.value.toLowerCase();
   return items.value.filter(item => {
     const equipName = getEquipmentName(item.equipment_id).toLowerCase();
-    const errName = getErrorName(item.equipment_id, item.equipment_error_id).toLowerCase();
-    const handlerName = getHandlerName(item.handler_id).toLowerCase();
+    const errName = getErrorName(item).toLowerCase();
+    const handlerName = getHandlersText(item).toLowerCase();
     return equipName.includes(q) || errName.includes(q) || handlerName.includes(q);
   });
 });
@@ -193,7 +198,7 @@ function openAddModal() {
     occurred_at: dayjs(),
     restarted_at: undefined,
     handled_at: undefined,
-    handler_id: undefined,
+    handler_ids: [],
   };
   showModal.value = true;
 }
@@ -207,7 +212,7 @@ function openEditModal(record: ErrorLogItem) {
     occurred_at: record.occurred_at ? dayjs(record.occurred_at) : undefined,
     restarted_at: record.restarted_at ? dayjs(record.restarted_at) : undefined,
     handled_at: record.handled_at ? dayjs(record.handled_at) : undefined,
-    handler_id: record.handler_id,
+    handler_ids: record.handlers ? record.handlers.map(h => h.id) : [],
   };
   showModal.value = true;
 }
@@ -220,7 +225,7 @@ async function handleDelete(id: string) {
     message.success($t('page.ops.successDelete'));
     loadItems();
   } catch (error) {
-    message.error('Xóa thất bại');
+    message.error($t('page.ops.deleteFailed'));
     console.error(error);
   }
 }
@@ -236,30 +241,75 @@ async function handleOk() {
       occurred_at: formState.value.occurred_at ? formState.value.occurred_at.format('YYYY-MM-DD HH:mm:ss') : null,
       restarted_at: formState.value.restarted_at ? formState.value.restarted_at.format('YYYY-MM-DD HH:mm:ss') : null,
       handled_at: formState.value.handled_at ? formState.value.handled_at.format('YYYY-MM-DD HH:mm:ss') : null,
-      handler_id: formState.value.handler_id || null,
+      handler_ids: formState.value.handler_ids || [],
     };
 
     if (isEditing.value && editId.value) {
       await axios.put(`${API_BASE_URL}/v1/equipment/error-monitoring/equipment-error-logs/${editId.value}`, payload, {
         headers: getAuthHeaders(),
       });
-      message.success('Cập nhật bản ghi thành công');
+      message.success($t('page.ops.successSave'));
     } else {
       await axios.post(`${API_BASE_URL}/v1/equipment/error-monitoring/equipment-error-logs`, payload, {
         headers: getAuthHeaders(),
       });
-      message.success('Thêm bản ghi thành công');
+      message.success($t('page.ops.successSave'));
     }
     showModal.value = false;
     loadItems();
   } catch (err: any) {
     if (!err?.errorFields) {
-      const msg = err?.response?.data?.message || 'Không thể lưu bản ghi';
+      const msg = err?.response?.data?.message || $t('page.ops.saveFailed');
       message.error(msg);
     }
   } finally {
     submitting.value = false;
   }
+}
+
+async function syncOneResolved(id: string) {
+  syncingId.value = id;
+  try {
+    await axios.post(
+      `${API_BASE_URL}/v1/equipment/error-monitoring/equipment-error-logs/${id}/sync-resolved`,
+      {},
+      { headers: getAuthHeaders() }
+    );
+    message.success($t('page.ops.syncSuccess'));
+    await loadInitialData();
+  } catch (error: any) {
+    message.error(error?.response?.data?.message || $t('page.ops.syncFailed'));
+  } finally {
+    syncingId.value = null;
+  }
+}
+
+async function syncAllResolved() {
+  syncingAll.value = true;
+  try {
+    const res = await axios.post(
+      `${API_BASE_URL}/v1/equipment/error-monitoring/equipment-error-logs/sync-resolved`,
+      {},
+      { headers: getAuthHeaders() }
+    );
+    message.success(res.data?.message || $t('page.ops.syncSuccess'));
+    await loadInitialData();
+  } catch (error: any) {
+    message.error(error?.response?.data?.message || $t('page.ops.syncFailed'));
+  } finally {
+    syncingAll.value = false;
+  }
+}
+
+function isErrorSynced(record: ErrorLogItem) {
+  if (!record.equipment_error_id) return true;
+  if (!record.handled_at) return true;
+
+  const equip = equipments.value.find(e => e.id === record.equipment_id);
+  if (!equip) return true;
+
+  const stillAttached = equip.equipment_errors?.some(err => err.id === record.equipment_error_id);
+  return !stillAttached;
 }
 
 const columns = computed(() => [
@@ -295,14 +345,13 @@ const columns = computed(() => [
   },
   {
     title: 'Handler',
-    dataIndex: 'handler_id',
-    key: 'handler_id',
+    key: 'handlers',
   },
   {
     title: $t('page.ops.colActions'),
     key: 'actions',
     align: 'center' as const,
-    width: 160,
+    width: 260,
     fixed: 'right' as const,
   }
 ]);
@@ -311,7 +360,7 @@ const columns = computed(() => [
 <template>
   <div class="p-6 space-y-4">
     <!-- Action Bar -->
-    <div class="bg-card border border-border rounded-xl p-4 shadow-sm flex flex-nowrap items-center gap-3 overflow-x-auto w-full">
+    <div class="bg-card border border-border rounded-xl p-4 shadow-sm flex flex-wrap items-center gap-3 w-full">
       <Input
         v-model:value="searchVal"
         :placeholder="$t('page.equipment.placeholderName')"
@@ -325,13 +374,26 @@ const columns = computed(() => [
       <Button type="default" @click="handleReset">
         {{ $t('page.company.btnReset') }}
       </Button>
-      <div class="ml-auto">
+      <div class="ml-auto flex gap-2">
+        <Popconfirm
+          :title="$t('page.ops.syncConfirmAll')"
+          ok-text="Yes"
+          cancel-text="No"
+          @confirm="syncAllResolved"
+        >
+          <Button
+            :loading="syncingAll"
+            class="rounded-md font-medium border-blue-500 text-blue-600 hover:bg-blue-50"
+          >
+            {{ $t('page.ops.syncResolvedAll') }}
+          </Button>
+        </Popconfirm>
         <Button
           type="primary"
           class="bg-[#5c3e35] hover:bg-[#4b332b] border-[#5c3e35] rounded-md font-medium text-white h-full"
           @click="openAddModal"
         >
-          Thêm bản ghi
+          {{ $t('page.ops.addErrorLog') }}
         </Button>
       </div>
     </div>
@@ -356,7 +418,7 @@ const columns = computed(() => [
               <span>{{ getEquipmentName(record.equipment_id) }}</span>
             </template>
             <template v-else-if="column.key === 'equipment_error_id'">
-              <span>{{ getErrorName(record.equipment_id, record.equipment_error_id) }}</span>
+              <span>{{ getErrorName(record as ErrorLogItem) }}</span>
             </template>
             <template v-else-if="column.key === 'status'">
               <Tag v-if="record.handled_at" color="green">Resolved</Tag>
@@ -372,11 +434,11 @@ const columns = computed(() => [
             <template v-else-if="column.key === 'handled_at'">
               <span>{{ record.handled_at ? dayjs(record.handled_at).format('YYYY-MM-DD HH:mm:ss') : '-' }}</span>
             </template>
-            <template v-else-if="column.key === 'handler_id'">
-              <span>{{ getHandlerName(record.handler_id) }}</span>
+            <template v-else-if="column.key === 'handlers'">
+              <span>{{ getHandlersText(record as ErrorLogItem) }}</span>
             </template>
             <template v-else-if="column.key === 'actions'">
-              <div class="space-x-2">
+              <div class="flex items-center gap-2 justify-center">
                 <Button
                   size="small"
                   class="rounded hover:border-primary hover:text-primary"
@@ -384,6 +446,21 @@ const columns = computed(() => [
                 >
                   {{ $t('page.company.btnEdit') }}
                 </Button>
+                <Popconfirm
+                  v-if="record.handled_at && !isErrorSynced(record as ErrorLogItem)"
+                  :title="$t('page.ops.syncConfirmOne')"
+                  ok-text="Yes"
+                  cancel-text="No"
+                  @confirm="syncOneResolved(record.id)"
+                >
+                  <Button
+                    size="small"
+                    :loading="syncingId === record.id"
+                    class="rounded border-blue-400 text-blue-600 hover:bg-blue-50"
+                  >
+                    {{ $t('page.ops.syncResolvedOne') }}
+                  </Button>
+                </Popconfirm>
                 <Popconfirm
                   :title="$t('page.company.deleteConfirm')"
                   ok-text="Yes"
@@ -461,9 +538,10 @@ const columns = computed(() => [
             <DatePicker v-model:value="formState.handled_at" show-time format="YYYY-MM-DD HH:mm:ss" style="width: 100%" allowClear />
           </FormItem>
 
-          <FormItem :label="$t('page.ops.handler')" name="handler_id">
+          <FormItem :label="$t('page.ops.handler')" name="handler_ids">
             <Select
-              v-model:value="formState.handler_id"
+              v-model:value="formState.handler_ids"
+              mode="multiple"
               :options="users"
               :fieldNames="{ label: 'name', value: 'id' }"
               :placeholder="$t('page.ops.selectHandler')"

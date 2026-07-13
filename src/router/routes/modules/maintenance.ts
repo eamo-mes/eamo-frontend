@@ -57,6 +57,15 @@ const routes: RouteRecordRaw[] = [
           title: $t('page.ops.maintenancePlanDetail'),
         },
       },
+      {
+        name: 'OpsErrorMonitoring',
+        path: 'error-monitoring',
+        component: () => import('#/views/ops/error-monitoring/index.vue'),
+        meta: {
+          icon: 'lucide:alert-triangle',
+          title: $t('page.ops.errorMonitoring'),
+        },
+      },
     ],
   },
 ];

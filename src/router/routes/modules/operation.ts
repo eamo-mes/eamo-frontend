@@ -30,15 +30,6 @@ const routes: RouteRecordRaw[] = [
           title: $t('page.ops.parameterLog'),
         },
       },
-      {
-        name: 'OpsErrorMonitoring',
-        path: 'error-monitoring',
-        component: () => import('#/views/ops/error-monitoring/index.vue'),
-        meta: {
-          icon: 'lucide:alert-triangle',
-          title: $t('page.ops.errorMonitoring'),
-        },
-      },
     ],
   },
 ];
