@@ -1,5 +1,5 @@
 <script lang="ts" setup>
-import { ref, onMounted, computed, watch } from 'vue';
+import { ref, onMounted, computed, watch, nextTick } from 'vue';
 import {
   Table,
   Button,
@@ -12,7 +12,6 @@ import {
   Popconfirm,
   message,
   Spin,
-  Space,
   Tag,
   Progress,
   Input
@@ -23,6 +22,9 @@ import type { Dayjs } from 'dayjs';
 import { API_BASE_URL } from '#/api/config';
 import { useAccessStore } from '@vben/stores';
 import { $t } from '#/locales';
+import { EchartsUI, useEcharts } from '@vben/plugins/echarts';
+import type { EchartsUIType } from '@vben/plugins/echarts';
+
 
 const RangePicker = DatePicker.RangePicker;
 
@@ -30,6 +32,7 @@ interface EquipmentOption {
   id: string;
   code: string;
   name: string;
+  maintenance_interval_hours?: number | null;
 }
 
 interface OperatingTimeItem {
@@ -48,8 +51,10 @@ interface OperatingTimeItem {
 }
 
 const loading = ref(false);
+const showCharts = ref(false);
 const submitting = ref(false);
 const items = ref<OperatingTimeItem[]>([]);
+const maintenanceStatusData = ref<{ name: string; remaining: number }[]>([]);
 const equipments = ref<EquipmentOption[]>([]);
 const showModal = ref(false);
 const isEditing = ref(false);
@@ -71,8 +76,8 @@ const formState = ref({
   end_time: undefined as Dayjs | undefined,
 });
 
-const rules = computed(() => {
-  const validateEndTime = async (_rule: any, value: Dayjs) => {
+const rules = computed<Record<string, object[]>>(() => {
+  const validateEndTime = async (_rule: unknown, value: Dayjs) => {
     if (!value) {
       return Promise.reject(new Error($t('page.ops.validationEndTimeAfterStartTime')));
     }
@@ -82,7 +87,7 @@ const rules = computed(() => {
     return Promise.resolve();
   };
 
-  const validateStartTime = async (_rule: any, value: Dayjs) => {
+  const validateStartTime = async (_rule: unknown, value: Dayjs) => {
     if (!value) {
       return Promise.reject(new Error($t('page.ops.validationStartTimeBeforeEndTime')));
     }
@@ -95,8 +100,8 @@ const rules = computed(() => {
   return {
     equipment_id: [{ required: true, message: $t('page.ops.validationEquipment') }],
     planned_stop_time: [{ required: true, message: $t('page.ops.plannedStopTime') }],
-    start_time: [{ required: true, validator: validateStartTime, trigger: 'change' }],
-    end_time: [{ required: true, validator: validateEndTime, trigger: 'change' }],
+    start_time: [{ required: true, validator: validateStartTime as unknown as (r: unknown, v: unknown) => Promise<void>, trigger: 'change' }],
+    end_time: [{ required: true, validator: validateEndTime as unknown as (r: unknown, v: unknown) => Promise<void>, trigger: 'change' }],
   };
 });
 
@@ -139,6 +144,7 @@ async function loadEquipments() {
       id: item.id,
       code: item.code,
       name: item.name || item.code,
+      maintenance_interval_hours: item.maintenance_interval_hours,
     }));
   } catch (error) {
     console.error('Failed to load equipments', error);
@@ -152,6 +158,7 @@ async function loadItems() {
       headers: getAuthHeaders(),
     });
     items.value = res.data?.data ?? res.data ?? [];
+    await loadMaintenanceStatus();
   } catch (error) {
     message.error('Failed to load operating times');
     console.error(error);
@@ -160,9 +167,25 @@ async function loadItems() {
   }
 }
 
+async function loadMaintenanceStatus() {
+  try {
+    const res = await axios.get(`${API_BASE_URL}/v1/equipment/error-monitoring/operating-times/maintenance-status`, {
+      headers: getAuthHeaders(),
+    });
+    maintenanceStatusData.value = res.data?.data ?? [];
+  } catch (error) {
+    console.error('Failed to load maintenance status chart data', error);
+  }
+}
+
 function getEquipmentName(id: string) {
   const equip = equipments.value.find(e => e.id === id);
   return equip ? `${equip.name} (${equip.code})` : id;
+}
+
+function getEquipmentCode(id: string) {
+  const equip = equipments.value.find(e => e.id === id);
+  return equip ? equip.code : id;
 }
 
 onMounted(() => {
@@ -186,7 +209,7 @@ function handleReset() {
 }
 
 const filteredItems = computed(() => {
-  let result = items.value;
+  let result = items.value.filter(item => equipments.value.some(e => e.id === item.equipment_id));
 
   if (activeSearch.value) {
     const q = activeSearch.value.toLowerCase();
@@ -250,7 +273,7 @@ async function handleDelete(id: string) {
     message.success($t('page.ops.successDelete'));
     loadItems();
   } catch (error) {
-    message.error('Xóa thất bại');
+    message.error($t('page.ops.deleteFailed'));
     console.error(error);
   }
 }
@@ -274,18 +297,17 @@ async function handleOk() {
       await axios.put(`${API_BASE_URL}/v1/equipment/error-monitoring/operating-times/${editId.value}`, payload, {
         headers: getAuthHeaders(),
       });
-      message.success('Cập nhật bản ghi thành công');
     } else {
       await axios.post(`${API_BASE_URL}/v1/equipment/error-monitoring/operating-times`, payload, {
         headers: getAuthHeaders(),
       });
-      message.success('Thêm bản ghi thành công');
     }
+    message.success($t('page.ops.successSave'));
     showModal.value = false;
     loadItems();
   } catch (err: any) {
     if (!err?.errorFields) {
-      const msg = err?.response?.data?.message || 'Không thể lưu bản ghi';
+      const msg = err?.response?.data?.message || $t('page.ops.saveFailed');
       message.error(msg);
     }
   } finally {
@@ -364,27 +386,241 @@ function calculateRowAvailabilityFactor(record: OperatingTimeItem) {
 }
 
 function formatCellHours(val: string | number | undefined | null) {
-  if (val === undefined || val === null || val === '') return '-';
   const num = Number(val);
   return isNaN(num) ? val : `${Number(num.toFixed(3))} hrs`;
 }
+
+// Charts
+const avgAvailabilityChartRef = ref<EchartsUIType>();
+const longestOperatingChartRef = ref<EchartsUIType>();
+const maintenanceStatusChartRef = ref<EchartsUIType>();
+
+const { renderEcharts: renderAvgAvailabilityChart } = useEcharts(avgAvailabilityChartRef);
+const { renderEcharts: renderLongestOperatingChart } = useEcharts(longestOperatingChartRef);
+const { renderEcharts: renderMaintenanceStatusChart } = useEcharts(maintenanceStatusChartRef);
+
+async function renderCharts() {
+  await nextTick();
+  if (!avgAvailabilityChartRef.value || !longestOperatingChartRef.value || !maintenanceStatusChartRef.value) {
+    return;
+  }
+
+  const list = filteredItems.value;
+  
+  // Group by equipment
+  const eqMap: Record<string, { id: string; name: string; actualOp: number; unplannedStop: number; factors: number[] }> = {};
+  
+  list.forEach(item => {
+    const eqId = item.equipment_id;
+    const eqCode = getEquipmentCode(eqId);
+    if (!eqMap[eqId]) {
+      eqMap[eqId] = {
+        id: eqId,
+        name: eqCode,
+        actualOp: 0,
+        unplannedStop: 0,
+        factors: []
+      };
+    }
+    
+    const workingTime = Number(item.working_time) || 0;
+    const plannedStop = Number(item.planned_stop_time) || 0;
+    const unplannedStop = Number(item.unplanned_stop_time) || 0;
+
+    const plannedOp = Math.max(0, workingTime - plannedStop);
+    const actualOp = Math.max(0, plannedOp - unplannedStop);
+    const factor = plannedOp > 0 ? (actualOp / plannedOp) * 100 : 0;
+
+    eqMap[eqId].actualOp += actualOp;
+    eqMap[eqId].unplannedStop += unplannedStop;
+    eqMap[eqId].factors.push(factor);
+  });
+
+  const eqData = Object.values(eqMap);
+
+  // 1. Average Availability Factor (A) - Donut/Pie Chart representing overall average of all equipment
+  const totalRecords = list.length;
+  const overallAvg = totalRecords > 0 
+    ? list.reduce((sum, item) => sum + calculateRowAvailabilityFactor(item as OperatingTimeItem), 0) / totalRecords 
+    : 0;
+  
+  const avgValue = Number(overallAvg.toFixed(2));
+  const remainingValue = Number((100 - avgValue).toFixed(2));
+
+  renderAvgAvailabilityChart({
+    tooltip: {
+      trigger: 'item',
+      formatter: '{b}: {c}%'
+    },
+    legend: {
+      bottom: '5%',
+      left: 'center',
+      textStyle: { fontSize: 11 }
+    },
+    series: [
+      {
+        name: $t('page.ops.availabilityFactor'),
+        type: 'pie',
+        radius: ['50%', '70%'],
+        avoidLabelOverlap: false,
+        label: {
+          show: true,
+          position: 'center',
+          formatter: `${avgValue}%`,
+          fontSize: 22,
+          fontWeight: 'bold',
+          color: '#1e293b'
+        },
+        labelLine: {
+          show: false
+        },
+        color: ['#5ab1ef', '#b6a2de'], // Theme colors: sky blue & lavender
+        data: [
+          { value: avgValue, name: $t('page.ops.chartAvailable') },
+          { value: remainingValue, name: $t('page.ops.chartUnavailable') }
+        ]
+      }
+    ]
+  });
+
+  // 2. Longest operating time (Horizontal bar chart)
+  const sortedOperatingData = [...eqData].sort((a, b) => b.actualOp - a.actualOp);
+  const topOperatingData = sortedOperatingData.slice(0, 10);
+  const horizontalData = [...topOperatingData].reverse();
+
+  renderLongestOperatingChart({
+    tooltip: {
+      trigger: 'axis',
+      axisPointer: { type: 'shadow' },
+      formatter: (params: any) => {
+        let res = `${params[0].name}<br/>`;
+        params.forEach((p: any) => {
+          res += `${p.marker} ${p.seriesName}: ${p.value} hrs<br/>`;
+        });
+        return res;
+      }
+    },
+    legend: {
+      bottom: '0',
+      left: 'center',
+      textStyle: { fontSize: 10 }
+    },
+    grid: { left: '3%', right: '8%', bottom: '15%', top: '5%', containLabel: true },
+    xAxis: {
+      type: 'value',
+      axisLabel: { formatter: '{value} hrs', fontSize: 10 }
+    },
+    yAxis: {
+      type: 'category',
+      data: horizontalData.map(item => item.name),
+      axisLabel: { fontSize: 10 }
+    },
+    series: [
+      {
+        name: $t('page.ops.actualOperatingTime'),
+        type: 'bar',
+        stack: 'total',
+        color: '#5ab1ef', // Theme sky blue
+        barWidth: '45%',
+        data: horizontalData.map(item => Number(item.actualOp.toFixed(2)))
+      },
+      {
+        name: $t('page.ops.unplannedStopTime'),
+        type: 'bar',
+        stack: 'total',
+        color: '#cbd5e1', // Theme soft slate/gray
+        barWidth: '45%',
+        data: horizontalData.map(item => Number(item.unplannedStop.toFixed(2)))
+      }
+    ]
+  });
+
+  // 3. Maintenance Status Chart: Loaded from backend
+  let finalData = maintenanceStatusData.value;
+  if (activeEquipmentId.value) {
+    const activeEquip = equipments.value.find(e => e.id === activeEquipmentId.value);
+    if (activeEquip) {
+      finalData = finalData.filter(item => item.name === activeEquip.code);
+    }
+  }
+
+  const topMaintenanceData = finalData.slice(0, 10);
+  const finalMaintenanceData = [...topMaintenanceData].reverse();
+
+  renderMaintenanceStatusChart({
+    tooltip: {
+      trigger: 'axis',
+      axisPointer: { type: 'shadow' },
+      formatter: (params: any) => {
+        return `${params[0].name}<br/>${params[0].marker} ${params[0].seriesName}: ${params[0].value} hrs`;
+      }
+    },
+    grid: { left: '3%', right: '8%', bottom: '15%', top: '5%', containLabel: true },
+    xAxis: {
+      type: 'value',
+      axisLabel: { formatter: '{value} hrs', fontSize: 10 }
+    },
+    yAxis: {
+      type: 'category',
+      data: finalMaintenanceData.map(item => item.name),
+      axisLabel: { fontSize: 10 }
+    },
+    series: [
+      {
+        name: $t('page.ops.chartRemainingHours') || 'Thời gian còn lại',
+        type: 'bar',
+        color: '#ef4444', // Red color
+        barWidth: '45%',
+        data: finalMaintenanceData.map(item => item.remaining)
+      }
+    ]
+  });
+}
+
+watch([filteredItems, showCharts], () => {
+  if (showCharts.value) {
+    renderCharts();
+  }
+}, { deep: true, immediate: true });
 </script>
 
 <template>
   <div class="p-6 space-y-4">
+    <!-- Dashboard Charts -->
+    <div v-if="showCharts" class="grid grid-cols-1 lg:grid-cols-3 gap-4">
+      <div class="shadow-sm border border-border rounded-xl p-4 flex flex-col h-[360px] bg-card">
+        <h3 class="text-sm font-semibold text-foreground mb-3 text-center">
+          {{ $t('page.ops.chartAvgAvailabilityTitle') }}
+        </h3>
+        <EchartsUI ref="avgAvailabilityChartRef" />
+      </div>
+      <div class="shadow-sm border border-border rounded-xl p-4 flex flex-col h-[360px] bg-card">
+        <h3 class="text-sm font-semibold text-foreground mb-3 text-center">
+          {{ $t('page.ops.chartLongestOperatingTitle') }}
+        </h3>
+        <EchartsUI ref="longestOperatingChartRef" />
+      </div>
+      <div class="shadow-sm border border-border rounded-xl p-4 flex flex-col h-[360px] bg-card">
+        <h3 class="text-sm font-semibold text-foreground mb-3 text-center">
+          {{ $t('page.ops.chartMaintenanceStatusTitle') }}
+        </h3>
+        <EchartsUI ref="maintenanceStatusChartRef" />
+      </div>
+    </div>
+
     <!-- Action Bar -->
-    <div class="bg-card border border-border rounded-xl p-4 shadow-sm flex flex-wrap items-center gap-3 w-full">
+    <div class="bg-card border border-border rounded-xl p-4 shadow-sm flex flex-nowrap items-center gap-3 overflow-x-auto w-full no-scrollbar">
       <Input
         v-model:value="searchVal"
         :placeholder="$t('page.equipment.placeholderName')"
-        class="max-w-[200px]"
+        class="max-w-[200px] flex-shrink-0"
         allow-clear
         @press-enter="handleSearch"
       />
       <Select
         v-model:value="filterEquipmentId"
         :placeholder="$t('page.ops.selectEquipment')"
-        class="min-w-[200px]"
+        class="min-w-[200px] flex-shrink-0"
         allow-clear
         :options="equipments"
         :fieldNames="{ label: 'name', value: 'id' }"
@@ -393,15 +629,18 @@ function formatCellHours(val: string | number | undefined | null) {
         v-model:value="filterTimeRange"
         show-time
         format="YYYY-MM-DD HH:mm"
-        class="min-w-[320px]"
+        class="min-w-[320px] flex-shrink-0"
       />
-      <Button type="default" @click="handleSearch">
+      <Button type="default" class="flex-shrink-0" @click="handleSearch">
         {{ $t('page.company.btnFilter') }}
       </Button>
-      <Button type="default" @click="handleReset">
+      <Button type="default" class="flex-shrink-0" @click="handleReset">
         {{ $t('page.company.btnReset') }}
       </Button>
-      <div class="ml-auto">
+      <Button type="default" class="flex-shrink-0" @click="showCharts = !showCharts">
+        {{ showCharts ? $t('page.ops.btnHideCharts') : $t('page.ops.btnShowCharts') }}
+      </Button>
+      <div class="ml-auto flex-shrink-0">
         <Button
           type="primary"
           class="bg-[#5c3e35] hover:bg-[#4b332b] border-[#5c3e35] rounded-md font-medium text-white h-full"
@@ -429,7 +668,7 @@ function formatCellHours(val: string | number | undefined | null) {
         >
           <template #bodyCell="{ column, record }">
             <template v-if="column.key === 'equipment_name'">
-              <span>{{ getEquipmentName(record.equipment_id) }}</span>
+              <span>{{ getEquipmentName(record.equipment_id as string) }}</span>
             </template>
             <template v-else-if="column.key === 'date'">
               <span>{{ record.date ? dayjs(record.date).format('YYYY-MM-DD') : '-' }}</span>
@@ -437,13 +676,12 @@ function formatCellHours(val: string | number | undefined | null) {
             <template v-else-if="column.key === 'availability_factor'">
               <div class="flex flex-col items-center gap-1 min-w-[120px]">
                 <Progress
-                  :percent="calculateRowAvailabilityFactor(record)"
+                  :percent="calculateRowAvailabilityFactor(record as OperatingTimeItem)"
                   size="small"
-                  :status="calculateRowAvailabilityFactor(record) >= 90 ? 'normal' : 'exception'"
-                  :strokeColor="calculateRowAvailabilityFactor(record) >= 90 ? '#52c41a' : calculateRowAvailabilityFactor(record) >= 75 ? '#faad14' : '#f5222d'"
+                  :strokeColor="calculateRowAvailabilityFactor(record as OperatingTimeItem) >= 90 ? '#2ec7c9' : calculateRowAvailabilityFactor(record as OperatingTimeItem) >= 75 ? '#5ab1ef' : '#b6a2de'"
                 />
-                <Tag :color="calculateRowAvailabilityFactor(record) >= 90 ? 'green' : calculateRowAvailabilityFactor(record) >= 75 ? 'orange' : 'red'">
-                  {{ calculateRowAvailabilityFactor(record).toFixed(2) }}%
+                <Tag :color="calculateRowAvailabilityFactor(record as OperatingTimeItem) >= 90 ? '#2ec7c9' : calculateRowAvailabilityFactor(record as OperatingTimeItem) >= 75 ? '#5ab1ef' : '#b6a2de'">
+                  {{ calculateRowAvailabilityFactor(record as OperatingTimeItem).toFixed(2) }}%
                 </Tag>
               </div>
             </template>
@@ -485,8 +723,8 @@ function formatCellHours(val: string | number | undefined | null) {
       v-model:open="showModal"
       :title="isEditing ? $t('page.ops.btnEditRecord') : $t('page.ops.btnAddRecord')"
       :confirm-loading="submitting"
-      ok-text="Xác nhận"
-      cancel-text="Hủy"
+      :ok-text="$t('page.ops.btnOk')"
+      :cancel-text="$t('page.ops.btnCancel')"
       width="1000px"
       @ok="handleOk"
       @cancel="showModal = false"
@@ -498,25 +736,25 @@ function formatCellHours(val: string | number | undefined | null) {
         layout="vertical"
         class="mt-4"
       >
-        <FormItem label="Thiết bị" name="equipment_id">
+        <FormItem :label="$t('page.ops.colEquipment')" name="equipment_id">
           <Select
             v-model:value="formState.equipment_id"
             :options="equipments"
             :fieldNames="{ label: 'name', value: 'id' }"
-            placeholder="Chọn thiết bị"
+            :placeholder="$t('page.ops.selectEquipment')"
             class="w-full"
           />
         </FormItem>
 
         <div class="grid grid-cols-2 gap-4">
           <FormItem :label="$t('page.ops.plannedStopTime')" name="planned_stop_time">
-            <InputNumber v-model:value="formState.planned_stop_time" :min="0" class="w-full" />
+            <InputNumber v-model:value="formState.planned_stop_time" :min="0" style="width: 100%" />
           </FormItem>
           <FormItem :label="$t('page.ops.unplannedStopTime')" name="unplanned_stop_time">
             <InputNumber
               v-model:value="formState.unplanned_stop_time"
               :min="0"
-              class="w-full"
+              style="width: 100%"
             />
           </FormItem>
         </div>
@@ -545,7 +783,7 @@ function formatCellHours(val: string | number | undefined | null) {
           </div>
           <div class="flex flex-col items-center">
             <span class="text-xs text-gray-400 mb-1">{{ $t('page.ops.availabilityFactor') }}</span>
-            <Tag :color="availability_factor >= 90 ? 'green' : availability_factor >= 75 ? 'orange' : 'red'">
+            <Tag :color="availability_factor >= 90 ? '#2ec7c9' : availability_factor >= 75 ? '#5ab1ef' : '#b6a2de'">
               {{ availability_factor }}%
             </Tag>
           </div>
@@ -554,3 +792,13 @@ function formatCellHours(val: string | number | undefined | null) {
     </Modal>
   </div>
 </template>
+
+<style scoped>
+.no-scrollbar::-webkit-scrollbar {
+  display: none; /* Safari and Chrome */
+}
+.no-scrollbar {
+  -ms-overflow-style: none;  /* IE and Edge */
+  scrollbar-width: none;  /* Firefox */
+}
+</style>

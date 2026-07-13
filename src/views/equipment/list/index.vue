@@ -52,6 +52,7 @@ interface EquipmentItem {
   equipment_category?: CategoryOption | null;
   equipment_images?: EquipmentImageOption[];
   is_active: boolean;
+  maintenance_interval_hours?: number | null;
   equipment_errors?: ErrorOption[];
   equipment_parameters?: ParameterItem[];
   checklist_details_count?: number;
@@ -193,6 +194,12 @@ const columns = computed(() => [
     key: 'is_active',
   },
   {
+    title: $t('page.equipment.colMaintenanceIntervalHours') || 'Chu kỳ bảo trì (giờ)',
+    dataIndex: 'maintenance_interval_hours',
+    key: 'maintenance_interval_hours',
+    sorter: (a: EquipmentItem, b: EquipmentItem) => (a.maintenance_interval_hours || 0) - (b.maintenance_interval_hours || 0),
+  },
+  {
     title: $t('page.equipment.colErrors'),
     dataIndex: 'equipment_errors',
     key: 'equipment_errors',
@@ -215,6 +222,7 @@ const columns = computed(() => [
     key: 'actions',
     width: 160,
     align: 'right' as const,
+    fixed: 'right' as const,
   },
 ]);
 
@@ -320,6 +328,9 @@ onMounted(() => {
               <Tag :color="record.is_active ? 'success' : 'default'">
                 {{ record.is_active ? $t('page.equipment.statusActive') : $t('page.equipment.statusInactive') }}
               </Tag>
+            </template>
+            <template v-else-if="column.key === 'maintenance_interval_hours'">
+              <span>{{ record.maintenance_interval_hours !== null && record.maintenance_interval_hours !== undefined ? record.maintenance_interval_hours : '—' }}</span>
             </template>
             <template v-else-if="column.key === 'equipment_errors'">
                <div class="flex flex-col gap-1 max-w-[260px]">

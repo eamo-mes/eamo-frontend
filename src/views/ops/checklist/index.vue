@@ -236,6 +236,7 @@ const columns = computed(() => [
     key: 'actions',
     width: 260,
     align: 'right' as const,
+    fixed: 'right' as const,
   },
 ]);
 
@@ -618,19 +619,19 @@ onMounted(() => {
       v-model:open="isJudgeModalOpen"
       :title="$t('page.ops.judgeModalTitle')"
       :confirm-loading="submittingJudge"
-      ok-text="Xác nhận"
-      cancel-text="Hủy"
+      :ok-text="$t('page.ops.btnConfirm')"
+      :cancel-text="$t('page.ops.btnCancel')"
       @ok="handleJudgeOk"
     >
       <div v-if="judgeDetails.length === 0" class="py-4 text-center text-gray-400">
-        Phiên này không có hạng mục nào để đánh giá.
+        {{ $t('page.ops.noItemsToJudge') }}
       </div>
       <div v-else class="space-y-4 py-4">
         <div v-for="(item, index) in judgeDetails" :key="index" class="flex items-center justify-between p-2 bg-gray-50 rounded border border-gray-100">
-          <span class="font-medium text-gray-700">{{ item.description || `Hạng mục ${index + 1}` }}</span>
+          <span class="font-medium text-gray-700">{{ item.description || $t('page.ops.judgeItemIndex', { index: index + 1 }) }}</span>
           <Select v-model:value="item.result" style="width: 140px">
-            <Select.Option value="pass">Pass (Đạt)</Select.Option>
-            <Select.Option value="fail">Fail (Lỗi)</Select.Option>
+            <Select.Option value="pass">{{ $t('page.ops.resultPass') }}</Select.Option>
+            <Select.Option value="fail">{{ $t('page.ops.resultFail') }}</Select.Option>
           </Select>
         </div>
       </div>

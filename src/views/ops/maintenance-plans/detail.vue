@@ -37,6 +37,7 @@ interface MaintenanceItemOption {
   name: string;
   description: string | null;
   maintenance_category_id: string;
+  user_ids: string[];
 }
 
 interface MaintenanceCategoryOption {
@@ -56,6 +57,8 @@ interface ScheduleRow {
   user_ids: string[];
   users?: ScheduleUser[];
   _key: string;
+  equipment_id?: string;
+  maintenance_plan_id?: string;
 }
 
 interface AxiosErrorResponse {
@@ -207,7 +210,15 @@ async function loadMaintenanceItems(): Promise<void> {
       params: { per_page: 1000 },
     });
     const raw = res.data?.data ?? res.data ?? [];
-    maintenanceItems.value = Array.isArray(raw) ? (raw as MaintenanceItemOption[]) : [];
+    maintenanceItems.value = Array.isArray(raw)
+      ? (raw as any[]).map(item => ({
+          id: item.id,
+          name: item.name,
+          description: item.description,
+          maintenance_category_id: item.maintenance_category_id,
+          user_ids: (item.users ?? []).map((u: any) => u.id),
+        }))
+      : [];
   } catch {
     // silently fail
   }
@@ -262,20 +273,26 @@ function setFormStateFromRecord(record: any): void {
     cycle_interval: record.cycle_interval ?? undefined,
     occurrences: record.occurrences ?? undefined,
     notes: record.notes ?? '',
-    schedules: (record.maintenance_schedule ?? [])
-      .filter((s: any) => s.maintenance_item_id)
-      .map((s: {
-        id: string;
-        maintenance_item_id: string;
-        date: string;
-        users?: ScheduleUser[];
-      }) => ({
-        id: s.id,
-        maintenance_item_id: s.maintenance_item_id,
-        date: s.date,
-        user_ids: (s.users ?? []).map((u: ScheduleUser) => u.id),
-        _key: generateKey(),
-      })),
+        schedules: (record.maintenance_schedule ?? [])
+          .filter((s: any) => s.maintenance_item_id)
+          .map((s: {
+            id: string;
+            maintenance_item_id: string;
+            date: string;
+            users?: ScheduleUser[];
+            maintenance_logs?: any[];
+            equipment_id?: string;
+            maintenance_plan_id?: string;
+          }) => ({
+            id: s.id,
+            maintenance_item_id: s.maintenance_item_id,
+            date: s.date,
+            user_ids: (s.users ?? []).map((u: ScheduleUser) => u.id),
+            result: s.maintenance_logs?.[0]?.result || null,
+            equipment_id: s.equipment_id || record.equipment_id,
+            maintenance_plan_id: s.maintenance_plan_id || record.id,
+            _key: generateKey(),
+          })),
   };
 }
 
@@ -387,10 +404,6 @@ function handleAddItemSuccess(item: MaintenanceItemOption, userIds: string[]): v
   }
 }
 
-function getItemUserIds(itemId: string): string[] {
-  const schedule = formState.value.schedules.find(s => s.maintenance_item_id === itemId);
-  return schedule ? schedule.user_ids : [];
-}
 
 function setItemUserIds(itemId: string, userIds: string[]): void {
   const matchingSchedules = formState.value.schedules.filter(s => s.maintenance_item_id === itemId);
@@ -403,6 +416,8 @@ function setItemUserIds(itemId: string, userIds: string[]): void {
       maintenance_item_id: itemId,
       date: (formState.value.date || new Date().toISOString().split('T')[0]) as string,
       user_ids: userIds,
+      equipment_id: formState.value.equipment_id,
+      maintenance_plan_id: editId.value,
       _key: generateKey(),
     });
   }
@@ -431,6 +446,7 @@ async function updateCategoryItem(item: MaintenanceItemOption): Promise<void> {
         name,
         description: item.description?.trim() || null,
         maintenance_category_id: item.maintenance_category_id,
+        user_ids: item.user_ids,
       },
       { headers: getAuthHeaders() },
     );
@@ -690,8 +706,8 @@ onMounted(async () => {
                     <div class="flex-1 min-w-[200px]">
                       <span class="text-xs text-gray-400 block mb-1">{{ $t('page.ops.colAssignedUsers') }}</span>
                       <Select
-                        :value="getItemUserIds(item.id)"
-                        @update:value="(val: any) => setItemUserIds(item.id, val)"
+                        :value="item.user_ids"
+                        @update:value="(val: any) => { item.user_ids = val; setItemUserIds(item.id, val); }"
                         :options="userOptions"
                         :placeholder="$t('page.ops.placeholderAssignedUsers')"
                         mode="multiple"
@@ -812,6 +828,7 @@ onMounted(async () => {
             :maintenance-items="maintenanceItems"
             :categories="categories"
             :user-options="userOptions"
+            :equipment-id="formState.equipment_id"
           />
         </Card>
 

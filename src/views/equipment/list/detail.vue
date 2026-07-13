@@ -62,6 +62,7 @@ const formState = ref({
   name: '',
   equipment_category_id: undefined as string | undefined,
   is_active: true,
+  maintenance_interval_hours: undefined as number | undefined,
   equipment_error_ids: [] as string[],
   equipment_parameters: [] as { id?: string; code: string; name: string; unit_id: string | undefined; standard?: number; standard_max?: number; standard_min?: number }[],
 });
@@ -148,6 +149,7 @@ async function loadEquipmentDetail(id: string) {
         name: record.name || '',
         equipment_category_id: record.equipment_category_id || undefined,
         is_active: !!record.is_active,
+        maintenance_interval_hours: record.maintenance_interval_hours ?? undefined,
         equipment_error_ids: record.equipment_errors?.map((err: any) => err.id) || [],
         equipment_parameters: record.equipment_parameters?.map((param: any) => ({
           id: param.id,
@@ -267,6 +269,9 @@ function buildBaseFormData() {
     fd.append('equipment_category_id', formState.value.equipment_category_id);
   }
   fd.append('is_active', formState.value.is_active ? '1' : '0');
+  if (formState.value.maintenance_interval_hours !== undefined && formState.value.maintenance_interval_hours !== null) {
+    fd.append('maintenance_interval_hours', String(formState.value.maintenance_interval_hours));
+  }
   
   formState.value.equipment_error_ids.forEach(errId => {
     fd.append('equipment_error_ids[]', errId);
@@ -457,7 +462,7 @@ onMounted(() => {
             <FormItem :label="$t('page.equipment.colName')" name="name" class="col-span-1">
               <Input v-model:value="formState.name" :placeholder="$t('page.equipment.placeholderName')" />
             </FormItem>
-            <FormItem :label="$t('page.equipment.colCategory')" name="equipment_category_id" class="col-span-2">
+            <FormItem :label="$t('page.equipment.colCategory')" name="equipment_category_id" class="col-span-1">
               <Select
                 v-model:value="formState.equipment_category_id"
                 :placeholder="$t('page.equipment.placeholderCategory')"
@@ -468,7 +473,15 @@ onMounted(() => {
                 </Select.Option>
               </Select>
             </FormItem>
-            <FormItem :label="$t('page.equipment.colActive')" name="is_active" class="col-span-1">
+            <FormItem :label="$t('page.equipment.colMaintenanceIntervalHours')" name="maintenance_interval_hours" class="col-span-1">
+              <InputNumber
+                v-model:value="formState.maintenance_interval_hours"
+                :placeholder="$t('page.equipment.placeholderMaintenanceIntervalHours')"
+                :min="0"
+                style="width: 100%"
+              />
+            </FormItem>
+            <FormItem :label="$t('page.equipment.colActive')" name="is_active" class="col-span-2">
               <Switch v-model:checked="formState.is_active" />
             </FormItem>
 

@@ -14,6 +14,7 @@ interface MaintenanceItemOption {
   name: string;
   description: string | null;
   maintenance_category_id: string;
+  user_ids: string[];
 }
 
 const props = defineProps<{
@@ -63,11 +64,19 @@ async function handleSubmit(): Promise<void> {
         name,
         description: newItemDescription.value.trim() || null,
         maintenance_category_id: props.categoryId,
+        user_ids: newItemUserIds.value,
       },
       { headers: props.authHeaders },
     );
-    const created = res.data as MaintenanceItemOption;
-    emit('success', created, newItemUserIds.value);
+    const created = res.data as any;
+    const mapped: MaintenanceItemOption = {
+      id: created.id,
+      name: created.name,
+      description: created.description,
+      maintenance_category_id: created.maintenance_category_id,
+      user_ids: (created.users ?? []).map((u: any) => u.id),
+    };
+    emit('success', mapped, newItemUserIds.value);
     emit('update:open', false);
     message.success($t('page.ops.addItemSuccess'));
   } catch (err: unknown) {

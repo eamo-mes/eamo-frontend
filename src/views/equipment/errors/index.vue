@@ -284,6 +284,7 @@ const columns = computed(() => [
     key: 'actions',
     width: 160,
     align: 'right' as const,
+    fixed: 'right' as const,
   },
 ]);
 

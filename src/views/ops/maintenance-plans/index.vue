@@ -2,6 +2,7 @@
 import { ref, computed, onMounted } from 'vue';
 import { useRouter } from 'vue-router';
 import { $t } from '#/locales';
+
 import {
   Button,
   Table,
@@ -228,6 +229,7 @@ const columns = computed(() => [
     key: 'actions',
     width: 160,
     align: 'right' as const,
+    fixed: 'right' as const,
   },
 ]);
 
@@ -247,7 +249,7 @@ const userOptions = computed(() =>
 
 async function loadAllSchedules(startDate?: string, endDate?: string): Promise<void> {
   try {
-    const params: any = { per_page: 1000 };
+    const params: any = { per_page: 1000, with_logs: true };
     if (startDate) params.start_date = startDate;
     if (endDate) params.end_date = endDate;
 
@@ -262,6 +264,7 @@ async function loadAllSchedules(startDate?: string, endDate?: string): Promise<v
       maintenance_plan_id: s.maintenance_plan_id,
       date: s.date,
       user_ids: (s.users ?? []).map((u: any) => u.id),
+      result: s.maintenance_logs?.[0]?.result || null,
       _key: Math.random().toString(36).slice(2) + Date.now().toString(36),
       plan_code: s.maintenance_plan?.plan_code || '—',
       equipment_id: s.maintenance_plan?.equipment_id || '',
@@ -351,6 +354,7 @@ async function handleDelete(id: string): Promise<void> {
     message.error(apiError || $t('page.ops.planDeleteError'));
   }
 }
+
 
 onMounted(() => {
   loadEquipments();
