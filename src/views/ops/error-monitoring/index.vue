@@ -47,6 +47,7 @@ interface ErrorLogItem {
   handled_at?: string;
   handler_ids?: string[];
   handled_time?: number;
+  is_synced?: boolean;
   equipment?: { name: string; code: string };
   equipment_error?: { name: string };
   handlers?: Array<{ id: string; name: string }>;
@@ -179,13 +180,25 @@ function handleReset() {
 }
 
 const filteredItems = computed(() => {
-  if (!activeSearch.value) return items.value;
-  const q = activeSearch.value.toLowerCase();
-  return items.value.filter(item => {
-    const equipName = getEquipmentName(item.equipment_id).toLowerCase();
-    const errName = getErrorName(item).toLowerCase();
-    const handlerName = getHandlersText(item).toLowerCase();
-    return equipName.includes(q) || errName.includes(q) || handlerName.includes(q);
+  let res = items.value;
+  if (activeSearch.value) {
+    const q = activeSearch.value.toLowerCase();
+    res = res.filter(item => {
+      const equipName = getEquipmentName(item.equipment_id).toLowerCase();
+      const errName = getErrorName(item).toLowerCase();
+      const handlerName = getHandlersText(item).toLowerCase();
+      return equipName.includes(q) || errName.includes(q) || handlerName.includes(q);
+    });
+  }
+  return [...res].sort((a, b) => {
+    const aSynced = a.is_synced ? 1 : 0;
+    const bSynced = b.is_synced ? 1 : 0;
+    if (aSynced !== bSynced) {
+      return aSynced - bSynced; // 0 (unsynced) first, 1 (synced) last
+    }
+    const aTime = a.occurred_at ? new Date(a.occurred_at).getTime() : 0;
+    const bTime = b.occurred_at ? new Date(b.occurred_at).getTime() : 0;
+    return bTime - aTime;
   });
 });
 
@@ -277,6 +290,7 @@ async function syncOneResolved(id: string) {
     );
     message.success($t('page.ops.syncSuccess'));
     await loadInitialData();
+    await loadItems();
   } catch (error: any) {
     message.error(error?.response?.data?.message || $t('page.ops.syncFailed'));
   } finally {
@@ -294,22 +308,12 @@ async function syncAllResolved() {
     );
     message.success(res.data?.message || $t('page.ops.syncSuccess'));
     await loadInitialData();
+    await loadItems();
   } catch (error: any) {
     message.error(error?.response?.data?.message || $t('page.ops.syncFailed'));
   } finally {
     syncingAll.value = false;
   }
-}
-
-function isErrorSynced(record: ErrorLogItem) {
-  if (!record.equipment_error_id) return true;
-  if (!record.handled_at) return true;
-
-  const equip = equipments.value.find(e => e.id === record.equipment_id);
-  if (!equip) return true;
-
-  const stillAttached = equip.equipment_errors?.some(err => err.id === record.equipment_error_id);
-  return !stillAttached;
 }
 
 const columns = computed(() => [
@@ -405,6 +409,7 @@ const columns = computed(() => [
           :columns="columns"
           :data-source="filteredItems"
           row-key="id"
+          :row-class-name="(record) => (record as ErrorLogItem).is_synced ? 'opacity-40 pointer-events-none bg-gray-50/20 dark:bg-zinc-900/10' : ''"
           :scroll="{ x: 'max-content' }"
           :pagination="{
             pageSize: 10,
@@ -447,7 +452,7 @@ const columns = computed(() => [
                   {{ $t('page.company.btnEdit') }}
                 </Button>
                 <Popconfirm
-                  v-if="record.handled_at && !isErrorSynced(record as ErrorLogItem)"
+                  v-if="record.handled_at && !record.is_synced"
                   :title="$t('page.ops.syncConfirmOne')"
                   ok-text="Yes"
                   cancel-text="No"
@@ -528,16 +533,12 @@ const columns = computed(() => [
             <DatePicker v-model:value="formState.occurred_at" show-time format="YYYY-MM-DD HH:mm:ss" style="width: 100%" />
           </FormItem>
 
-          <FormItem :label="$t('page.ops.restartedAt')" name="restarted_at">
-            <DatePicker v-model:value="formState.restarted_at" show-time format="YYYY-MM-DD HH:mm:ss" style="width: 100%" allowClear />
-          </FormItem>
-        </div>
-
-        <div class="grid grid-cols-2 gap-4 border-t border-gray-100 dark:border-gray-700 pt-4">
           <FormItem :label="$t('page.ops.handledAt')" name="handled_at">
             <DatePicker v-model:value="formState.handled_at" show-time format="YYYY-MM-DD HH:mm:ss" style="width: 100%" allowClear />
           </FormItem>
+        </div>
 
+        <div class="border-t border-gray-100 dark:border-gray-700 pt-4">
           <FormItem :label="$t('page.ops.handler')" name="handler_ids">
             <Select
               v-model:value="formState.handler_ids"
