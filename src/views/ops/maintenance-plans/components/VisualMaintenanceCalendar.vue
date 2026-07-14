@@ -11,6 +11,28 @@ import { API_BASE_URL } from '#/api/config';
 const router = useRouter();
 const route = useRoute();
 
+interface LastMaintenanceInfo {
+  equipment_id: string;
+  maintenance_plan_id: string;
+  datetime: string;
+  user_id: string;
+}
+
+interface Equipment {
+  id: string;
+  code: string;
+  name: string | null;
+  last_maintenance?: LastMaintenanceInfo | null;
+}
+
+interface LastMaintenanceNode {
+  isLastMaintenance: boolean;
+  label: string;
+  equipmentId?: string;
+  equipmentCode?: string;
+  datetime?: string;
+}
+
 interface UserOption {
   label: string;
   value: string;
@@ -317,7 +339,7 @@ const selectedItemDetails = computed(() => {
 });
 
 const userStore = useUserStore();
-const localEquipments = ref<any[]>([]);
+const localEquipments = ref<Equipment[]>([]);
 const lastMaintenanceDrawerVisible = ref(false);
 const markingLastMaintenance = ref(false);
 
@@ -333,25 +355,6 @@ async function fetchLocalEquipments(): Promise<void> {
     localEquipments.value = [...props.equipments];
   }
 }
-
-
-const isScheduleLastMaintenance = (schedule: ScheduleRow): boolean => {
-  const eqId = schedule.equipment_id || props.equipmentId || props.schedules[0]?.equipment_id;
-  if (!eqId) return false;
-  const eq = localEquipments.value.find((e) => e.id === eqId);
-  if (!eq || !eq.last_maintenance) return false;
-
-  const planId = schedule.maintenance_plan_id || route.query.id as string;
-  if (!planId || eq.last_maintenance.maintenance_plan_id !== planId) return false;
-
-  const lastDate = eq.last_maintenance.datetime ? eq.last_maintenance.datetime.split(' ')[0] : null;
-  return lastDate === schedule.date;
-};
-
-const isSelectedScheduleLastMaintenance = computed(() => {
-  if (!selectedSchedule.value) return false;
-  return isScheduleLastMaintenance(selectedSchedule.value);
-});
 
 async function markCurrentAsLastMaintenance(): Promise<void> {
   const equipmentId = props.equipmentId || props.schedules[0]?.equipment_id;
@@ -395,27 +398,49 @@ async function markCurrentAsLastMaintenance(): Promise<void> {
   }
 }
 
-function hasLastMaintenanceOnDate(date: Dayjs): boolean {
+const lastMaintenanceFilterDate = ref<string | null>(null);
+
+function getLastMaintenanceForDate(date: Dayjs): LastMaintenanceNode[] {
   const dateStr = date.format('YYYY-MM-DD');
 
   if (!props.readOnly) {
     const eqId = props.equipmentId || props.schedules[0]?.equipment_id;
-    if (!eqId) return false;
+    if (!eqId) return [];
     const eq = localEquipments.value.find((e) => e.id === eqId);
-    if (!eq || !eq.last_maintenance || !eq.last_maintenance.datetime) return false;
+    if (!eq || !eq.last_maintenance || !eq.last_maintenance.datetime) return [];
 
     // Verify plan ID matches
     const planId = route.query.id as string;
-    if (eq.last_maintenance.maintenance_plan_id !== planId) return false;
+    if (eq.last_maintenance.maintenance_plan_id !== planId) return [];
 
-    return dayjs(eq.last_maintenance.datetime).format('YYYY-MM-DD') === dateStr;
+    const matches = dayjs(eq.last_maintenance.datetime).format('YYYY-MM-DD') === dateStr;
+    if (matches) {
+      return [{
+        isLastMaintenance: true,
+        label: eq.code || '',
+        equipmentId: eq.id,
+        equipmentCode: eq.code,
+        datetime: eq.last_maintenance.datetime
+      }];
+    }
+    return [];
   }
 
   // On index view (readOnly = true), show for any equipment whose last maintenance matches this date
-  return localEquipments.value.some((eq) => {
-    if (!eq.last_maintenance || !eq.last_maintenance.datetime) return false;
-    return dayjs(eq.last_maintenance.datetime).format('YYYY-MM-DD') === dateStr;
+  const list: LastMaintenanceNode[] = [];
+  localEquipments.value.forEach((eq) => {
+    if (!eq.last_maintenance || !eq.last_maintenance.datetime) return;
+    if (dayjs(eq.last_maintenance.datetime).format('YYYY-MM-DD') === dateStr) {
+      list.push({
+        isLastMaintenance: true,
+        label: eq.code || '',
+        equipmentId: eq.id,
+        equipmentCode: eq.code,
+        datetime: eq.last_maintenance.datetime
+      });
+    }
   });
+  return list;
 }
 
 const hasLastMaintenance = computed(() => {
@@ -428,12 +453,28 @@ const equipmentsWithLastMaintenance = computed(() => {
   );
 });
 
+const displayedLastMaintenanceEquipments = computed<Equipment[]>(() => {
+  if (lastMaintenanceFilterDate.value) {
+    return equipmentsWithLastMaintenance.value.filter((eq) => {
+      if (!eq.last_maintenance || !eq.last_maintenance.datetime) return false;
+      return dayjs(eq.last_maintenance.datetime).format('YYYY-MM-DD') === lastMaintenanceFilterDate.value;
+    });
+  }
+  return equipmentsWithLastMaintenance.value;
+});
+
 function getPlanCodeById(planId: string): string {
   const schedule = props.schedules.find((s) => s.maintenance_plan_id === planId);
   return schedule?.plan_code || '';
 }
 
 function showLastMaintenanceDrawer(): void {
+  lastMaintenanceFilterDate.value = null;
+  lastMaintenanceDrawerVisible.value = true;
+}
+
+function showLastMaintenanceForDate(dateStr: string): void {
+  lastMaintenanceFilterDate.value = dateStr;
   lastMaintenanceDrawerVisible.value = true;
 }
 </script>
@@ -481,11 +522,21 @@ function showLastMaintenanceDrawer(): void {
         @select="onSelect"
       >
         <template #dateCellRender="{ current }">
-          <div 
-            v-if="hasLastMaintenanceOnDate(current)" 
-            class="absolute inset-0 bg-emerald-50/60 dark:bg-emerald-950/20 pointer-events-none z-0 border border-emerald-250 dark:border-emerald-800/50"
-          ></div>
           <ul class="relative z-10 list-none p-0 m-0 overflow-y-auto max-h-[85px]">
+            <!-- Latest Maintenance Node(s) -->
+            <li
+              v-for="node in getLastMaintenanceForDate(current)"
+              :key="node.equipmentId"
+              class="mb-1 py-0.5 px-2 text-xs rounded border truncate cursor-pointer transition-all duration-200 ease-in-out hover:-translate-y-[0.5px] hover:shadow-sm bg-purple-50 dark:bg-purple-950/30 text-purple-700 dark:text-purple-300 border-purple-250 dark:border-purple-800/50 hover:bg-purple-100 dark:hover:bg-purple-900/40 font-semibold flex items-center gap-1"
+              :title="node.label"
+              @click="showLastMaintenanceForDate(current.format('YYYY-MM-DD'))"
+            >
+              <svg xmlns="http://www.w3.org/2000/svg" class="h-3 w-3 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+              </svg>
+              <span>{{ node.label }}</span>
+            </li>
+            <!-- Regular Maintenance Schedule Items -->
             <li
               v-for="s in getSchedulesForDate(current)"
               :key="s._key"
@@ -506,7 +557,7 @@ function showLastMaintenanceDrawer(): void {
       v-model:open="drawerVisible"
       :title="$t('page.ops.scheduleDetailTitle')"
       placement="right"
-      :width="420"
+      :width="460"
     >
       <div v-if="drawerSchedule" class="space-y-6 px-2">
         <!-- Hạng mục bảo trì & Danh mục -->
@@ -522,29 +573,36 @@ function showLastMaintenanceDrawer(): void {
         </div>
 
         <!-- Thông tin kế hoạch (chỉ hiển thị ở chế độ xem lịch chung) -->
-        <div v-if="props.readOnly" class="bg-gray-50/50 dark:bg-gray-900/30 border border-gray-150/60 dark:border-gray-800 rounded-xl p-4 space-y-3 shadow-xs">
-          <span class="text-xs text-gray-400 font-bold uppercase tracking-wider block">
-            {{ $t('page.ops.planInfoSectionTitle') }}
-          </span>
-          <div class="grid grid-cols-2 gap-x-4 gap-y-3 text-sm">
-            <div>
-              <span class="text-xs text-gray-400 block mb-0.5">{{ $t('page.ops.colPlanCode') }}</span>
-              <span class="font-semibold text-gray-700 dark:text-gray-250 truncate block">
-                {{ selectedSchedule?.plan_code || '—' }}
-              </span>
-            </div>
-            <div>
-              <span class="text-xs text-gray-400 block mb-0.5">{{ $t('page.ops.colMaintenanceType') }}</span>
-              <span class="font-semibold text-gray-700 dark:text-gray-250 truncate block">
-                {{ selectedSchedule?.maintenance_type || '—' }}
-              </span>
-            </div>
-            <div class="col-span-2 border-t border-gray-100 dark:border-gray-850 pt-2.5 mt-1">
-              <span class="text-xs text-gray-400 block mb-0.5">{{ $t('page.ops.placeholderEquipment') }}</span>
-              <span class="font-semibold text-gray-700 dark:text-gray-250 leading-relaxed block">
-                {{ getEquipmentName(selectedSchedule!) || '—' }}
-              </span>
-            </div>
+        <div v-if="props.readOnly" class="space-y-4">
+          <div>
+            <span class="text-xs text-gray-400 font-semibold uppercase tracking-wider block mb-1">
+              {{ $t('page.ops.colPlanCode') }}
+            </span>
+            <Input
+              :value="selectedSchedule?.plan_code || '—'"
+              disabled
+              class="bg-gray-50/50 dark:bg-gray-900/30 text-gray-700 dark:text-gray-300 font-medium"
+            />
+          </div>
+          <div>
+            <span class="text-xs text-gray-400 font-semibold uppercase tracking-wider block mb-1">
+              {{ $t('page.ops.colMaintenanceType') }}
+            </span>
+            <Input
+              :value="selectedSchedule?.maintenance_type || '—'"
+              disabled
+              class="bg-gray-50/50 dark:bg-gray-900/30 text-gray-700 dark:text-gray-300 font-medium"
+            />
+          </div>
+          <div>
+            <span class="text-xs text-gray-400 font-semibold uppercase tracking-wider block mb-1">
+              {{ $t('page.ops.placeholderEquipment') }}
+            </span>
+            <Input
+              :value="getEquipmentName(selectedSchedule!) || '—'"
+              disabled
+              class="bg-gray-50/50 dark:bg-gray-900/30 text-gray-700 dark:text-gray-300 font-medium"
+            />
           </div>
         </div>
 
@@ -563,76 +621,37 @@ function showLastMaintenanceDrawer(): void {
 
         <!-- Ngày thực hiện dự kiến -->
         <div class="space-y-2 border-t border-border pt-4">
-          <template v-if="props.readOnly">
-            <div class="flex items-center gap-3 bg-gray-50/50 dark:bg-gray-900/30 border border-gray-150/60 dark:border-gray-800 rounded-xl p-3.5 shadow-xs">
-              <span class="p-2.5 bg-indigo-50 dark:bg-indigo-950/40 rounded-lg text-indigo-600 dark:text-indigo-400 border border-indigo-100 dark:border-indigo-900/40">
-                <!-- Calendar icon -->
-                <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
-                </svg>
-              </span>
-              <div>
-                <span class="text-xs text-gray-400 font-medium block mb-0.5">{{ $t('page.ops.expectedExecutionDate') }}</span>
-                <span class="font-bold text-gray-700 dark:text-gray-250">{{ drawerSchedule.date }}</span>
-              </div>
-            </div>
-          </template>
-          <template v-else>
-            <span class="text-xs text-gray-500 font-semibold uppercase tracking-wider block mb-1">
-              {{ $t('page.ops.expectedExecutionDate') }}
-            </span>
-            <DatePicker
-              v-model:value="drawerSchedule.date"
-              value-format="YYYY-MM-DD"
-              format="YYYY-MM-DD"
-              :placeholder="$t('page.ops.placeholderScheduleDate')"
-              class="w-full"
-            />
-          </template>
+          <span class="text-xs text-gray-500 font-semibold uppercase tracking-wider block mb-1">
+            {{ $t('page.ops.expectedExecutionDate') }}
+          </span>
+          <DatePicker
+            v-model:value="drawerSchedule.date"
+            value-format="YYYY-MM-DD"
+            format="YYYY-MM-DD"
+            :placeholder="$t('page.ops.placeholderScheduleDate')"
+            class="w-full"
+          />
         </div>
 
         <!-- Kỹ thuật viên thực hiện -->
         <div class="space-y-2 border-t border-border pt-4">
-          <template v-if="props.readOnly">
-            <span class="text-xs text-gray-400 font-semibold uppercase tracking-wider block mb-1">
-              {{ $t('page.ops.assignedTechnicians') }}
-            </span>
-            <div class="flex flex-wrap gap-2" v-if="drawerSchedule.user_ids.length > 0">
-              <span 
-                v-for="userId in drawerSchedule.user_ids" 
-                :key="userId" 
-                class="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold bg-emerald-50 dark:bg-emerald-950/30 text-emerald-700 dark:text-emerald-350 border border-emerald-100 dark:border-emerald-900/40"
-              >
-                <!-- User icon -->
-                <svg xmlns="http://www.w3.org/2000/svg" class="h-3 w-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
-                </svg>
-                {{ getUserLabel(userId) }}
-              </span>
-            </div>
-            <div v-else class="text-sm text-gray-400 dark:text-gray-550 italic bg-gray-50/20 p-3 rounded-lg border border-gray-100 dark:border-gray-850">
-              {{ $t('page.ops.noAssignedTechnicians') }}
-            </div>
-          </template>
-          <template v-else>
-            <span class="text-xs text-gray-500 font-semibold uppercase tracking-wider block mb-1">
-              {{ $t('page.ops.assignedTechnicians') }}
-            </span>
-            <Select
-              v-model:value="drawerSchedule.user_ids"
-              :options="props.userOptions"
-              :placeholder="$t('page.ops.placeholderAssignedUsers')"
-              mode="multiple"
-              option-filter-prop="label"
-              show-search
-              allow-clear
-              class="w-full"
-            />
-          </template>
+          <span class="text-xs text-gray-500 font-semibold uppercase tracking-wider block mb-1">
+            {{ $t('page.ops.assignedTechnicians') }}
+          </span>
+          <Select
+            v-model:value="drawerSchedule.user_ids"
+            :options="props.userOptions"
+            :placeholder="$t('page.ops.placeholderAssignedUsers')"
+            mode="multiple"
+            option-filter-prop="label"
+            show-search
+            allow-clear
+            class="w-full"
+          />
         </div>
 
-        <!-- Ghi nhận nhật ký bảo trì (Chỉ hiển thị khi ở chế độ chỉnh sửa/chi tiết - readOnly là false) -->
-        <div v-if="!props.readOnly" class="space-y-4 border-t border-border pt-4">
+        <!-- Ghi nhận nhật ký bảo trì -->
+        <div class="space-y-4 border-t border-border pt-4">
           <span class="text-xs text-gray-400 font-semibold uppercase tracking-wider block">
             {{ $t('page.ops.logTitle') }}
           </span>
@@ -734,7 +753,7 @@ function showLastMaintenanceDrawer(): void {
     >
       <div class="space-y-6 px-2">
         <div 
-          v-for="(eq, index) in equipmentsWithLastMaintenance" 
+          v-for="(eq, index) in displayedLastMaintenanceEquipments" 
           :key="eq.id"
           class="space-y-4"
         >
@@ -746,7 +765,7 @@ function showLastMaintenanceDrawer(): void {
             <span class="font-bold text-gray-800 dark:text-gray-200 text-sm">
               {{ $t('page.ops.placeholderEquipment') }} {{ eq.code }}
             </span>
-            <Tag color="green">{{ $t('page.ops.marked') }}</Tag>
+            <Tag color="green">{{ $t('page.ops.maintainedLabel') }}</Tag>
           </div>
 
           <!-- Fields -->
@@ -766,7 +785,7 @@ function showLastMaintenanceDrawer(): void {
                 {{ $t('page.ops.colPlanCode') }}
               </span>
               <Input
-                :value="getPlanCodeById(eq.last_maintenance.maintenance_plan_id) || eq.last_maintenance.maintenance_plan_id"
+                :value="eq.last_maintenance ? (getPlanCodeById(eq.last_maintenance.maintenance_plan_id) || eq.last_maintenance.maintenance_plan_id) : ''"
                 disabled
                 class="bg-gray-50/50 dark:bg-gray-900/30 text-gray-700 dark:text-gray-300 font-medium"
               />
@@ -776,7 +795,7 @@ function showLastMaintenanceDrawer(): void {
                 {{ $t('page.ops.maintenanceTime') }}
               </span>
               <Input
-                :value="eq.last_maintenance.datetime"
+                :value="eq.last_maintenance?.datetime || ''"
                 disabled
                 class="bg-gray-50/50 dark:bg-gray-900/30 text-gray-700 dark:text-gray-300 font-medium"
               />
@@ -786,14 +805,14 @@ function showLastMaintenanceDrawer(): void {
                 {{ $t('page.ops.executor') }}
               </span>
               <Input
-                :value="getUserLabel(eq.last_maintenance.user_id)"
+                :value="eq.last_maintenance ? getUserLabel(eq.last_maintenance.user_id) : ''"
                 disabled
                 class="bg-gray-50/50 dark:bg-gray-900/30 text-gray-700 dark:text-gray-300 font-medium"
               />
             </div>
           </div>
         </div>
-        <div v-if="equipmentsWithLastMaintenance.length === 0" class="text-center py-8 text-gray-400 italic">
+        <div v-if="displayedLastMaintenanceEquipments.length === 0" class="text-center py-8 text-gray-400 italic">
           {{ $t('page.ops.noLastMaintenanceDevice') }}
         </div>
       </div>

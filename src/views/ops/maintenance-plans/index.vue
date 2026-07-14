@@ -5,13 +5,10 @@ import { $t } from '#/locales';
 
 import {
   Button,
-  Table,
   Input,
   Select,
-  Popconfirm,
   message,
   Spin,
-  Tag,
 } from 'ant-design-vue';
 import axios from 'axios';
 import { listUsersApi, type UserItem } from '#/api/core/users';
@@ -84,7 +81,7 @@ const selectedCategoryId = ref<string | undefined>(undefined);
 const equipments = ref<EquipmentOption[]>([]);
 const categories = ref<MaintenanceCategoryOption[]>([]);
 
-const showCalendar = ref(false);
+const showCalendar = ref(true);
 const allSchedules = ref<any[]>([]);
 const users = ref<UserItem[]>([]);
 const maintenanceItems = ref<MaintenanceItemOption[]>([]);
@@ -180,6 +177,7 @@ function handleCategoryFilter(val: unknown): void {
   loadPlans(1);
 }
 
+/*
 function handleTableChange(pagination: TablePagination): void {
   const current = pagination.current ?? 1;
   const size = pagination.pageSize ?? 15;
@@ -232,6 +230,7 @@ const columns = computed(() => [
     fixed: 'right' as const,
   },
 ]);
+*/
 
 const categoryOptions = computed(() =>
   categories.value.map(cat => ({
@@ -316,6 +315,7 @@ async function handleCalendarRangeChange(range: { start_date: string; end_date: 
   }
 }
 
+/*
 async function toggleCalendarView(): Promise<void> {
   showCalendar.value = !showCalendar.value;
   if (showCalendar.value) {
@@ -331,11 +331,13 @@ async function toggleCalendarView(): Promise<void> {
     }
   }
 }
+*/
 
 function openAdd(): void {
   router.push({ name: 'OpsMaintenancePlanDetail' });
 }
 
+/*
 function openEdit(id: string): void {
   router.push({ name: 'OpsMaintenancePlanDetail', query: { id } });
 }
@@ -354,12 +356,15 @@ async function handleDelete(id: string): Promise<void> {
     message.error(apiError || $t('page.ops.planDeleteError'));
   }
 }
+*/
 
 
 onMounted(() => {
   loadEquipments();
   loadCategories();
   loadPlans();
+  loadUsers();
+  loadMaintenanceItems();
 });
 </script>
 
@@ -417,9 +422,6 @@ onMounted(() => {
           {{ $t('page.company.btnReset') }}
         </Button>
         <div class="ml-auto flex gap-2">
-          <Button type="default" @click="toggleCalendarView">
-            {{ showCalendar ? $t('page.ops.btnListView') : $t('page.ops.btnCalendarView') }}
-          </Button>
           <Button
             type="primary"
             class="bg-[#5c3e35] hover:bg-[#4b332b] border-[#5c3e35] rounded-md text-white h-full"
@@ -431,10 +433,10 @@ onMounted(() => {
       </div>
 
       <!-- Calendar View -->
-      <div v-if="showCalendar" class="bg-card border border-border rounded-xl p-6 shadow-sm">
+      <div class="bg-card border border-border rounded-xl p-6 shadow-sm">
         <Spin :spinning="loadingSchedules">
           <VisualMaintenanceCalendar
-            :schedules="allSchedules"
+            v-model:schedules="allSchedules"
             :maintenance-items="maintenanceItems"
             :categories="categories"
             :equipments="equipments"
@@ -442,64 +444,6 @@ onMounted(() => {
             :read-only="true"
             @range-change="handleCalendarRangeChange"
           />
-        </Spin>
-      </div>
-
-      <!-- Table -->
-      <div v-if="!showCalendar" class="bg-card border border-border rounded-xl shadow-sm overflow-hidden">
-        <Spin :spinning="loading">
-          <Table
-            :columns="columns"
-            :data-source="plans"
-            row-key="id"
-            :scroll="{ x: 1100 }"
-            :pagination="{
-              current: currentPage,
-              pageSize: pageSize,
-              total: total,
-              showSizeChanger: true,
-              showTotal: (tot: number) => `Tổng ${tot} bản ghi`,
-            }"
-            class="w-full"
-            @change="handleTableChange"
-          >
-            <template #bodyCell="{ column, record }">
-              <template v-if="column.key === 'equipment'">
-                <span>{{ (record as MaintenancePlanItem).equipment?.code }}</span>
-              </template>
-              <template v-if="column.key === 'cycle_type'">
-                <Tag v-if="(record as MaintenancePlanItem).cycle_type" color="blue">
-                  {{ (record as MaintenancePlanItem).cycle_type }}
-                </Tag>
-                <span v-else class="text-gray-400">—</span>
-              </template>
-              <template v-if="column.key === 'actions'">
-                <div class="flex justify-end gap-2">
-                  <Button
-                    size="small"
-                    class="rounded hover:border-primary hover:text-primary"
-                    @click="openEdit((record as MaintenancePlanItem).id)"
-                  >
-                    {{ $t('page.company.btnEdit') }}
-                  </Button>
-                  <Popconfirm
-                    :title="$t('page.ops.planDeleteConfirm')"
-                    ok-text="Xóa"
-                    cancel-text="Hủy"
-                    @confirm="handleDelete((record as MaintenancePlanItem).id)"
-                  >
-                    <Button
-                      size="small"
-                      danger
-                      class="rounded bg-red-50/50 hover:bg-red-500 hover:text-white border-red-200"
-                    >
-                      {{ $t('page.company.btnDelete') }}
-                    </Button>
-                  </Popconfirm>
-                </div>
-              </template>
-            </template>
-          </Table>
         </Spin>
       </div>
     </div>
