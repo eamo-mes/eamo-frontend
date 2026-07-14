@@ -1,5 +1,5 @@
 <script lang="ts" setup>
-import { ref, computed, onMounted, nextTick } from 'vue';
+import { ref, computed, onMounted } from 'vue';
 import { useRouter } from 'vue-router';
 import { $t } from '#/locales';
 import {
@@ -18,8 +18,7 @@ import {
 import axios from 'axios';
 import { useAccessStore } from '@vben/stores';
 import { API_BASE_URL } from '#/api/config';
-import { EchartsUI, useEcharts } from '@vben/plugins/echarts';
-import type { EchartsUIType } from '@vben/plugins/echarts';
+import ChecklistCharts from './components/ChecklistCharts.vue';
 
 interface EquipmentDetail {
   id: string;
@@ -69,13 +68,7 @@ const chartsLoading = ref(false);
 const chartSessions = ref<ChecklistSession[]>([]);
 
 // ECharts Refs
-const statusChartRef = ref<EchartsUIType>();
-const trendChartRef = ref<EchartsUIType>();
-const failChartRef = ref<EchartsUIType>();
-
-const { renderEcharts: renderStatusChart } = useEcharts(statusChartRef);
-const { renderEcharts: renderTrendChart } = useEcharts(trendChartRef);
-const { renderEcharts: renderFailChart } = useEcharts(failChartRef);
+// (Moved to ChecklistCharts component)
 
 // Judge Modal State
 const isJudgeModalOpen = ref(false);
@@ -159,12 +152,9 @@ async function loadChartData() {
     });
     const raw = res.data?.data ?? res.data ?? [];
     chartSessions.value = Array.isArray(raw) ? raw : [];
-    chartsLoading.value = false;
-    await nextTick();
-    await new Promise((resolve) => setTimeout(resolve, 100));
-    await renderCharts();
   } catch (err: any) {
     message.error($t('page.ops.chartLoadError'));
+  } finally {
     chartsLoading.value = false;
   }
 }
@@ -331,174 +321,7 @@ function getSessionStatusColor(record: any) {
   return 'blue';
 }
 
-async function renderCharts() {
-  await nextTick();
-  if (!statusChartRef.value || !trendChartRef.value || !failChartRef.value) {
-    return;
-  }
-  const list = chartSessions.value;
-  if (list.length === 0) return;
-
-  // 1. Status distribution (Rounded Doughnut with center label)
-  const passedCount = list.filter(s => getSessionStatusText(s) === 'Passed').length;
-  const failedCount = list.filter(s => getSessionStatusText(s) === 'Failed').length;
-  const pendingCount = list.filter(s => getSessionStatusText(s) === 'Pending').length;
-  const totalCount = passedCount + failedCount + pendingCount;
-
-  renderStatusChart({
-    tooltip: { trigger: 'item', formatter: '{b}: {c} ({d}%)' },
-    legend: { bottom: '0', left: 'center', itemWidth: 10, itemHeight: 10, textStyle: { fontSize: 11 } },
-    series: [
-      {
-        name: $t('page.ops.chartStatus'),
-        type: 'pie',
-        radius: ['55%', '75%'],
-        avoidLabelOverlap: false,
-        itemStyle: { borderRadius: 8, borderWidth: 2, borderColor: '#fff' },
-        label: {
-          show: true,
-          position: 'center',
-          formatter: `${totalCount}\nChecklists`,
-          fontSize: 18,
-          fontWeight: 'bold',
-          color: '#1e293b'
-        },
-        color: ['#10b981', '#ef4444', '#3b82f6'],
-        data: [
-          { value: passedCount, name: $t('page.ops.chartPassed') },
-          { value: failedCount, name: $t('page.ops.chartFailed') },
-          { value: pendingCount, name: $t('page.ops.chartPending') }
-        ]
-      }
-    ]
-  });
-
-  // 2. Trend Chart (Area Line Chart with Gradients)
-  const dayMap: Record<string, { passed: number, failed: number }> = {};
-  list.forEach(s => {
-    if (!s.session_date) return;
-    const day = s.session_date.substring(0, 10);
-    if (!dayMap[day]) {
-      dayMap[day] = { passed: 0, failed: 0 };
-    }
-    const status = getSessionStatusText(s);
-    if (status === 'Passed') dayMap[day].passed++;
-    else if (status === 'Failed') dayMap[day].failed++;
-  });
-  const days = Object.keys(dayMap).sort().slice(-7);
-  const passedTrend = days.map(d => dayMap[d]?.passed ?? 0);
-  const failedTrend = days.map(d => dayMap[d]?.failed ?? 0);
-
-  renderTrendChart({
-    tooltip: { trigger: 'axis' },
-    legend: { bottom: '0', left: 'center', itemWidth: 10, itemHeight: 10, textStyle: { fontSize: 11 } },
-    grid: { left: '3%', right: '4%', bottom: '15%', top: '5%', containLabel: true },
-    xAxis: { 
-      type: 'category', 
-      boundaryGap: false,
-      data: days, 
-      axisLabel: { fontSize: 10 },
-      axisLine: { show: false },
-      axisTick: { show: false }
-    },
-    yAxis: { 
-      type: 'value', 
-      minInterval: 1,
-      splitLine: { lineStyle: { type: 'dashed' } }
-    },
-    series: [
-      {
-        name: $t('page.ops.chartPassed'),
-        type: 'line',
-        smooth: true,
-        lineStyle: { width: 3 },
-        areaStyle: {
-          opacity: 0.15,
-          color: {
-            type: 'linear',
-            x: 0,
-            y: 0,
-            x2: 0,
-            y2: 1,
-            colorStops: [
-              { offset: 0, color: '#10b981' },
-              { offset: 1, color: 'rgba(16, 185, 129, 0)' }
-            ]
-          }
-        },
-        color: '#10b981',
-        data: passedTrend
-      },
-      {
-        name: $t('page.ops.chartFailed'),
-        type: 'line',
-        smooth: true,
-        lineStyle: { width: 3 },
-        areaStyle: {
-          opacity: 0.15,
-          color: {
-            type: 'linear',
-            x: 0,
-            y: 0,
-            x2: 0,
-            y2: 1,
-            colorStops: [
-              { offset: 0, color: '#ef4444' },
-              { offset: 1, color: 'rgba(239, 68, 68, 0)' }
-            ]
-          }
-        },
-        color: '#ef4444',
-        data: failedTrend
-      }
-    ]
-  });
-
-  // 3. Top Failed Equipment (Horizontal Bar with Gradient Fill & Rounded Corners)
-  const eqMap: Record<string, { name: string, failedCount: number }> = {};
-  list.forEach(s => {
-    const status = getSessionStatusText(s);
-    if (status !== 'Failed') return;
-    const eqName = s.equipment ? s.equipment.name : (s.equipment_id || $t('page.ops.chartUnassigned'));
-    if (!eqMap[eqName]) {
-      eqMap[eqName] = { name: eqName, failedCount: 0 };
-    }
-    eqMap[eqName].failedCount++;
-  });
-  const sortedEq = Object.values(eqMap).sort((a, b) => b.failedCount - a.failedCount).slice(0, 5);
-  sortedEq.reverse();
-  const eqNames = sortedEq.map(x => x.name);
-  const eqFails = sortedEq.map(x => x.failedCount);
-
-  renderFailChart({
-    tooltip: { trigger: 'axis', axisPointer: { type: 'shadow' } },
-    grid: { left: '3%', right: '8%', bottom: '8%', top: '5%', containLabel: true },
-    xAxis: { type: 'value', minInterval: 1, axisLabel: { fontSize: 10 } },
-    yAxis: { type: 'category', data: eqNames, axisLabel: { fontSize: 10 } },
-    series: [
-      {
-        name: $t('page.ops.chartFailCount'),
-        type: 'bar',
-        barWidth: '40%',
-        itemStyle: { 
-          borderRadius: [0, 4, 4, 0],
-          color: {
-            type: 'linear',
-            x: 0,
-            y: 0,
-            x2: 1,
-            y2: 0,
-            colorStops: [
-              { offset: 0, color: '#ef4444' },
-              { offset: 1, color: '#f87171' }
-            ]
-          }
-        },
-        data: eqFails
-      }
-    ]
-  });
-}
+// (Charts rendering moved to ChecklistCharts component)
 
 onMounted(() => {
   loadEquipments();
@@ -510,28 +333,7 @@ onMounted(() => {
   <div class="p-6 space-y-4">
     <!-- Dashboard Charts -->
     <div v-if="showCharts" class="mb-4">
-      <Spin :spinning="chartsLoading">
-        <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
-          <div class="shadow-sm border border-border rounded-xl p-4 flex flex-col h-[360px] bg-card">
-            <h3 class="text-sm font-semibold text-foreground mb-3 text-center">
-              {{ $t('page.ops.chartResultTitle') }}
-            </h3>
-            <EchartsUI ref="statusChartRef" />
-          </div>
-          <div class="shadow-sm border border-border rounded-xl p-4 flex flex-col h-[360px] bg-card">
-            <h3 class="text-sm font-semibold text-foreground mb-3 text-center">
-              {{ $t('page.ops.chartTrendTitle') }}
-            </h3>
-            <EchartsUI ref="trendChartRef" />
-          </div>
-          <div class="shadow-sm border border-border rounded-xl p-4 flex flex-col h-[360px] bg-card">
-            <h3 class="text-sm font-semibold text-foreground mb-3 text-center">
-              {{ $t('page.ops.chartFailTitle') }}
-            </h3>
-            <EchartsUI ref="failChartRef" />
-          </div>
-        </div>
-      </Spin>
+      <ChecklistCharts :sessions="chartSessions" :loading="chartsLoading" />
     </div>
 
     <!-- Action Bar -->

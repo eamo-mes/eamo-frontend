@@ -1,5 +1,5 @@
 <script lang="ts" setup>
-import { ref, computed, onMounted, nextTick } from 'vue';
+import { ref, computed, onMounted } from 'vue';
 import { useRouter } from 'vue-router';
 import { $t } from '#/locales';
 import {
@@ -18,8 +18,7 @@ import {
 import axios from 'axios';
 import { useAccessStore } from '@vben/stores';
 import { API_BASE_URL } from '#/api/config';
-import { EchartsUI, useEcharts } from '@vben/plugins/echarts';
-import type { EchartsUIType } from '@vben/plugins/echarts';
+import ErrorCharts from './error-charts.vue';
 
 interface EquipmentOption {
   id: string;
@@ -58,10 +57,7 @@ const activeSearch = ref('');
 // Chart States
 const showCharts = ref(false);
 const chartsLoading = ref(false);
-const barChartRef = ref<EchartsUIType>();
-const pieChartRef = ref<EchartsUIType>();
-const { renderEcharts: renderBarChart } = useEcharts(barChartRef);
-const { renderEcharts: renderPieChart } = useEcharts(pieChartRef);
+const chartErrors = ref<ErrorItem[]>([]);
 
 async function loadChartData() {
   chartsLoading.value = true;
@@ -71,144 +67,10 @@ async function loadChartData() {
       params: { per_page: 1000 },
     });
     const raw = res.data?.data ?? res.data ?? [];
-    const data = Array.isArray(raw) ? raw : [];
-    
-    interface MappedItem {
-      name: string;
-      count: number;
-    }
-
-    // Count associated equipments
-    const mapped: MappedItem[] = data.map((d: ErrorItem) => ({
-      name: d.name,
-      count: d.equipment ? d.equipment.length : 0,
-    }));
-    
-    // Sort ascending for chart (horizontal bar chart places first item at the bottom)
-    mapped.sort((a: MappedItem, b: MappedItem) => a.count - b.count);
-    
-    const names = mapped.map((d: MappedItem) => d.name);
-    const counts = mapped.map((d: MappedItem) => d.count);
-    const totalErrors = counts.reduce((sum: number, val: number) => sum + val, 0);
-    
-    chartsLoading.value = false;
-    await nextTick();
-    await new Promise((resolve) => setTimeout(resolve, 100));
-    
-    if (!barChartRef.value || !pieChartRef.value) {
-      return;
-    }
-    
-    renderBarChart({
-      textStyle: {
-        fontFamily: 'system-ui, -apple-system, sans-serif'
-      },
-      tooltip: {
-        trigger: 'axis',
-        axisPointer: { type: 'shadow' }
-      },
-      grid: {
-        left: '3%',
-        right: '4%',
-        bottom: '3%',
-        containLabel: true
-      },
-      xAxis: {
-        type: 'value',
-        minInterval: 1,
-      },
-      yAxis: {
-        type: 'category',
-        data: names,
-        axisLabel: {
-          fontSize: 11,
-          width: 150,
-          overflow: 'truncate',
-        }
-      },
-      series: [
-        {
-          name: $t('page.equipment.chartErrorCount'),
-          type: 'bar',
-          data: counts,
-          itemStyle: {
-            borderRadius: [0, 4, 4, 0],
-            color: (params: { dataIndex: number }) => {
-              const gradients = [
-                { start: '#ef4444', end: '#f87171' },
-                { start: '#f97316', end: '#fb923c' },
-                { start: '#eab308', end: '#facc15' },
-                { start: '#22c55e', end: '#4ade80' },
-                { start: '#14b8a6', end: '#2dd4bf' },
-                { start: '#0284c7', end: '#38bdf8' },
-                { start: '#4f46e5', end: '#818cf8' },
-                { start: '#9333ea', end: '#c084fc' },
-                { start: '#db2777', end: '#f472b6' },
-                { start: '#059669', end: '#34d399' }
-              ];
-              const g = gradients[params.dataIndex % gradients.length] ?? { start: '#ef4444', end: '#f87171' };
-              return {
-                type: 'linear',
-                x: 0,
-                y: 0,
-                x2: 1,
-                y2: 0,
-                colorStops: [
-                  { offset: 0, color: g.start },
-                  { offset: 1, color: g.end }
-                ]
-              };
-            }
-          }
-        }
-      ]
-    });
-
-    renderPieChart({
-      color: ['#002766', '#003a8c', '#0050b3', '#096dd9', '#1890ff', '#40a9ff', '#69c0ff', '#bae7ff'],
-      textStyle: {
-        fontFamily: 'system-ui, -apple-system, sans-serif'
-      },
-      tooltip: {
-        trigger: 'item',
-        formatter: '{a} <br/>{b} : {c} ({d}%)'
-      },
-      series: [
-        {
-          name: $t('page.equipment.chartErrorCount'),
-          type: 'pie',
-          radius: ['55%', '75%'],
-          center: ['50%', '50%'],
-          avoidLabelOverlap: false,
-          itemStyle: {
-            borderRadius: 8,
-            borderColor: '#fff',
-            borderWidth: 2
-          },
-          label: {
-            show: true,
-            position: 'center',
-            formatter: `${totalErrors}\nErrors`,
-            fontSize: 18,
-            fontWeight: 'bold',
-            color: '#1e293b'
-          },
-          data: mapped.map((d: MappedItem) => ({
-            name: d.name,
-            value: d.count,
-          })),
-          emphasis: {
-            label: {
-              show: true,
-              fontSize: 18,
-              fontWeight: 'bold'
-            }
-          }
-        }
-      ]
-    });
+    chartErrors.value = Array.isArray(raw) ? raw : [];
   } catch (err) {
     message.error($t('page.ops.chartLoadError'));
+  } finally {
     chartsLoading.value = false;
   }
 }
@@ -440,18 +302,11 @@ onMounted(() => {
 <template>
   <div class="p-6 space-y-4">
     <!-- Chart Panel -->
-    <div v-if="showCharts" class="bg-card border border-border rounded-xl p-4 shadow-sm relative min-h-[350px]">
-      <div class="font-semibold text-base mb-4 flex items-center gap-2">
-        <span class="w-1.5 h-4 rounded-full"></span>
-        {{ $t('page.equipment.chartErrorTitle') }}
-      </div>
-      <Spin :spinning="chartsLoading">
-        <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
-          <EchartsUI ref="barChartRef" height="300px" />
-          <EchartsUI ref="pieChartRef" height="300px" />
-        </div>
-      </Spin>
-    </div>
+    <ErrorCharts
+      v-if="showCharts"
+      :errors="chartErrors"
+      :loading="chartsLoading"
+    />
 
     <!-- Action Bar -->
     <div class="bg-card border border-border rounded-xl p-4 shadow-sm flex flex-nowrap items-center gap-3 overflow-x-auto w-full">
