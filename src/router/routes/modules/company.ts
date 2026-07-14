@@ -6,7 +6,7 @@ const routes: RouteRecordRaw[] = [
   {
     meta: {
       icon: 'lucide:building-2',
-      order: 10,
+      order: 50,
       title: $t('page.company.title'),
     },
     name: 'Company',

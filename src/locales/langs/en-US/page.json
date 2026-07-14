@@ -429,6 +429,23 @@
     "maintainedLabel": "Maintained",
     "notFoundEquipment": "Equipment not found",
     "markError": "Error marking latest maintenance",
-    "btnClose": "Close"
+    "btnClose": "Close",
+    "btnImport": "Import Excel/CSV",
+    "importTitle": "Import Operating Times",
+    "importDragDropText": "Click or drag file to this area to upload",
+    "importHint": "Support for .xlsx, .xls, .csv, .txt files up to 10MB.",
+    "importHeadersTitle": "Accepted Column Headers (Case-insensitive)",
+    "importHeadersDesc": "Below is the list of allowed headers and their synonyms:",
+    "importRequired": "(Required)",
+    "importOptional": "(Optional)",
+    "importErrorsTitle": "Import Failed (Validation Errors)",
+    "importSuccess": "Import successful",
+    "importFileRequired": "Please select a file to import.",
+    "importPreviewTitle": "File Preview",
+    "importChangeFile": "Change File",
+    "importConfirm": "Confirm Import",
+    "importDateNoteTitle": "Date & Time Formatting Note:",
+    "importDateNoteDesc": "For Excel, format columns as standard Date/Time cells. For CSV/text, use format: YYYY-MM-DD HH:mm:ss (e.g. 2026-07-14 08:00:00) or YYYY-MM-DD HH:mm (e.g. 2026-07-14 08:00).",
+    "importEquipIdDesc": "Synonyms: equipment_id, equipment id, mã thiết bị. Value: Enter the Equipment Code (eamo_equipment.code, e.g. CNC-HAAS-VF2) instead of UUID."
   }
 }

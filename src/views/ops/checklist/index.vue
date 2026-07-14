@@ -339,22 +339,31 @@ async function renderCharts() {
   const list = chartSessions.value;
   if (list.length === 0) return;
 
-  // 1. Status distribution
+  // 1. Status distribution (Rounded Doughnut with center label)
   const passedCount = list.filter(s => getSessionStatusText(s) === 'Passed').length;
   const failedCount = list.filter(s => getSessionStatusText(s) === 'Failed').length;
   const pendingCount = list.filter(s => getSessionStatusText(s) === 'Pending').length;
+  const totalCount = passedCount + failedCount + pendingCount;
 
   renderStatusChart({
-    tooltip: { trigger: 'item' },
+    tooltip: { trigger: 'item', formatter: '{b}: {c} ({d}%)' },
     legend: { bottom: '0', left: 'center', itemWidth: 10, itemHeight: 10, textStyle: { fontSize: 11 } },
     series: [
       {
         name: $t('page.ops.chartStatus'),
         type: 'pie',
-        radius: ['45%', '70%'],
-        avoidLabelOverlap: true,
-        itemStyle: { borderRadius: 6, borderWidth: 2, borderColor: '#fff' },
-        color: ['#10b981', '#ef4444', '#3b82f6'], // green-500, red-500, blue-500
+        radius: ['55%', '75%'],
+        avoidLabelOverlap: false,
+        itemStyle: { borderRadius: 8, borderWidth: 2, borderColor: '#fff' },
+        label: {
+          show: true,
+          position: 'center',
+          formatter: `${totalCount}\nChecklists`,
+          fontSize: 18,
+          fontWeight: 'bold',
+          color: '#1e293b'
+        },
+        color: ['#10b981', '#ef4444', '#3b82f6'],
         data: [
           { value: passedCount, name: $t('page.ops.chartPassed') },
           { value: failedCount, name: $t('page.ops.chartFailed') },
@@ -364,7 +373,7 @@ async function renderCharts() {
     ]
   });
 
-  // 2. Trend Chart
+  // 2. Trend Chart (Area Line Chart with Gradients)
   const dayMap: Record<string, { passed: number, failed: number }> = {};
   list.forEach(s => {
     if (!s.session_date) return;
@@ -383,14 +392,40 @@ async function renderCharts() {
   renderTrendChart({
     tooltip: { trigger: 'axis' },
     legend: { bottom: '0', left: 'center', itemWidth: 10, itemHeight: 10, textStyle: { fontSize: 11 } },
-    xAxis: { type: 'category', data: days, axisLabel: { fontSize: 10 } },
-    yAxis: { type: 'value', minInterval: 1 },
+    grid: { left: '3%', right: '4%', bottom: '15%', top: '5%', containLabel: true },
+    xAxis: { 
+      type: 'category', 
+      boundaryGap: false,
+      data: days, 
+      axisLabel: { fontSize: 10 },
+      axisLine: { show: false },
+      axisTick: { show: false }
+    },
+    yAxis: { 
+      type: 'value', 
+      minInterval: 1,
+      splitLine: { lineStyle: { type: 'dashed' } }
+    },
     series: [
       {
         name: $t('page.ops.chartPassed'),
         type: 'line',
         smooth: true,
-        areaStyle: { opacity: 0.1 },
+        lineStyle: { width: 3 },
+        areaStyle: {
+          opacity: 0.15,
+          color: {
+            type: 'linear',
+            x: 0,
+            y: 0,
+            x2: 0,
+            y2: 1,
+            colorStops: [
+              { offset: 0, color: '#10b981' },
+              { offset: 1, color: 'rgba(16, 185, 129, 0)' }
+            ]
+          }
+        },
         color: '#10b981',
         data: passedTrend
       },
@@ -398,14 +433,28 @@ async function renderCharts() {
         name: $t('page.ops.chartFailed'),
         type: 'line',
         smooth: true,
-        areaStyle: { opacity: 0.1 },
+        lineStyle: { width: 3 },
+        areaStyle: {
+          opacity: 0.15,
+          color: {
+            type: 'linear',
+            x: 0,
+            y: 0,
+            x2: 0,
+            y2: 1,
+            colorStops: [
+              { offset: 0, color: '#ef4444' },
+              { offset: 1, color: 'rgba(239, 68, 68, 0)' }
+            ]
+          }
+        },
         color: '#ef4444',
         data: failedTrend
       }
     ]
   });
 
-  // 3. Top Failed Equipment
+  // 3. Top Failed Equipment (Horizontal Bar with Gradient Fill & Rounded Corners)
   const eqMap: Record<string, { name: string, failedCount: number }> = {};
   list.forEach(s => {
     const status = getSessionStatusText(s);
@@ -430,9 +479,21 @@ async function renderCharts() {
       {
         name: $t('page.ops.chartFailCount'),
         type: 'bar',
-        color: '#ef4444',
         barWidth: '40%',
-        itemStyle: { borderRadius: [0, 4, 4, 0] },
+        itemStyle: { 
+          borderRadius: [0, 4, 4, 0],
+          color: {
+            type: 'linear',
+            x: 0,
+            y: 0,
+            x2: 1,
+            y2: 0,
+            colorStops: [
+              { offset: 0, color: '#ef4444' },
+              { offset: 1, color: '#f87171' }
+            ]
+          }
+        },
         data: eqFails
       }
     ]

@@ -73,17 +73,23 @@ async function loadChartData() {
     const raw = res.data?.data ?? res.data ?? [];
     const data = Array.isArray(raw) ? raw : [];
     
+    interface MappedItem {
+      name: string;
+      count: number;
+    }
+
     // Count associated equipments
-    const mapped = data.map((d: ErrorItem) => ({
+    const mapped: MappedItem[] = data.map((d: ErrorItem) => ({
       name: d.name,
       count: d.equipment ? d.equipment.length : 0,
     }));
     
     // Sort ascending for chart (horizontal bar chart places first item at the bottom)
-    mapped.sort((a: any, b: any) => a.count - b.count);
+    mapped.sort((a: MappedItem, b: MappedItem) => a.count - b.count);
     
-    const names = mapped.map((d: any) => d.name);
-    const counts = mapped.map((d: any) => d.count);
+    const names = mapped.map((d: MappedItem) => d.name);
+    const counts = mapped.map((d: MappedItem) => d.count);
+    const totalErrors = counts.reduce((sum: number, val: number) => sum + val, 0);
     
     chartsLoading.value = false;
     await nextTick();
@@ -126,15 +132,40 @@ async function loadChartData() {
           type: 'bar',
           data: counts,
           itemStyle: {
-            color: '#0050b3', // Match deep blue color
-            borderRadius: [0, 4, 4, 0]
+            borderRadius: [0, 4, 4, 0],
+            color: (params: { dataIndex: number }) => {
+              const gradients = [
+                { start: '#ef4444', end: '#f87171' },
+                { start: '#f97316', end: '#fb923c' },
+                { start: '#eab308', end: '#facc15' },
+                { start: '#22c55e', end: '#4ade80' },
+                { start: '#14b8a6', end: '#2dd4bf' },
+                { start: '#0284c7', end: '#38bdf8' },
+                { start: '#4f46e5', end: '#818cf8' },
+                { start: '#9333ea', end: '#c084fc' },
+                { start: '#db2777', end: '#f472b6' },
+                { start: '#059669', end: '#34d399' }
+              ];
+              const g = gradients[params.dataIndex % gradients.length] ?? { start: '#ef4444', end: '#f87171' };
+              return {
+                type: 'linear',
+                x: 0,
+                y: 0,
+                x2: 1,
+                y2: 0,
+                colorStops: [
+                  { offset: 0, color: g.start },
+                  { offset: 1, color: g.end }
+                ]
+              };
+            }
           }
         }
       ]
     });
 
     renderPieChart({
-      color: ['#002766', '#003a8c', '#0050b3', '#096dd9', '#1890ff', '#40a9ff'],
+      color: ['#002766', '#003a8c', '#0050b3', '#096dd9', '#1890ff', '#40a9ff', '#69c0ff', '#bae7ff'],
       textStyle: {
         fontFamily: 'system-ui, -apple-system, sans-serif'
       },
@@ -146,17 +177,31 @@ async function loadChartData() {
         {
           name: $t('page.equipment.chartErrorCount'),
           type: 'pie',
-          radius: ['40%', '70%'],
+          radius: ['55%', '75%'],
           center: ['50%', '50%'],
-          data: mapped.map((d: any) => ({
+          avoidLabelOverlap: false,
+          itemStyle: {
+            borderRadius: 8,
+            borderColor: '#fff',
+            borderWidth: 2
+          },
+          label: {
+            show: true,
+            position: 'center',
+            formatter: `${totalErrors}\nErrors`,
+            fontSize: 18,
+            fontWeight: 'bold',
+            color: '#1e293b'
+          },
+          data: mapped.map((d: MappedItem) => ({
             name: d.name,
             value: d.count,
           })),
           emphasis: {
-            itemStyle: {
-              shadowBlur: 10,
-              shadowOffsetX: 0,
-              shadowColor: 'rgba(0, 0, 0, 0.5)'
+            label: {
+              show: true,
+              fontSize: 18,
+              fontWeight: 'bold'
             }
           }
         }

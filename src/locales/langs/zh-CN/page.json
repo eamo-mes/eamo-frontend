@@ -429,6 +429,23 @@
     "maintainedLabel": "Đã bảo trì",
     "notFoundEquipment": "Không tìm thấy thông tin thiết bị",
     "markError": "Lỗi khi đánh dấu bảo trì gần nhất",
-    "btnClose": "Đóng"
+    "btnClose": "Đóng",
+    "btnImport": "Nhập từ Excel/CSV",
+    "importTitle": "Nhập thời gian vận hành",
+    "importDragDropText": "Nhấp hoặc kéo thả tệp vào đây để tải lên",
+    "importHint": "Hỗ trợ tệp .xlsx, .xls, .csv, .txt dung lượng tối đa 10MB.",
+    "importHeadersTitle": "Tiêu đề cột được chấp nhận (Không phân biệt hoa thường)",
+    "importHeadersDesc": "Dưới đây là danh sách các tiêu đề cột hợp lệ và từ đồng nghĩa:",
+    "importRequired": "(Bắt buộc)",
+    "importOptional": "(Tùy chọn)",
+    "importErrorsTitle": "Nhập dữ liệu thất bại (Lỗi xác thực)",
+    "importSuccess": "Nhập dữ liệu thành công",
+    "importFileRequired": "Vui lòng chọn một tệp để nhập.",
+    "importPreviewTitle": "Xem trước dữ liệu",
+    "importChangeFile": "Thay đổi tệp",
+    "importConfirm": "Xác nhận nhập",
+    "importDateNoteTitle": "Lưu ý về định dạng ngày giờ:",
+    "importDateNoteDesc": "Đối với Excel, định dạng cột dưới dạng ô Date/Time chuẩn. Đối với CSV/văn bản, sử dụng định dạng: YYYY-MM-DD HH:mm:ss (ví dụ: 2026-07-14 08:00:00) hoặc YYYY-MM-DD HH:mm (ví dụ: 2026-07-14 08:00).",
+    "importEquipIdDesc": "Từ đồng nghĩa: equipment_id, equipment id, mã thiết bị. Giá trị: Nhập Mã thiết bị (eamo_equipment.code, ví dụ: CNC-HAAS-VF2) thay cho chuỗi UUID."
   }
 }
