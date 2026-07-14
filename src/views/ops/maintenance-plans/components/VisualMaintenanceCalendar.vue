@@ -482,7 +482,7 @@ function showLastMaintenanceForDate(dateStr: string): void {
 <template>
   <div>
     <!-- ── Calendar View Section (Inside Card) ────────────────────────── -->
-    <div class="border-t border-gray-150 pt-5 mt-5">
+    <div>
       <div class="flex justify-between items-center mb-3">
         <div class="font-semibold text-gray-700 dark:text-gray-300">{{ $t('page.ops.visualScheduleTitle') }}</div>
         <div class="flex gap-2">

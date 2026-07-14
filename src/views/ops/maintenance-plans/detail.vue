@@ -823,13 +823,15 @@ onMounted(async () => {
           </div>
 
           <!-- ── Calendar View Section (Inside Card) ────────────────────────── -->
-          <VisualMaintenanceCalendar
-            v-model:schedules="formState.schedules"
-            :maintenance-items="maintenanceItems"
-            :categories="categories"
-            :user-options="userOptions"
-            :equipment-id="formState.equipment_id"
-          />
+          <div class="border-t border-gray-150 pt-5 mt-5">
+            <VisualMaintenanceCalendar
+              v-model:schedules="formState.schedules"
+              :maintenance-items="maintenanceItems"
+              :categories="categories"
+              :user-options="userOptions"
+              :equipment-id="formState.equipment_id"
+            />
+          </div>
         </Card>
 
         <!-- Modal Thêm Hạng Mục Bảo Trì (Component) -->

@@ -4,7 +4,6 @@ import type { NotificationItem } from '@vben/layouts';
 import { computed, ref, watch } from 'vue';
 import { useRouter } from 'vue-router';
 
-import { AuthenticationLoginExpiredModal } from '@vben/common-ui';
 import { useWatermark } from '@vben/hooks';
 import {
   BasicLayout,
@@ -17,59 +16,12 @@ import { useAccessStore, useUserStore } from '@vben/stores';
 
 import { $t } from '#/locales';
 import { useAuthStore } from '#/store';
-
-const notifications = ref<NotificationItem[]>([
-  {
-    id: 1,
-    avatar: 'https://avatar.vercel.sh/vercel.svg?text=VB',
-    date: '3小时前',
-    isRead: true,
-    message: '描述信息描述信息描述信息',
-    title: '收到了 14 份新周报',
-  },
-  {
-    id: 2,
-    avatar: 'https://avatar.vercel.sh/1',
-    date: '刚刚',
-    isRead: false,
-    message: '描述信息描述信息描述信息',
-    title: '朱偏右 回复了你',
-  },
-  {
-    id: 3,
-    avatar: 'https://avatar.vercel.sh/1',
-    date: '2024-01-01',
-    isRead: false,
-    message: '描述信息描述信息描述信息',
-    title: '曲丽丽 评论了你',
-  },
-  {
-    id: 4,
-    avatar: 'https://avatar.vercel.sh/satori',
-    date: '1天前',
-    isRead: false,
-    message: '描述信息描述信息描述信息',
-    title: '代办提醒',
-  },
-  {
-    id: 5,
-    avatar: 'https://avatar.vercel.sh/satori',
-    date: '1天前',
-    isRead: false,
-    message: '描述信息描述信息描述信息',
-    title: '跳转Workspace示例',
-    link: '/workspace',
-  },
-  {
-    id: 6,
-    avatar: 'https://avatar.vercel.sh/satori',
-    date: '1天前',
-    isRead: false,
-    message: '描述信息描述信息描述信息',
-    title: '跳转外部链接示例',
-    link: 'https://doc.vben.pro',
-  },
-]);
+import { onUnmounted } from 'vue';
+import {
+  getUserNotificationsApi,
+  markNotificationReadApi,
+  markAllNotificationsReadApi,
+} from '#/api/core/notification';
 
 const router = useRouter();
 const userStore = useUserStore();
@@ -77,9 +29,78 @@ const authStore = useAuthStore();
 const accessStore = useAccessStore();
 const { destroyWatermark, updateWatermark } = useWatermark();
 const { isDark } = usePreferences();
-const showDot = computed(() =>
-  notifications.value.some((item) => !item.isRead),
+
+const notifications = ref<NotificationItem[]>([]);
+const unreadCount = ref(0);
+let pollInterval: any = null;
+
+function mapNotification(item: any): NotificationItem {
+  let avatar = 'https://avatar.vercel.sh/default';
+  const entityType = item.data?.entity_type;
+  
+  if (entityType === 'checklist_session') {
+    avatar = 'https://avatar.vercel.sh/checklist.svg?text=CL';
+  } else if (entityType === 'maintenance_schedule') {
+    avatar = 'https://avatar.vercel.sh/maintenance.svg?text=MS';
+  } else if (entityType === 'error_log') {
+    avatar = 'https://avatar.vercel.sh/error.svg?text=EL';
+  } else if (entityType === 'maintenance_item') {
+    avatar = 'https://avatar.vercel.sh/item.svg?text=MI';
+  }
+
+  const dateStr = item.created_at ? new Date(item.created_at).toLocaleString() : '';
+
+  return {
+    id: item.id,
+    avatar,
+    date: dateStr,
+    isRead: item.read_at !== null,
+    message: item.data?.message ?? '',
+    title: item.data?.entity_label ?? 'Notification',
+  };
+}
+
+async function fetchNotifications() {
+  const userId = userStore.userInfo?.userId;
+  if (!userId) return;
+
+  try {
+    const res = await getUserNotificationsApi(userId);
+    notifications.value = (res.notifications?.data ?? []).map(mapNotification);
+    unreadCount.value = res.unread_count ?? 0;
+  } catch (error) {
+    console.error('Failed to fetch notifications:', error);
+  }
+}
+
+watch(
+  () => userStore.userInfo?.userId,
+  (newUserId) => {
+    if (newUserId) {
+      fetchNotifications();
+      if (!pollInterval) {
+        pollInterval = setInterval(fetchNotifications, 30000);
+      }
+    } else {
+      notifications.value = [];
+      unreadCount.value = 0;
+      if (pollInterval) {
+        clearInterval(pollInterval);
+        pollInterval = null;
+      }
+    }
+  },
+  { immediate: true }
 );
+
+onUnmounted(() => {
+  if (pollInterval) {
+    clearInterval(pollInterval);
+    pollInterval = null;
+  }
+});
+
+const showDot = computed(() => unreadCount.value > 0);
 
 const menus = computed(() => [
   {
@@ -103,10 +124,16 @@ function handleNoticeClear() {
   notifications.value = [];
 }
 
-function markRead(id: number | string) {
+async function markRead(id: number | string) {
   const item = notifications.value.find((item) => item.id === id);
-  if (item) {
-    item.isRead = true;
+  if (item && !item.isRead) {
+    try {
+      await markNotificationReadApi(String(id));
+      item.isRead = true;
+      unreadCount.value = Math.max(0, unreadCount.value - 1);
+    } catch (e) {
+      console.error('Failed to mark notification as read:', e);
+    }
   }
 }
 
@@ -114,8 +141,14 @@ function remove(id: number | string) {
   notifications.value = notifications.value.filter((item) => item.id !== id);
 }
 
-function handleMakeAll() {
-  notifications.value.forEach((item) => (item.isRead = true));
+async function handleMakeAll() {
+  try {
+    await markAllNotificationsReadApi();
+    notifications.value.forEach((item) => (item.isRead = true));
+    unreadCount.value = 0;
+  } catch (e) {
+    console.error('Failed to mark all as read:', e);
+  }
 }
 
 const viewAll = () => {};

@@ -1,7 +1,7 @@
 <script lang="ts" setup>
 import type { NotificationItem } from './types';
 
-import { Bell, CircleCheckBig, CircleX, MailCheck } from '@vben/icons';
+import { Bell, CircleCheckBig, MailCheck } from '@vben/icons';
 import { $t } from '@vben/locales';
 
 import {
@@ -17,9 +17,9 @@ defineOptions({ name: 'NotificationPopup' });
 
 withDefaults(
   defineProps<{
-    /** 显示圆点 */
+    /** Show dot indicator */
     dot?: boolean;
-    /** 消息列表 */
+    /** List of notifications */
     notifications?: NotificationItem[];
   }>(),
   {
@@ -94,14 +94,6 @@ const handleClear = () => {
                   class="absolute top-2 right-2 size-2 rounded-sm bg-primary"
                 ></span>
 
-                <span
-                  class="relative flex size-10 shrink-0 overflow-hidden rounded-full"
-                >
-                  <img
-                    :src="item.avatar"
-                    class="aspect-square size-full object-cover"
-                  />
-                </span>
                 <div class="flex flex-col gap-1 leading-none">
                   <p class="font-semibold">{{ item.title }}</p>
                   <p class="my-1 line-clamp-2 text-xs text-muted-foreground">
@@ -125,16 +117,6 @@ const handleClear = () => {
                       @click.stop="emit('read', item)"
                     >
                       <CircleCheckBig class="size-4" />
-                    </VbenIconButton>
-                    <VbenIconButton
-                      v-if="item.isRead"
-                      size="xs"
-                      variant="ghost"
-                      class="h-6 px-2 text-destructive"
-                      :tooltip="$t('common.delete')"
-                      @click.stop="emit('remove', item)"
-                    >
-                      <CircleX class="size-4" />
                     </VbenIconButton>
                     <slot name="action-append" :item="item"></slot>
                   </slot>
