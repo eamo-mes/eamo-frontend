@@ -7,6 +7,8 @@ import {
   Button,
   Input,
   Select,
+  Table,
+  Popconfirm,
   message,
   Spin,
 } from 'ant-design-vue';
@@ -81,7 +83,7 @@ const selectedCategoryId = ref<string | undefined>(undefined);
 const equipments = ref<EquipmentOption[]>([]);
 const categories = ref<MaintenanceCategoryOption[]>([]);
 
-const showCalendar = ref(true);
+const showCalendar = ref(false);
 const allSchedules = ref<any[]>([]);
 const users = ref<UserItem[]>([]);
 const maintenanceItems = ref<MaintenanceItemOption[]>([]);
@@ -175,6 +177,52 @@ function handleCategoryFilter(val: unknown): void {
   selectedCategoryId.value = typeof val === 'string' ? val : undefined;
   currentPage.value = 1;
   loadPlans(1);
+}
+
+const columns = computed(() => [
+  {
+    title: $t('page.ops.colPlanCode'),
+    dataIndex: 'plan_code',
+    key: 'plan_code',
+  },
+  {
+    title: $t('page.ops.placeholderEquipment'),
+    key: 'equipment',
+  },
+  {
+    title: $t('page.ops.maintenanceCategories'),
+    key: 'maintenance_category',
+  },
+  {
+    title: $t('page.ops.colMaintenanceType'),
+    dataIndex: 'maintenance_type',
+    key: 'maintenance_type',
+  },
+  {
+    title: $t('page.ops.startDate'),
+    dataIndex: 'date',
+    key: 'date',
+  },
+  {
+    title: $t('page.ops.colCycleType'),
+    dataIndex: 'cycle_type',
+    key: 'cycle_type',
+  },
+  {
+    title: $t('page.company.colActions'),
+    key: 'actions',
+    width: 180,
+    align: 'center' as const,
+    fixed: 'right' as const,
+  },
+]);
+
+function handleTableChange(pagination: TablePagination): void {
+  const current = pagination.current ?? 1;
+  const size = pagination.pageSize ?? 15;
+  currentPage.value = current;
+  pageSize.value = size;
+  loadPlans(current, size);
 }
 
 /*
@@ -315,6 +363,18 @@ async function handleCalendarRangeChange(range: { start_date: string; end_date: 
   }
 }
 
+async function toggleCalendarView(): Promise<void> {
+  showCalendar.value = !showCalendar.value;
+  if (showCalendar.value && !calendarRange.value) {
+    loadingSchedules.value = true;
+    try {
+      await Promise.all([loadMaintenanceItems(), loadUsers()]);
+    } finally {
+      loadingSchedules.value = false;
+    }
+  }
+}
+
 /*
 async function toggleCalendarView(): Promise<void> {
   showCalendar.value = !showCalendar.value;
@@ -335,6 +395,23 @@ async function toggleCalendarView(): Promise<void> {
 
 function openAdd(): void {
   router.push({ name: 'OpsMaintenancePlanDetail' });
+}
+
+function openEdit(id: string): void {
+  router.push({ name: 'OpsMaintenancePlanDetail', query: { id } });
+}
+
+async function handleDelete(id: string): Promise<void> {
+  try {
+    await axios.delete(`${API_BASE_URL}/v1/maintenance-plans/${id}`, {
+      headers: getAuthHeaders(),
+    });
+    message.success($t('page.ops.planDeleteSuccess'));
+    await loadPlans();
+  } catch (err: unknown) {
+    const apiError = (err as AxiosErrorResponse)?.response?.data?.message;
+    message.error(apiError || $t('page.ops.planDeleteError'));
+  }
 }
 
 /*
@@ -372,7 +449,7 @@ onMounted(() => {
   <div>
     <div class="p-6 space-y-4">
       <!-- Action Bar -->
-      <div class="bg-card border border-border rounded-xl p-4 shadow-sm flex flex-nowrap items-center gap-3 overflow-x-auto w-full">
+      <div class="action-bar bg-card border border-border rounded-xl p-4 shadow-sm flex flex-nowrap items-center gap-3 overflow-x-auto w-full">
         <Input
           v-model:value="searchVal"
           :placeholder="$t('page.ops.placeholderPlanCode')"
@@ -422,6 +499,9 @@ onMounted(() => {
           {{ $t('page.company.btnReset') }}
         </Button>
         <div class="ml-auto flex gap-2">
+          <Button type="default" @click="toggleCalendarView">
+            {{ showCalendar ? $t('page.ops.btnListView') : $t('page.ops.btnCalendarView') }}
+          </Button>
           <Button
             type="primary"
             class="bg-[#5c3e35] hover:bg-[#4b332b] border-[#5c3e35] rounded-md text-white h-full"
@@ -433,7 +513,7 @@ onMounted(() => {
       </div>
 
       <!-- Calendar View -->
-      <div class="bg-card border border-border rounded-xl p-6 shadow-sm">
+      <div v-if="showCalendar" class="bg-card border border-border rounded-xl p-6 shadow-sm">
         <Spin :spinning="loadingSchedules">
           <VisualMaintenanceCalendar
             v-model:schedules="allSchedules"
@@ -444,6 +524,54 @@ onMounted(() => {
             :read-only="true"
             @range-change="handleCalendarRangeChange"
           />
+        </Spin>
+      </div>
+
+      <!-- Table View -->
+      <div v-else class="bg-card border border-border rounded-xl shadow-sm overflow-hidden">
+        <Spin :spinning="loading">
+          <Table
+            :columns="columns"
+            :data-source="plans"
+            row-key="id"
+            :scroll="{ x: 'max-content' }"
+            :pagination="{
+              current: currentPage,
+              pageSize: pageSize,
+              total: total,
+              showSizeChanger: true,
+            }"
+            class="table-nowrap w-full"
+            @change="handleTableChange"
+          >
+            <template #bodyCell="{ column, record }">
+              <template v-if="column.key === 'equipment'">
+                {{ record.equipment ? `${record.equipment.code} - ${record.equipment.name || ''}` : '—' }}
+              </template>
+
+              <template v-else-if="column.key === 'maintenance_category'">
+                {{ record.maintenance_category?.name || '—' }}
+              </template>
+
+              <template v-else-if="column.key === 'actions'">
+                <div class="flex items-center justify-center gap-2">
+                  <Button size="small" class="rounded hover:border-primary hover:text-primary" @click="openEdit(record.id)">
+                    {{ $t('page.company.btnEdit') }}
+                  </Button>
+                  <Popconfirm
+                    :title="$t('page.company.deleteConfirm')"
+                    :ok-text="$t('page.ops.btnConfirm')"
+                    :cancel-text="$t('page.ops.btnCancel')"
+                    @confirm="handleDelete(record.id)"
+                  >
+                    <Button size="small" danger class="rounded bg-red-50/50 border-red-200 hover:bg-red-500 hover:text-white">
+                      {{ $t('page.company.btnDelete') }}
+                    </Button>
+                  </Popconfirm>
+                </div>
+              </template>
+            </template>
+          </Table>
         </Spin>
       </div>
     </div>

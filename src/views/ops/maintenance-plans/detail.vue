@@ -663,29 +663,25 @@ onMounted(async () => {
           <div class="border-t border-gray-150 pt-5 mt-5">
             <div v-if="formState.cycle_type" class="space-y-4">
               <!-- Biểu diễn các items tương ứng thuộc Category đã chọn (không có trường date) -->
-              <div class="border border-border rounded-lg overflow-hidden bg-gray-50/10">
-                <div class="bg-gray-50 dark:bg-gray-900/50 px-4 py-2 flex items-center justify-between border-b border-border">
-                  <span class="font-semibold text-gray-700 dark:text-gray-300">
-                    {{ $t('page.ops.appliedItemsTitle') }}
-                  </span>
-                  <Button
-                    type="link"
-                    size="small"
-                    class="text-blue-600 hover:text-blue-700 dark:text-blue-400 dark:hover:text-blue-300 font-semibold p-0 flex items-center gap-1"
-                    :disabled="!formState.maintenance_category_id"
-                    @click="showAddItemModal"
-                  >
-                    + {{ $t('page.ops.btnAddShort') }}
-                  </Button>
+              <div>
+                <div class="mb-3 flex items-end justify-between gap-3">
+                  <div>
+                    <div class="font-semibold text-foreground">
+                      {{ $t('page.ops.appliedItemsTitle') }}
+                    </div>
+                  </div>
                 </div>
 
                 <!-- Danh sách items hiện có -->
-                <div class="divide-y divide-border">
+                <div class="max-h-[340px] divide-y divide-border overflow-y-auto pr-1">
                   <div
-                    v-for="item in categoryItems"
+                    v-for="(item, index) in categoryItems"
                     :key="item.id"
-                    class="px-4 py-3 flex flex-wrap md:flex-nowrap gap-2 items-end hover:bg-gray-50/50 transition-colors"
+                    class="flex flex-wrap items-end gap-3 py-3 first:pt-0 last:pb-0"
                   >
+                    <span class="mb-1 w-5 shrink-0 text-right text-xs tabular-nums text-muted-foreground">
+                      {{ index + 1 }}
+                    </span>
                     <div class="flex-1 min-w-[180px]">
                       <span class="text-xs text-gray-400 block mb-1">{{ $t('page.ops.colItemName') }}</span>
                       <Input
@@ -747,6 +743,9 @@ onMounted(async () => {
                     {{ $t('page.ops.noItems') }}
                   </div>
                 </div>
+                <Button type="dashed" block class="mt-3" :disabled="!formState.maintenance_category_id" @click="showAddItemModal">
+                  + {{ $t('page.ops.btnAddShort') }}
+                </Button>
               </div>
             </div>
 

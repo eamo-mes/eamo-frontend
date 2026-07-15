@@ -211,6 +211,12 @@
     "updateSuccess": "Cập nhật thông tin thành công"
   },
   "ops": {
+    "deadlineLabel": "Deadline",
+    "placeholderSelectDeadline": "Select deadline",
+    "deleteSchedule": "Delete schedule",
+    "deleteScheduleConfirm": "Delete all schedules for this day?",
+    "deleteScheduleSuccess": "Schedules for the selected day were deleted.",
+    "deleteScheduleError": "Failed to delete schedules for the selected day.",
     "title": "Vận hành & Bảo trì",
     "maintenanceTitle": "Bảo trì thiết bị",
     "operationTitle": "Vận hành thiết bị",

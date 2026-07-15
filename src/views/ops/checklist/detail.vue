@@ -22,6 +22,7 @@ import dayjs from 'dayjs';
 import { useAccessStore, useUserStore } from '@vben/stores';
 import { API_BASE_URL } from '#/api/config';
 import { listUsersApi } from '#/api/core/users';
+import ChecklistCalendar from './components/ChecklistCalendar.vue';
 
 interface EquipmentOption {
   id: string;
@@ -43,6 +44,7 @@ const loading = ref(false);
 const submitting = ref(false);
 const isEditing = ref(false);
 const editId = ref<string | null>(null);
+const showCalendar = ref(false);
 
 const equipments = ref<EquipmentOption[]>([]);
 const users = ref<any[]>([]);
@@ -195,6 +197,17 @@ async function handleSubmit() {
         headers: getAuthHeaders(),
       });
 
+      await axios.put(`${API_BASE_URL}/v1/checklist-details`, {
+        session_id: editId.value,
+        date: formState.value.session_date,
+        checklists: formState.value.checklist_details.map(item => ({
+          checklist_id: item.checklist_id,
+          description: item.description,
+        })),
+      }, {
+        headers: getAuthHeaders(),
+      });
+
       message.success('Cập nhật phiên kiểm tra thành công');
     } else {
       // Create session
@@ -242,6 +255,16 @@ function goBack() {
   router.push({ name: 'OpsCheckList' });
 }
 
+function handleCalendarRefresh() {
+  if (editId.value && formState.value.equipment_id) {
+    loadChecklistDetail(
+      editId.value,
+      formState.value.equipment_id,
+      formState.value.session_date,
+    );
+  }
+}
+
 onMounted(() => {
   loadEquipments();
   loadUsers();
@@ -286,6 +309,13 @@ onMounted(() => {
         </h1>
       </div>
       <div class="flex gap-2">
+        <Button
+          type="default"
+          :disabled="submitting || !formState.equipment_id"
+          @click="showCalendar = !showCalendar"
+        >
+          {{ showCalendar ? $t('page.ops.btnListView') : $t('page.ops.btnCalendarView') }}
+        </Button>
         <Button type="default" @click="goBack" :disabled="submitting">
           {{ $t('page.ops.btnCancel') }}
         </Button>
@@ -295,9 +325,10 @@ onMounted(() => {
       </div>
     </div>
 
-    <!-- Content Form Card -->
-    <Card class="shadow-sm border-border rounded-xl">
-      <Spin :spinning="loading || submitting">
+    <!-- Checklist Form and Calendar -->
+    <div class="space-y-4">
+      <Card v-if="!showCalendar" class="shadow-sm border-border rounded-xl">
+        <Spin :spinning="loading || submitting">
         <Form
           ref="formRef"
           :model="formState"
@@ -370,52 +401,66 @@ onMounted(() => {
 
 
             <!-- Checklist Details Dynamic Rows -->
-            <div class="col-span-2 border-t border-gray-150 pt-4 mt-2">
-              <div class="flex items-center justify-between mb-3">
-                <span class="font-semibold text-gray-700">{{ $t('page.ops.detailItemsHeader') }}</span>
-                <Button v-if="!isEditing" type="dashed" size="small" @click="addDetailRow">
-                  {{ $t('page.ops.btnAddCheck') }}
-                </Button>
+            <div class="col-span-2 mt-2 pt-2">
+              <div class="mb-3 flex items-end justify-between gap-3">
+                <div>
+                  <div class="font-semibold text-foreground">
+                    {{ $t('page.ops.detailItemsHeader') }}
+                  </div>
+                  <div class="mt-0.5 text-xs text-muted-foreground">
+                    {{ $t('page.ops.itemName') }}
+                  </div>
+                </div>
               </div>
 
-              <div v-if="formState.checklist_details.length === 0" class="text-center py-8 text-gray-400 bg-gray-50 rounded-lg border border-dashed border-gray-200">
-                {{ $t('page.ops.noDetailItems') }}
-              </div>
+              <div class="px-3 py-2">
+                <div v-if="formState.checklist_details.length === 0" class="py-5 text-center text-sm text-muted-foreground">
+                  {{ $t('page.ops.noDetailItems') }}
+                </div>
 
-              <div v-else class="space-y-3">
-                <div
-                  v-for="(item, index) in formState.checklist_details"
-                  :key="item.checklist_id"
-                  class="flex flex-wrap md:flex-nowrap gap-2 items-center p-3 rounded-lg border transition-all duration-200 bg-gray-50/50 border-gray-100"
-                >
-                  <div class="flex-1 min-w-[200px]">
-                    <span class="text-xs text-gray-500 block mb-1 font-medium">{{ $t('page.ops.itemName') }}</span>
+                <div v-else class="max-h-[320px] divide-y divide-border overflow-y-auto">
+                  <div
+                    v-for="(item, index) in formState.checklist_details"
+                    :key="item.checklist_id"
+                    class="flex items-center gap-3 py-2 first:pt-0 last:pb-0"
+                  >
+                    <span class="w-5 shrink-0 text-right text-xs tabular-nums text-muted-foreground">
+                      {{ index + 1 }}
+                    </span>
                     <Input
                       v-model:value="item.description"
-                      :disabled="isEditing"
+                      class="flex-1"
                       :placeholder="$t('page.ops.itemNamePlaceholder')"
                     />
-                  </div>
-
-                  <div v-if="!isEditing" class="flex flex-col">
-                    <span class="text-xs block mb-1 select-none opacity-0 pointer-events-none">&nbsp;</span>
                     <Popconfirm
                       :title="$t('page.ops.deleteItemConfirm')"
                       :ok-text="$t('page.ops.btnConfirm')"
                       :cancel-text="$t('page.ops.btnCancel')"
                       @confirm="removeDetailRow(index)"
                     >
-                      <Button type="text" danger class="h-[32px] flex items-center justify-center">
+                      <Button type="text" danger class="shrink-0 px-2">
                         {{ $t('page.ops.btnDelete') }}
                       </Button>
                     </Popconfirm>
                   </div>
                 </div>
               </div>
+
+              <Button type="dashed" block class="mt-3" @click="addDetailRow">
+                {{ $t('page.ops.btnAddCheck') }}
+              </Button>
             </div>
           </div>
-        </Form>
-      </Spin>
-    </Card>
+          </Form>
+        </Spin>
+      </Card>
+
+      <ChecklistCalendar
+        v-else-if="formState.equipment_id"
+        :equipment-id="formState.equipment_id"
+        :equipments="equipments"
+        @refresh-list="handleCalendarRefresh"
+      />
+    </div>
   </div>
 </template>

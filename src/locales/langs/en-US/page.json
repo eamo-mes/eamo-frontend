@@ -512,6 +512,12 @@
     "judgeTimeLabel": "Evaluation Timestamp",
     "placeholderSelectTime": "Select time",
     "judgeSuccess": "Checklist evaluation recorded successfully",
-    "judgeError": "Failed to record checklist evaluation"
+    "judgeError": "Failed to record checklist evaluation",
+    "deadlineLabel": "Deadline",
+    "placeholderSelectDeadline": "Select deadline",
+    "deleteSchedule": "Delete schedule",
+    "deleteScheduleConfirm": "Delete all schedules for this day?",
+    "deleteScheduleSuccess": "Schedules for the selected day were deleted.",
+    "deleteScheduleError": "Failed to delete schedules for the selected day."
   }
 }

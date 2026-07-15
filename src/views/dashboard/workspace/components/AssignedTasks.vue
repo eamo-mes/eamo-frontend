@@ -1,7 +1,7 @@
 <script lang="ts" setup>
 import { ref, onMounted, computed } from 'vue';
 import { useRouter } from 'vue-router';
-import { Card, List, Spin, Badge } from 'ant-design-vue';
+import { Card, List, Modal, Spin } from 'ant-design-vue';
 import { useUserStore, useAccessStore } from '@vben/stores';
 import { $t } from '#/locales';
 import dayjs from 'dayjs';
@@ -16,12 +16,21 @@ import {
 const ListItem = List.Item;
 const ListItemMeta = List.Item.Meta;
 
+const props = defineProps<{
+  notificationOpen?: boolean;
+}>();
+
+const emit = defineEmits<{
+  (event: 'update:notificationOpen', value: boolean): void;
+}>();
+
 const router = useRouter();
 const userStore = useUserStore();
 
 const notifications = ref<BackendNotification[]>([]);
 const unreadCount = ref(0);
 const loading = ref(false);
+const notificationsLoading = ref(false);
 
 const plansCount = ref(0);
 const tasksCount = ref(0);
@@ -88,6 +97,7 @@ async function loadSummaryStats() {
 
 async function fetchNotifications() {
   if (!userId.value) return;
+  notificationsLoading.value = true;
   try {
     const sevenDaysAgo = dayjs().subtract(7, 'day').startOf('day');
     const params = {
@@ -98,14 +108,14 @@ async function fetchNotifications() {
     
     const res = await getUserNotificationsApi(userId.value, params);
     const list = res.notifications?.data ?? [];
-    notifications.value = list.filter((n: BackendNotification) => 
-      dayjs(n.created_at).isAfter(sevenDaysAgo)
-    );
+    notifications.value = list;
     
-    totalItems.value = res.notifications?.total ?? notifications.value.length;
+    totalItems.value = res.notifications?.total ?? list.length;
     unreadCount.value = res.unread_count ?? 0;
   } catch (error) {
     console.error('Failed to fetch notifications:', error);
+  } finally {
+    notificationsLoading.value = false;
   }
 }
 
@@ -167,6 +177,7 @@ async function handleTaskAction(item: BackendNotification) {
 }
 
 const statItems = computed(() => [
+  { label: $t('page.dashboard.assignedTasksTitle'), value: unreadCount.value, accent: unreadCount.value > 0 },
   { label: $t('page.dashboard.mPlans'), value: plansCount.value, accent: false },
   { label: $t('page.dashboard.mTasks'), value: tasksCount.value, accent: false },
   { label: $t('page.dashboard.chkPending'), value: pendingChecklistsCount.value, accent: false },
@@ -181,9 +192,8 @@ const statItems = computed(() => [
     <template #title>
       <div class="flex items-center justify-between">
         <span class="font-semibold text-slate-800 dark:text-slate-100 text-sm tracking-tight">
-          {{ $t('page.dashboard.assignedTasksTitle') }}
+          {{ $t('page.dashboard.overview') }}
         </span>
-        <Badge v-if="unreadCount > 0" :count="unreadCount" :number-style="{ backgroundColor: '#3b82f6', fontSize: '11px' }" />
       </div>
     </template>
 
@@ -204,9 +214,17 @@ const statItems = computed(() => [
       </div>
 
       <!-- ── Divider ── -->
-      <div class="section-divider">
+      <Modal
+        :open="props.notificationOpen"
+        :title="$t('page.dashboard.assignedTasksTitle')"
+        :footer="null"
+        width="640px"
+        @update:open="emit('update:notificationOpen', $event)"
+      >
+      <Spin :spinning="notificationsLoading" size="small">
+        <div class="section-divider">
         <span class="section-divider__label">{{ $t('page.dashboard.assignedTasksTitle') }}</span>
-      </div>
+        </div>
 
       <!-- ── Empty State ── -->
       <div v-if="notifications.length === 0" class="empty-state">
@@ -246,6 +264,8 @@ const statItems = computed(() => [
           </ListItem>
         </template>
       </List>
+      </Spin>
+      </Modal>
     </Spin>
   </Card>
 </template>

@@ -38,7 +38,7 @@ onMounted(() => {
           11_000, 2221, 1201, 390, 198, 60, 30, 22, 11,
         ],
         itemStyle: {
-          color: '#019680',
+          color: '#b6a2de',
         },
         smooth: true,
         type: 'line',
@@ -47,7 +47,7 @@ onMounted(() => {
     tooltip: {
       axisPointer: {
         lineStyle: {
-          color: '#019680',
+          color: '#b6a2de',
           width: 1,
         },
       },

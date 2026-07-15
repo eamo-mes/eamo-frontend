@@ -63,4 +63,24 @@ const tokenTheme = computed(() => {
 .ant-table-cell-row-hover {
   background-color: hsl(var(--accent)) !important;
 }
+
+/* Opt-in utility for data tables that must keep each cell on one line. */
+.table-nowrap .ant-table-cell {
+  white-space: nowrap;
+}
+
+/* Shared index-page toolbar: fixed controls, content-sized buttons, horizontal overflow. */
+.action-bar {
+  flex-wrap: nowrap;
+  overflow-x: auto;
+}
+
+.action-bar > :is(.ant-input, .ant-input-affix-wrapper, .ant-select, .ant-picker) {
+  flex: 0 0 220px;
+  width: 220px !important;
+}
+
+.action-bar > :is(.ant-btn, .ant-btn-group, .flex, .inline-flex) {
+  flex: 0 0 auto;
+}
 </style>

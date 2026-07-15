@@ -8,8 +8,6 @@ import { $t } from '#/locales';
 import { EchartsUI, useEcharts } from '@vben/plugins/echarts';
 import { Spin } from 'ant-design-vue';
 
-
-
 const props = defineProps<{
   stats: any;
   loading: boolean;
@@ -26,13 +24,26 @@ async function updateCharts() {
     return;
   }
 
-  // 1. Line Chart Data: % completion over the last 1 week (7 days)
   const displayDates = (props.stats.daily_stats || []).map((d: any) => {
     return dayjs(d.date).format('DD/MM');
   });
   const completionPercentages = (props.stats.daily_stats || []).map((d: any) => {
-    return d.completion_rate;
+    const total = Number(d.total_checklists || 0);
+    const passed = Number(d.passed || 0);
+    return total > 0 ? Math.round((passed / total) * 100) : 0;
   });
+
+  const topErrorsBlueGradient = {
+    colorStops: [
+      { color: 'rgba(64, 169, 255, 0.42)', offset: 0 },
+      { color: 'rgba(64, 169, 255, 0)', offset: 1 },
+    ],
+    type: 'linear' as const,
+    x: 0,
+    x2: 0,
+    y: 0,
+    y2: 1,
+  };
 
   renderLineChart({
     grid: {
@@ -45,13 +56,30 @@ async function updateCharts() {
     xAxis: {
       data: displayDates,
       type: 'category',
+      axisLine: {
+        lineStyle: {
+          color: '#cbd5e1',
+        },
+      },
+      axisTick: {
+        show: false,
+      },
+      axisLabel: {
+        color: '#64748b',
+      },
     },
     yAxis: {
       max: 100,
       min: 0,
       type: 'value',
       axisLabel: {
+        color: '#64748b',
         formatter: '{value}%',
+      },
+      splitLine: {
+        lineStyle: {
+          color: '#e2e8f0',
+        },
       },
     },
     series: [
@@ -59,21 +87,17 @@ async function updateCharts() {
         data: completionPercentages,
         type: 'line',
         smooth: true,
+        symbol: 'circle',
+        symbolSize: 8,
         itemStyle: {
-          color: '#3b82f6',
+          color: '#1890ff',
+        },
+        lineStyle: {
+          color: '#1890ff',
+          width: 3,
         },
         areaStyle: {
-          color: {
-            colorStops: [
-              { color: 'rgba(59, 130, 246, 0.4)', offset: 0 },
-              { color: 'rgba(59, 130, 246, 0)', offset: 1 },
-            ],
-            type: 'linear',
-            x: 0,
-            x2: 0,
-            y: 0,
-            y2: 1,
-          },
+          color: topErrorsBlueGradient,
         },
       },
     ],
@@ -81,16 +105,22 @@ async function updateCharts() {
       fontFamily: 'system-ui, -apple-system, sans-serif',
     },
     tooltip: {
+      backgroundColor: '#ffffff',
+      borderColor: '#e2e8f0',
+      borderWidth: 1,
+      textStyle: {
+        color: '#1e293b',
+      },
       trigger: 'axis',
       formatter: '{b}: {c}%',
     },
   });
 
-  // 2. Pie Chart Data: breakdown of today's checklist results
   const passed = props.stats.today?.passed || 0;
   const failed = props.stats.today?.failed || 0;
   const pending = props.stats.today?.pending || 0;
   const totalToday = props.stats.today?.total_checklists || 0;
+  const completedToday = passed + failed;
 
   const pieData = [
     { name: $t('page.ops.chartPassed'), value: passed },
@@ -99,7 +129,7 @@ async function updateCharts() {
   ];
 
   renderPieChart({
-    color: ['#10b981', '#ef4444', '#f59e0b'],
+    color: ['#5ab1ef', '#67e0e3', '#818cf8'],
     series: [
       {
         avoidLabelOverlap: false,
@@ -121,7 +151,7 @@ async function updateCharts() {
           color: '#1e293b',
           fontSize: 14,
           fontWeight: 'bold',
-          formatter: `${totalToday}\nChecklists`,
+          formatter: `${completedToday} / ${totalToday}\n\nChecklists completed`,
           position: 'center',
           show: true,
         },
@@ -133,6 +163,12 @@ async function updateCharts() {
       fontFamily: 'system-ui, -apple-system, sans-serif',
     },
     tooltip: {
+      backgroundColor: '#ffffff',
+      borderColor: '#e2e8f0',
+      borderWidth: 1,
+      textStyle: {
+        color: '#1e293b',
+      },
       formatter: '{b} : {c} ({d}%)',
       trigger: 'item',
     },
@@ -149,27 +185,16 @@ watch(
 </script>
 
 <template>
-  <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-    <!-- Line Chart Panel -->
-    <div class="bg-card border border-border rounded-xl p-4 shadow-sm relative min-h-[350px]">
-      <div class="font-semibold text-base mb-4 flex items-center gap-2">
-        <span class="w-1.5 h-4 rounded-full bg-blue-500"></span>
-        {{ $t('page.ops.chartTrendTitle') }}
-      </div>
-      <Spin :spinning="loading">
-        <EchartsUI ref="lineChartRef" height="280px" />
-      </Spin>
+  <div class="bg-card border border-border rounded-xl p-4 shadow-sm relative min-h-[350px]">
+    <div class="font-semibold text-base mb-4 flex items-center gap-2">
+      Checklist Charts
     </div>
 
-    <!-- Pie Chart Panel -->
-    <div class="bg-card border border-border rounded-xl p-4 shadow-sm relative min-h-[350px]">
-      <div class="font-semibold text-base mb-4 flex items-center gap-2">
-        <span class="w-1.5 h-4 rounded-full bg-emerald-500"></span>
-        {{ $t('page.ops.chartResultTitle') }} ({{ $t('page.dashboard.todayLabel') }})
+    <Spin :spinning="loading">
+      <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+        <EchartsUI ref="lineChartRef" height="300px" />
+        <EchartsUI ref="pieChartRef" height="300px" />
       </div>
-      <Spin :spinning="loading">
-        <EchartsUI ref="pieChartRef" height="280px" />
-      </Spin>
-    </div>
+    </Spin>
   </div>
 </template>

@@ -58,8 +58,8 @@ async function updateCharts() {
   const counts = mapped.map((d: MappedItem) => d.count);
   const totalErrors = counts.reduce((sum: number, val: number) => sum + val, 0);
 
-  // Cold color system matching template
-  const coldColors = [
+  // Existing Top Most Frequent Errors palette.
+  const chartColors = [
     '#5ab1ef',
     '#b6a2de',
     '#67e0e3',
@@ -69,13 +69,13 @@ async function updateCharts() {
     '#c084fc',
     '#34d399',
   ];
-  const coldGradients = [
-    { end: '#1890ff', start: '#40a9ff' }, // Light Blue -> Blue
-    { end: '#14b8a6', start: '#2dd4bf' }, // Light Teal -> Teal
-    { end: '#9333ea', start: '#c084fc' }, // Light Purple -> Purple
-    { end: '#2ec7c9', start: '#67e0e3' }, // Light Cyan -> Turquoise
-    { end: '#0284c7', start: '#38bdf8' }, // Sky Blue
-    { end: '#4f46e5', start: '#818cf8' }, // Indigo
+  const chartGradients = [
+    { end: '#1890ff', start: '#40a9ff' },
+    { end: '#14b8a6', start: '#2dd4bf' },
+    { end: '#9333ea', start: '#c084fc' },
+    { end: '#2ec7c9', start: '#67e0e3' },
+    { end: '#0284c7', start: '#38bdf8' },
+    { end: '#4f46e5', start: '#818cf8' },
   ];
 
   renderBarChart({
@@ -92,8 +92,8 @@ async function updateCharts() {
           borderRadius: [0, 4, 4, 0],
           color: (params: { dataIndex: number }) => {
             const g =
-              coldGradients[params.dataIndex % coldGradients.length] ??
-              coldGradients[0];
+              chartGradients[params.dataIndex % chartGradients.length] ??
+              chartGradients[0];
             return {
               colorStops: [
                 { color: g!.start, offset: 0 },
@@ -134,7 +134,7 @@ async function updateCharts() {
   });
 
   renderPieChart({
-    color: coldColors,
+    color: chartColors,
     series: [
       {
         avoidLabelOverlap: false,

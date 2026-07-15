@@ -291,7 +291,7 @@ onMounted(() => {
 <template>
   <div class="p-6 space-y-4">
     <!-- Action Bar -->
-    <div class="bg-card border border-border rounded-xl p-4 shadow-sm flex flex-nowrap items-center gap-3 overflow-x-auto w-full">
+    <div class="action-bar bg-card border border-border rounded-xl p-4 shadow-sm flex flex-nowrap items-center gap-3 overflow-x-auto w-full">
       <Input
         v-model:value="searchVal"
         :placeholder="$t('page.ops.placeholderCategoryName')"
@@ -372,7 +372,7 @@ onMounted(() => {
       :confirm-loading="submitting"
       :ok-text="$t('page.ops.btnOk')"
       :cancel-text="$t('page.ops.btnCancel')"
-      width="800px"
+      width="1040px"
       @ok="handleOk"
       @cancel="showModal = false"
     >
@@ -393,24 +393,25 @@ onMounted(() => {
         </div>
 
         <!-- ── Nested Maintenance Items Section ───────────────────────────── -->
-        <div class="border-t border-gray-150 pt-5 mt-5">
-          <div class="flex items-center justify-between mb-3">
-            <span class="font-semibold text-gray-700">{{ $t('page.ops.nestedItemsTitle') }}</span>
-            <Button type="dashed" size="small" @click="addItemRow">
-              + {{ $t('page.ops.btnAddItem') }}
-            </Button>
+        <div class="mt-5 pt-2">
+          <div class="mb-3 flex items-end justify-between gap-3">
+            <div>
+              <div class="font-semibold text-foreground">
+                {{ $t('page.ops.nestedItemsTitle') }}
+              </div>
+            </div>
           </div>
 
           <!-- Items list -->
-          <div v-if="formState.items.length === 0" class="text-center text-gray-400 py-8 border border-dashed border-gray-200 dark:border-gray-700 rounded-lg">
+          <div v-if="formState.items.length === 0" class="py-5 text-center text-sm text-muted-foreground">
             {{ $t('page.ops.noItems') }}
           </div>
 
-          <div v-else class="space-y-3 max-h-[300px] overflow-y-auto pr-1">
+          <div v-else class="max-h-[340px] divide-y divide-border overflow-y-auto pr-1">
             <div
               v-for="(item, idx) in formState.items"
               :key="item._key"
-              class="flex flex-wrap md:flex-nowrap gap-2 items-end bg-gray-50/50 p-3 rounded-lg border border-border"
+              class="flex flex-wrap items-end gap-3 py-3 first:pt-0 last:pb-0"
             >
               <!-- Tên hạng mục -->
               <div class="flex-1 min-w-[200px]">
@@ -457,6 +458,10 @@ onMounted(() => {
               </div>
             </div>
           </div>
+
+          <Button type="dashed" block class="mt-3" @click="addItemRow">
+            + {{ $t('page.ops.btnAddItem') }}
+          </Button>
         </div>
       </Form>
     </Modal>

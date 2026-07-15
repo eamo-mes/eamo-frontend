@@ -1,19 +1,19 @@
 <script lang="ts" setup>
 import { ref, computed, onMounted } from 'vue';
-import { Spin } from 'ant-design-vue';
+import { Button, Select, Spin } from 'ant-design-vue';
 import axios from 'axios';
-import dayjs from 'dayjs';
-import { $t } from '#/locales';
 import { listUsersApi, type UserItem } from '#/api/core/users';
-import { useAccessStore, useUserStore } from '@vben/stores';
+import { useAccessStore } from '@vben/stores';
 import { API_BASE_URL } from '#/api/config';
+import { $t } from '#/locales';
+import ChecklistCalendar from '#/views/ops/checklist/components/ChecklistCalendar.vue';
 import VisualMaintenanceCalendar from '#/views/ops/maintenance-plans/components/VisualMaintenanceCalendar.vue';
 import AssignedTasks from './components/AssignedTasks.vue';
 
 interface EquipmentOption {
   id: string;
   code: string;
-  name: string | null;
+  name: string;
 }
 
 interface MaintenanceCategoryOption {
@@ -28,29 +28,14 @@ interface MaintenanceItemOption {
   maintenance_category_id: string;
 }
 
-const userStore = useUserStore();
-
-const welcomeName = computed(() => {
-  return userStore.userInfo?.realName || userStore.userInfo?.username || 'User';
-});
-
-const greeting = computed(() => {
-  const hour = dayjs().hour();
-  let greetText = $t('page.dashboard.gMorning');
-  if (hour >= 12 && hour < 18) {
-    greetText = $t('page.dashboard.gAfternoon');
-  } else if (hour >= 18) {
-    greetText = $t('page.dashboard.gEvening');
-  }
-  return `${greetText} ${welcomeName.value}`;
-});
-
 const equipments = ref<EquipmentOption[]>([]);
 const categories = ref<MaintenanceCategoryOption[]>([]);
 const allSchedules = ref<any[]>([]);
 const users = ref<UserItem[]>([]);
 const maintenanceItems = ref<MaintenanceItemOption[]>([]);
 const loadingSchedules = ref(false);
+const activeCalendar = ref<'checklist' | 'maintenance'>('maintenance');
+const notificationsOpen = ref(false);
 
 function getAuthHeaders(): Record<string, string> {
   const accessStore = useAccessStore();
@@ -171,29 +156,46 @@ onMounted(() => {
 
 <template>
   <div class="p-6 space-y-6">
-    <!-- Bottom Section: 2 Columns -->
-    <div class="grid grid-cols-1 lg:grid-cols-3 gap-6 items-start pt-2">
-      <!-- Left Column (Always displays Calendar) -->
-      <div class="lg:col-span-2 space-y-6">
-        <div class="bg-card border border-border rounded-xl p-6 shadow-sm min-h-[400px]">
-          <Spin :spinning="loadingSchedules">
-            <VisualMaintenanceCalendar
-              v-model:schedules="allSchedules"
-              :maintenance-items="maintenanceItems"
-              :categories="categories"
-              :equipments="equipments"
-              :user-options="userOptions"
-              :read-only="true"
-              @range-change="handleCalendarRangeChange"
-            />
-          </Spin>
+    <!-- Calendar Section -->
+    <div class="pt-2">
+        <div class="action-bar flex items-center gap-3 rounded-xl border border-border bg-card px-4 py-3 shadow-sm">
+          <div class="mr-auto whitespace-nowrap text-sm font-semibold text-foreground">
+            {{ $t('page.dashboard.workspace') }}
+          </div>
+          <Button class="shrink-0" @click="notificationsOpen = true">
+            {{ $t('page.dashboard.assignedTasksTitle') }}
+          </Button>
+          <Select v-model:value="activeCalendar" class="w-[220px] shrink-0">
+            <Select.Option value="maintenance">
+              {{ $t('page.ops.visualScheduleTitle') }}
+            </Select.Option>
+            <Select.Option value="checklist">
+              {{ $t('page.ops.checklistCalendarTitle') }}
+            </Select.Option>
+          </Select>
         </div>
-      </div>
 
-      <!-- Right Column (Combined Notifications & Summary Stats) -->
-      <div class="lg:col-span-1">
-        <AssignedTasks />
-      </div>
+        <div class="mt-6">
+          <AssignedTasks v-model:notification-open="notificationsOpen" />
+        </div>
+
+        <div v-if="activeCalendar === 'maintenance'" class="mt-6">
+          <div class="rounded-xl bg-white p-6 shadow-sm dark:bg-card">
+            <Spin :spinning="loadingSchedules">
+              <VisualMaintenanceCalendar
+                v-model:schedules="allSchedules"
+                :maintenance-items="maintenanceItems"
+                :categories="categories"
+                :equipments="equipments"
+                :user-options="userOptions"
+                :read-only="true"
+                @range-change="handleCalendarRangeChange"
+              />
+            </Spin>
+          </div>
+        </div>
+
+        <ChecklistCalendar v-else class="mt-6" :equipments="equipments" />
     </div>
   </div>
 </template>

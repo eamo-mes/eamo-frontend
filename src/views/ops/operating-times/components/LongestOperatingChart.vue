@@ -5,6 +5,7 @@ import { nextTick, ref, watch } from 'vue';
 
 import { $t } from '#/locales';
 import { EchartsUI, useEcharts } from '@vben/plugins/echarts';
+import { Skeleton } from 'ant-design-vue';
 
 interface OperatingItemData {
   actualOp: number;
@@ -14,12 +15,17 @@ interface OperatingItemData {
 
 const props = defineProps<{
   data: OperatingItemData[];
+  loading?: boolean;
 }>();
 
 const chartRef = ref<EchartsUIType>();
 const { renderEcharts } = useEcharts(chartRef);
 
 async function renderChart() {
+  if (props.loading) {
+    return;
+  }
+
   await nextTick();
   if (!chartRef.value) {
     return;
@@ -114,7 +120,7 @@ async function renderChart() {
 }
 
 watch(
-  () => props.data,
+  [() => props.data, () => props.loading],
   () => {
     renderChart();
   },
@@ -126,9 +132,11 @@ watch(
   <div
     class="shadow-sm border border-border rounded-xl p-4 flex flex-col h-[360px] bg-card"
   >
-    <h3 class="text-sm font-semibold text-foreground mb-3 text-center">
-      {{ $t('page.ops.chartLongestOperatingTitle') }}
-    </h3>
-    <EchartsUI ref="chartRef" />
+    <Skeleton :loading="props.loading" active :paragraph="{ rows: 7 }">
+      <h3 class="text-sm font-semibold text-foreground mb-3 text-center">
+        {{ $t('page.ops.chartLongestOperatingTitle') }}
+      </h3>
+      <EchartsUI ref="chartRef" />
+    </Skeleton>
   </div>
 </template>

@@ -6,10 +6,11 @@ import {
   DatePicker,
   Drawer,
   Button,
+  Popconfirm,
   Select,
   Spin,
   Tag,
-  message
+  message,
 } from 'ant-design-vue';
 import axios from 'axios';
 import dayjs, { Dayjs } from 'dayjs';
@@ -75,6 +76,7 @@ const router = useRouter();
 
 const props = defineProps<{
   equipments: EquipmentDetail[];
+  equipmentId?: string;
 }>();
 
 const emit = defineEmits(['refresh-list']);
@@ -83,17 +85,17 @@ const loading = ref(false);
 const sessions = ref<ChecklistSession[]>([]);
 const calendarValue = ref<Dayjs>(dayjs());
 
-// Drawer Judge states
 const isModalOpen = ref(false);
 const submitting = ref(false);
+const deletingSchedule = ref(false);
 const selectedSession = ref<ChecklistSession | null>(null);
 const judgeDetails = ref<JudgeDetailItem[]>([]);
 
-// Custom User & Timestamp selection states
 const usersList = ref<UserOption[]>([]);
 const selectedUserIds = ref<string[]>([]);
 const selectedTimestamp = ref<string>(dayjs().format('YYYY-MM-DD HH:mm:ss'));
 const selectedExecutionDate = ref<string>(dayjs().format('YYYY-MM-DD'));
+const selectedDeadline = ref<string | undefined>(undefined);
 
 const userOptions = computed(() => {
   return usersList.value.map(u => ({
@@ -111,21 +113,34 @@ function getAuthHeaders(): Record<string, string> {
   };
 }
 
-// Load all sessions for the active calendar month
+function normalizeDate(value: string | null | undefined): string | undefined {
+  if (!value) {
+    return undefined;
+  }
+
+  const parsed = dayjs(value);
+  return parsed.isValid() ? parsed.format('YYYY-MM-DD') : undefined;
+}
+
 async function fetchSessions(): Promise<void> {
   loading.value = true;
   try {
     const startOfMonth = calendarValue.value.startOf('month').format('YYYY-MM-DD');
     const endOfMonth = calendarValue.value.endOf('month').format('YYYY-MM-DD');
 
+    const params: Record<string, string | number | boolean> = {
+      include_details: true,
+      start_date: startOfMonth,
+      end_date: endOfMonth,
+      per_page: 200,
+    };
+    if (props.equipmentId) {
+      params.equipment_id = props.equipmentId;
+    }
+
     const res = await axios.get(`${API_BASE_URL}/v1/checklist-sessions`, {
       headers: getAuthHeaders(),
-      params: {
-        include_details: true,
-        start_date: startOfMonth,
-        end_date: endOfMonth,
-        per_page: 200, // Load all sessions in the month
-      },
+      params,
     });
 
     const raw = res.data?.data ?? res.data ?? [];
@@ -138,7 +153,6 @@ async function fetchSessions(): Promise<void> {
   }
 }
 
-// Load users dropdown options using listUsersApi
 async function fetchUsers(): Promise<void> {
   try {
     const raw = await listUsersApi({ per_page: 1000 });
@@ -156,7 +170,7 @@ function getLatestCompletedLog(detail: ChecklistDetailItem): ChecklistLog | unde
 }
 
 function getSessionStatus(session: ChecklistSession): 'warning' | 'error' | 'success' {
-  if (!session.details || session.details.length === 0) return 'warning'; // Pending
+  if (!session.details || session.details.length === 0) return 'warning';
 
   const completedLogs = session.details.map(getLatestCompletedLog);
   if (completedLogs.some(log => !log)) return 'warning';
@@ -179,7 +193,7 @@ function getSessionClass(session: ChecklistSession): string {
       return 'bg-emerald-50 dark:bg-emerald-950/30 text-emerald-700 dark:text-emerald-300 border-emerald-250 dark:border-emerald-800/50 hover:bg-emerald-100 dark:hover:bg-emerald-900/40';
     case 'error':
       return 'bg-rose-50 dark:bg-rose-950/30 text-rose-700 dark:text-rose-300 border-rose-250 dark:border-rose-800/50 hover:bg-rose-100 dark:hover:bg-rose-900/40';
-    default: // warning
+    default:
       return 'bg-amber-50 dark:bg-amber-950/30 text-amber-700 dark:text-amber-300 border-amber-250 dark:border-amber-800/50 hover:bg-amber-100 dark:hover:bg-amber-900/40';
   }
 }
@@ -227,18 +241,19 @@ function openJudgeModal(session: ChecklistSession): void {
     };
   }) || [];
 
-  // Default custom user to the session users or current user
   if (session.users && session.users.length > 0) {
     selectedUserIds.value = session.users.map(u => u.id);
   } else {
     selectedUserIds.value = [];
   }
+
   selectedTimestamp.value = session.session_date
     ? dayjs(session.session_date).format('YYYY-MM-DD HH:mm:ss')
     : dayjs().format('YYYY-MM-DD HH:mm:ss');
   selectedExecutionDate.value = session.session_date
     ? dayjs(session.session_date).format('YYYY-MM-DD')
     : dayjs().format('YYYY-MM-DD');
+  selectedDeadline.value = normalizeDate(session.session_date);
   isModalOpen.value = true;
 }
 
@@ -293,7 +308,35 @@ async function handleJudgeOk(): Promise<void> {
   }
 }
 
-watch(calendarValue, () => {
+async function handleDeleteSchedule(): Promise<void> {
+  const session = selectedSession.value;
+  const date = session?.session_date?.slice(0, 10);
+  if (!session?.equipment_id || !date) return;
+
+  deletingSchedule.value = true;
+  try {
+    await axios.delete(`${API_BASE_URL}/v1/checklist-schedules/daily`, {
+      headers: getAuthHeaders(),
+      data: {
+        session_id: session.id,
+        equipment_id: session.equipment_id,
+        date,
+      },
+    });
+
+    message.success('Đã xóa schedule của ngày đã chọn');
+    isModalOpen.value = false;
+    await fetchSessions();
+    emit('refresh-list');
+  } catch (err: unknown) {
+    const apiError = axios.isAxiosError(err) ? err.response?.data?.message : undefined;
+    message.error(apiError || 'Không thể xóa schedule của ngày đã chọn');
+  } finally {
+    deletingSchedule.value = false;
+  }
+}
+
+watch([calendarValue, () => props.equipmentId], () => {
   fetchSessions();
 }, { immediate: true });
 
@@ -317,12 +360,11 @@ onMounted(() => {
 
 <template>
   <div>
-    <!-- ── Calendar View Section ────────────────────────── -->
-    <div>
-      <div class="flex justify-between items-center mb-3">
-        <div class="font-semibold text-gray-700 dark:text-gray-300">
-          {{ $t('page.ops.checklistCalendarTitle') }}
-        </div>
+    <div class="bg-card border border-border rounded-xl p-6 shadow-sm">
+        <div class="flex justify-between items-center">
+          <div class="font-semibold text-gray-700 dark:text-gray-300">
+            {{ $t('page.ops.checklistCalendarTitle') }}
+          </div>
       </div>
 
       <Spin :spinning="loading">
@@ -337,8 +379,12 @@ onMounted(() => {
                 :title="session.equipment?.name || ''"
                 @click.stop="openJudgeModal(session)"
               >
-                <span class="truncate">{{ session.equipment?.name || $t('page.ops.placeholderEquipment') }}</span>
-                <span class="text-[10px] opacity-80 shrink-0 font-medium">{{ getSessionStatusLabel(session) }}</span>
+                <span class="truncate">
+                  {{ session.equipment?.name || $t('page.ops.placeholderEquipment') }}
+                </span>
+                <span class="text-[10px] opacity-80 shrink-0 font-medium">
+                  {{ getSessionStatusLabel(session) }}
+                </span>
               </li>
             </ul>
           </template>
@@ -346,7 +392,6 @@ onMounted(() => {
       </Spin>
     </div>
 
-    <!-- Detailed Judge Drawer -->
     <Drawer
       v-model:open="isModalOpen"
       :title="$t('page.ops.judgeChecklistTitle', { name: selectedSession?.equipment?.name || '' })"
@@ -354,7 +399,6 @@ onMounted(() => {
       :width="460"
     >
       <div v-if="selectedSession" class="space-y-6 px-2">
-        <!-- Equipment Tag & Name -->
         <div class="space-y-1 pb-1">
           <Tag color="blue" class="px-2.5 py-0.5 rounded-full text-xs font-semibold uppercase tracking-wider border-blue-200 text-blue-700 bg-blue-50/60 dark:bg-blue-950/20 dark:text-blue-300 dark:border-blue-850">
             {{ selectedSession.equipment?.code || 'CHECKLIST' }}
@@ -369,7 +413,6 @@ onMounted(() => {
           </div>
         </div>
 
-        <!-- Execution date -->
         <div class="space-y-2 border-t border-border pt-4">
           <span class="text-xs text-gray-500 font-semibold uppercase tracking-wider block mb-1">
             {{ $t('page.ops.colDate') }}
@@ -383,13 +426,15 @@ onMounted(() => {
           />
         </div>
 
-        <!-- Checklist Item List -->
         <div class="space-y-4 border-t border-border pt-4">
           <span class="text-xs text-gray-400 font-semibold uppercase tracking-wider block">
             {{ $t('page.ops.detailItemsHeader') }}
           </span>
 
-          <div v-if="judgeDetails.length === 0" class="text-sm text-gray-400 dark:text-gray-550 italic bg-gray-50/20 p-3 rounded-lg border border-gray-100 dark:border-gray-850">
+          <div
+            v-if="judgeDetails.length === 0"
+            class="text-sm text-gray-400 dark:text-gray-550 italic bg-gray-50/20 p-3 rounded-lg border border-gray-100 dark:border-gray-850"
+          >
             {{ $t('page.ops.noItemsToJudge') }}
           </div>
 
@@ -406,9 +451,8 @@ onMounted(() => {
                 >
                   {{ item.description || $t('page.ops.judgeItemIndex', { index: index + 1 }) }}
                 </span>
-                
+
                 <div class="shrink-0 flex items-center justify-end min-w-[70px]">
-                  <!-- If pass, show success Tag -->
                   <Tag
                     v-if="item.result === 'pass'"
                     color="success"
@@ -418,7 +462,6 @@ onMounted(() => {
                     {{ $t('page.ops.resultPass') }}
                   </Tag>
 
-                  <!-- If fail or null, show error Tag -->
                   <Tag
                     v-else
                     color="error"
@@ -433,7 +476,6 @@ onMounted(() => {
           </div>
         </div>
 
-        <!-- Inspector Selector -->
         <div class="space-y-2 border-t border-border pt-4">
           <span class="text-xs text-gray-500 font-semibold uppercase tracking-wider block mb-1">
             {{ $t('page.ops.checkerLabel') }}
@@ -449,22 +491,47 @@ onMounted(() => {
             class="w-full"
           />
         </div>
+
+        <div class="space-y-2 border-t border-border pt-4">
+          <span class="text-xs text-gray-500 font-semibold uppercase tracking-wider block mb-1">
+            {{ $t('page.ops.deadlineLabel') }}
+          </span>
+          <DatePicker
+            v-model:value="selectedDeadline"
+            value-format="YYYY-MM-DD"
+            format="YYYY-MM-DD"
+            class="w-full"
+            :placeholder="$t('page.ops.placeholderSelectDeadline')"
+          />
+        </div>
       </div>
 
-      <!-- Drawer Footer with Save and Cancel buttons -->
       <template #footer>
-        <div class="flex justify-end gap-2 py-2">
-          <Button @click="isModalOpen = false">
-            {{ $t('page.ops.btnCancel') }}
-          </Button>
-          <Button
-            type="primary"
-            class="bg-[#5c3e35] hover:bg-[#4b332b] border-[#5c3e35] rounded text-white"
-            :loading="submitting"
-            @click="handleJudgeOk"
+        <div class="flex items-center justify-between gap-2 py-2">
+          <Popconfirm
+            v-bind="{ title: $t('page.ops.deleteScheduleConfirm') }"
+            title="Xóa toàn bộ schedule của ngày này?"
+            :ok-text="$t('page.ops.btnConfirm')"
+            :cancel-text="$t('page.ops.btnCancel')"
+            @confirm="handleDeleteSchedule"
           >
-            {{ $t('page.ops.btnConfirm') }}
-          </Button>
+            <Button danger :loading="deletingSchedule">
+              {{ $t('page.ops.deleteSchedule') }}
+            </Button>
+          </Popconfirm>
+          <div class="flex justify-end gap-2">
+            <Button @click="isModalOpen = false">
+              {{ $t('page.ops.btnCancel') }}
+            </Button>
+            <Button
+              type="primary"
+              class="bg-[#5c3e35] hover:bg-[#4b332b] border-[#5c3e35] rounded text-white"
+              :loading="submitting"
+              @click="handleJudgeOk"
+            >
+              {{ $t('page.ops.btnConfirm') }}
+            </Button>
+          </div>
         </div>
       </template>
     </Drawer>

@@ -19,6 +19,7 @@ const props = defineProps<{
   activeEquipmentId?: string;
   equipments: EquipmentOption[];
   filteredItems: OperatingTimeItem[];
+  loading?: boolean;
   maintenanceStatusData: MaintenanceStatusItem[];
 }>();
 
@@ -148,9 +149,9 @@ watch(
 <template>
   <Spin :spinning="chartsLoading">
     <div class="grid grid-cols-1 lg:grid-cols-3 gap-4">
-      <AvgAvailabilityChart :avg-value="avgValue" />
-      <LongestOperatingChart :data="horizontalData" />
-      <MaintenanceStatusChart :data="finalMaintenanceData" />
+      <AvgAvailabilityChart :avg-value="avgValue" :loading="props.loading || chartsLoading" />
+      <LongestOperatingChart :data="horizontalData" :loading="props.loading || chartsLoading" />
+      <MaintenanceStatusChart :data="finalMaintenanceData" :loading="props.loading || chartsLoading" />
     </div>
   </Spin>
 </template>

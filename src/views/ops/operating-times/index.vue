@@ -267,7 +267,7 @@ const columns = computed(() => [
     </div>
 
     <!-- Action Bar -->
-    <div class="bg-card border border-border rounded-xl p-4 shadow-sm flex flex-nowrap items-center gap-3 overflow-x-auto w-full no-scrollbar">
+    <div class="action-bar operating-times-action-bar bg-card border border-border rounded-xl p-4 shadow-sm flex flex-nowrap items-center gap-3 overflow-x-auto w-full">
       <Input
         v-model:value="searchVal"
         :placeholder="$t('page.equipment.placeholderName')"
@@ -287,7 +287,7 @@ const columns = computed(() => [
         v-model:value="filterTimeRange"
         show-time
         format="YYYY-MM-DD HH:mm"
-        class="min-w-[320px] flex-shrink-0"
+        class="operating-times-range-picker min-w-[320px] flex-shrink-0"
       />
       <Button type="default" class="flex-shrink-0" @click="handleSearch">
         {{ $t('page.company.btnFilter') }}
@@ -410,11 +410,8 @@ const columns = computed(() => [
 </template>
 
 <style scoped>
-.no-scrollbar::-webkit-scrollbar {
-  display: none; /* Safari and Chrome */
-}
-.no-scrollbar {
-  -ms-overflow-style: none;  /* IE and Edge */
-  scrollbar-width: none;  /* Firefox */
+.operating-times-action-bar :deep(.operating-times-range-picker) {
+  flex: 0 0 320px;
+  width: 320px !important;
 }
 </style>
