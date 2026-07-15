@@ -13,6 +13,11 @@ export interface OperatingTimeItem {
   id: string;
   equipment_id: string;
   equipment_name?: string;
+  equipment?: {
+    id: string;
+    code: string;
+    name: string;
+  } | null;
   working_time: string | number;
   planned_stop_time: string | number;
   unplanned_stop_time: string | number;

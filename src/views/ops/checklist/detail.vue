@@ -8,6 +8,7 @@ import {
   Button,
   DatePicker,
   Input,
+  InputNumber,
   Select,
   Form,
   FormItem,
@@ -17,6 +18,7 @@ import {
   Card
 } from 'ant-design-vue';
 import axios from 'axios';
+import dayjs from 'dayjs';
 import { useAccessStore, useUserStore } from '@vben/stores';
 import { API_BASE_URL } from '#/api/config';
 import { listUsersApi } from '#/api/core/users';
@@ -31,7 +33,6 @@ interface ChecklistDetailItem {
   id?: string;
   checklist_id: string;
   description: string;
-  result: 'pass' | 'fail';
 }
 
 const router = useRouter();
@@ -52,6 +53,8 @@ const formState = ref({
   equipment_id: undefined as string | undefined,
   user_ids: [] as string[],
   session_date: '',
+  cycle_type: 'daily' as 'daily' | 'weekly' | 'monthly' | 'yearly',
+  cycle_interval: 1,
   checklist_details: [] as ChecklistDetailItem[],
 });
 
@@ -69,6 +72,15 @@ function generateUUID() {
     const r = Math.random() * 16 | 0, v = c === 'x' ? r : (r & 0x3 | 0x8);
     return v.toString(16);
   });
+}
+
+function normalizeDateTime(value: string | null | undefined): string {
+  if (!value) {
+    return '';
+  }
+
+  const parsed = dayjs(value);
+  return parsed.isValid() ? parsed.format('YYYY-MM-DD HH:mm') : '';
 }
 
 async function loadEquipments() {
@@ -93,10 +105,15 @@ async function loadUsers() {
   }
 }
 
-async function loadChecklistDetail(id: string) {
+async function loadChecklistDetail(id: string, equipmentId?: string, date?: string) {
   loading.value = true;
   try {
-    const res = await axios.get(`${API_BASE_URL}/v1/checklist-sessions/${id}?include_details=true`, {
+    let url = `${API_BASE_URL}/v1/checklist-sessions/${id}?include_details=true`;
+    if (equipmentId && date) {
+      const cleanDate = date.substring(0, 10);
+      url = `${API_BASE_URL}/v1/checklist-sessions/daily?equipment_id=${equipmentId}&date=${cleanDate}`;
+    }
+    const res = await axios.get(url, {
       headers: getAuthHeaders(),
     });
     const record = res.data?.data ?? res.data;
@@ -106,13 +123,14 @@ async function loadChecklistDetail(id: string) {
         name: record.name || '',
         equipment_id: record.equipment_id || undefined,
         user_ids: record.users?.map((u: any) => u.id) || [],
-        session_date: record.session_date ? record.session_date.substring(0, 16).replace('T', ' ') : '',
-        checklist_details: record.details?.map((detail: any) => ({
-          id: detail.id,
-          checklist_id: detail.checklist_id,
-          description: detail.description || '',
-          result: detail.result || 'pass',
-        })) || [],
+        session_date: normalizeDateTime(record.session_date),
+        cycle_type: record.cycle_type || 'daily',
+        cycle_interval: record.cycle_interval || 1,
+        checklist_details: record.details?.map((detail: { id?: string; checklist_id: string; description?: string }) => ({
+            id: detail.id,
+            checklist_id: detail.checklist_id,
+            description: detail.description || '',
+          })) || [],
       };
     }
   } catch (err: any) {
@@ -127,7 +145,6 @@ function addDetailRow() {
   formState.value.checklist_details.push({
     checklist_id: generateUUID(),
     description: '',
-    result: 'pass',
   });
 }
 
@@ -156,6 +173,7 @@ const rules = computed(() => ({
   name: [{ required: true, message: $t('page.ops.validationName') }],
   equipment_id: [{ required: true, message: $t('page.ops.validationEquipment') }],
   session_date: [{ required: true, message: $t('page.ops.validationDate') }],
+  cycle_interval: [{ required: true, type: 'number' as const, min: 1, message: 'Vui lòng nhập khoảng chu kỳ lặp hợp lệ' }],
 }));
 
 async function handleSubmit() {
@@ -169,22 +187,11 @@ async function handleSubmit() {
         name: formState.value.name,
         equipment_id: formState.value.equipment_id,
         session_date: formState.value.session_date,
+        cycle_type: formState.value.cycle_type,
+        cycle_interval: formState.value.cycle_interval,
         user_ids: formState.value.user_ids,
       };
       await axios.put(`${API_BASE_URL}/v1/checklist-sessions/${editId.value}`, sessionPayload, {
-        headers: getAuthHeaders(),
-      });
-
-      // 2. Update checklist details (items check results)
-      const detailsPayload = {
-        session_id: editId.value,
-        checklists: formState.value.checklist_details.map(item => ({
-          checklist_id: item.checklist_id,
-          result: item.result,
-          description: item.description,
-        })),
-      };
-      await axios.put(`${API_BASE_URL}/v1/checklist-details`, detailsPayload, {
         headers: getAuthHeaders(),
       });
 
@@ -195,10 +202,11 @@ async function handleSubmit() {
         name: formState.value.name,
         equipment_id: formState.value.equipment_id,
         session_date: formState.value.session_date,
+        cycle_type: formState.value.cycle_type,
+        cycle_interval: formState.value.cycle_interval,
         user_ids: formState.value.user_ids,
         details: formState.value.checklist_details.map(item => ({
           checklist_id: item.checklist_id,
-          result: item.result,
           description: item.description,
         })),
       };
@@ -208,7 +216,14 @@ async function handleSubmit() {
       message.success('Thêm mới phiên kiểm tra thành công');
       const created = res.data?.data ?? res.data;
       if (created?.id) {
-        router.replace({ name: 'OpsCheckListDetail', query: { id: created.id } });
+        router.replace({
+          name: 'OpsCheckListDetail',
+          query: {
+            id: created.id,
+            equipment_id: created.equipment_id,
+            date: created.session_date,
+          },
+        });
       }
     }
   } catch (err: any) {
@@ -232,10 +247,12 @@ onMounted(() => {
   loadUsers();
 
   const id = route.query.id as string;
+  const equipmentId = route.query.equipment_id as string;
+  const date = route.query.date as string;
   if (id) {
     isEditing.value = true;
     editId.value = id;
-    loadChecklistDetail(id);
+    loadChecklistDetail(id, equipmentId, date);
   } else {
     isEditing.value = false;
     editId.value = null;
@@ -315,6 +332,26 @@ onMounted(() => {
               />
             </FormItem>
 
+            <FormItem :label="$t('page.ops.colCycleType')" name="cycle_type" class="col-span-1">
+              <Select v-model:value="formState.cycle_type" :placeholder="$t('page.ops.placeholderCycleType')">
+                <Select.Option value="daily">{{ $t('page.ops.cycleDaily') }}</Select.Option>
+                <Select.Option value="weekly">{{ $t('page.ops.cycleWeekly') }}</Select.Option>
+                <Select.Option value="monthly">{{ $t('page.ops.cycleMonthly') }}</Select.Option>
+                <Select.Option value="yearly">{{ $t('page.ops.cycleYearly') }}</Select.Option>
+              </Select>
+            </FormItem>
+
+            <FormItem :label="$t('page.ops.colCycleInterval')" name="cycle_interval" class="col-span-1">
+              <InputNumber
+                v-model:value="formState.cycle_interval"
+                :min="1"
+                class="w-full"
+                :placeholder="$t('page.ops.placeholderCycleInterval')"
+              />
+            </FormItem>
+
+
+
             <FormItem :label="$t('page.ops.colExecutor')" name="user_ids" class="col-span-2">
               <Select
                 v-model:value="formState.user_ids"
@@ -336,7 +373,7 @@ onMounted(() => {
             <div class="col-span-2 border-t border-gray-150 pt-4 mt-2">
               <div class="flex items-center justify-between mb-3">
                 <span class="font-semibold text-gray-700">{{ $t('page.ops.detailItemsHeader') }}</span>
-                <Button type="dashed" size="small" @click="addDetailRow">
+                <Button v-if="!isEditing" type="dashed" size="small" @click="addDetailRow">
                   {{ $t('page.ops.btnAddCheck') }}
                 </Button>
               </div>
@@ -353,10 +390,14 @@ onMounted(() => {
                 >
                   <div class="flex-1 min-w-[200px]">
                     <span class="text-xs text-gray-500 block mb-1 font-medium">{{ $t('page.ops.itemName') }}</span>
-                    <Input v-model:value="item.description" :placeholder="$t('page.ops.itemNamePlaceholder')" />
+                    <Input
+                      v-model:value="item.description"
+                      :disabled="isEditing"
+                      :placeholder="$t('page.ops.itemNamePlaceholder')"
+                    />
                   </div>
 
-                  <div class="flex flex-col">
+                  <div v-if="!isEditing" class="flex flex-col">
                     <span class="text-xs block mb-1 select-none opacity-0 pointer-events-none">&nbsp;</span>
                     <Popconfirm
                       :title="$t('page.ops.deleteItemConfirm')"

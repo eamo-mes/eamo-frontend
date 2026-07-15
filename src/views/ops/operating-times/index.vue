@@ -124,12 +124,13 @@ function handleReset() {
 }
 
 const filteredItems = computed(() => {
-  let result = items.value.filter(item => equipments.value.some(e => e.id === item.equipment_id));
+  let result = items.value.filter(item => item.equipment || equipments.value.some(e => e.id === item.equipment_id));
 
   if (activeSearch.value) {
     const q = activeSearch.value.toLowerCase();
     result = result.filter(item => {
-      const equipName = getEquipmentName(item.equipment_id).toLowerCase();
+      const nameFromRelation = item.equipment ? `${item.equipment.name} (${item.equipment.code})`.toLowerCase() : '';
+      const equipName = nameFromRelation || getEquipmentName(item.equipment_id).toLowerCase();
       return equipName.includes(q);
     });
   }
@@ -332,7 +333,12 @@ const columns = computed(() => [
         >
           <template #bodyCell="{ column, record }">
             <template v-if="column.key === 'equipment_name'">
-              <span>{{ getEquipmentName(record.equipment_id) }}</span>
+              <span v-if="record.equipment">
+                {{ record.equipment.name }} ({{ record.equipment.code }})
+              </span>
+              <span v-else>
+                {{ getEquipmentName(record.equipment_id) }}
+              </span>
             </template>
             <template v-else-if="column.key === 'date'">
               <span>{{ record.date ? dayjs(record.date).format('YYYY-MM-DD') : '-' }}</span>

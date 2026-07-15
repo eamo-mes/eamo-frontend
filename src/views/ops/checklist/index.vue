@@ -30,7 +30,14 @@ interface ChecklistDetailItem {
   id: string;
   checklist_id: string;
   description: string;
-  result: 'pass' | 'fail';
+  logs?: ChecklistLog[];
+}
+
+interface ChecklistLog {
+  id: string;
+  status: 'pending' | 'completed';
+  result: 'pass' | 'fail' | null;
+  checked_at?: string | null;
 }
 
 interface UserDetail {
@@ -246,7 +253,14 @@ function openAddPage() {
 }
 
 function openEditPage(record: any) {
-  router.push({ name: 'OpsCheckListDetail', query: { id: record.id } });
+  router.push({
+    name: 'OpsCheckListDetail',
+    query: {
+      id: record.id,
+      equipment_id: record.equipment_id,
+      date: record.session_date,
+    },
+  });
 }
 
 async function handleDelete(id: string) {
@@ -264,13 +278,16 @@ async function handleDelete(id: string) {
   }
 }
 
-function openJudgeModal(record: any) {
+function openJudgeModal(record: ChecklistSession) {
   selectedSession.value = record;
-  judgeDetails.value = record.details?.map((d: any) => ({
-    checklist_id: d.checklist_id,
-    description: d.description || '',
-    result: d.result || 'pass',
-  })) || [];
+  judgeDetails.value = record.details?.map((detail) => {
+    const latestLog = getLatestCompletedLog(detail);
+    return {
+      checklist_id: detail.checklist_id,
+      description: detail.description || '',
+      result: latestLog?.result || 'fail',
+    };
+  }) || [];
   isJudgeModalOpen.value = true;
 }
 
@@ -286,6 +303,7 @@ async function handleJudgeOk() {
         result: item.result,
         description: item.description,
       })),
+      timestamp: selectedSession.value.session_date || undefined,
     };
 
     await axios.post(`${API_BASE_URL}/v1/checklist-sessions/judge`, payload, {
@@ -313,10 +331,29 @@ function formatDate(dateStr: string | null) {
   }
 }
 
-function getSessionStatusText(record: any) {
+function getLatestCompletedLog(detail: ChecklistDetailItem): ChecklistLog | undefined {
+  return detail.logs
+    ?.filter(log => log.status === 'completed')
+    .sort((left, right) => (left.checked_at ?? '').localeCompare(right.checked_at ?? ''))
+    .at(-1);
+}
+
+function getSessionStatusText(record: ChecklistSession): 'Failed' | 'Passed' | 'Pending' {
   if (!record.details || record.details.length === 0) return 'Pending';
-  const hasFail = record.details.some((d: any) => d.result === 'fail');
-  return hasFail ? 'Failed' : 'Passed';
+
+  let hasFail = false;
+  for (const detail of record.details) {
+    const log = getLatestCompletedLog(detail);
+    if (!log) {
+      return 'Pending';
+    }
+    if (log.result === 'fail') {
+      hasFail = true;
+    }
+  }
+
+  if (hasFail) return 'Failed';
+  return 'Passed';
 }
 
 
@@ -461,10 +498,10 @@ onMounted(() => {
             <template v-else-if="column.key === 'actions'">
               <Space>
                 <Button
-                  v-if="getSessionStatusText(record) === 'Pending'"
+                  v-if="getSessionStatusText(record as ChecklistSession) === 'Pending'"
                   size="small"
                   class="rounded border-green-500 text-green-600 hover:border-green-600 hover:text-green-700"
-                  @click="openJudgeModal(record)"
+                  @click="openJudgeModal(record as ChecklistSession)"
                 >
                   {{ $t('page.ops.btnJudge') }}
                 </Button>

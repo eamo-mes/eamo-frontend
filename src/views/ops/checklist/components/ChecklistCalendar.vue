@@ -3,6 +3,7 @@ import { ref, onMounted, watch, computed } from 'vue';
 import { useRouter } from 'vue-router';
 import {
   Calendar,
+  DatePicker,
   Drawer,
   Button,
   Select,
@@ -31,13 +32,26 @@ interface EquipmentDetail {
 
 interface ChecklistDetailItem {
   id: string;
+  schedule_id?: string;
   checklist_id: string;
   description: string;
+  logs?: ChecklistLog[];
+}
+
+interface ChecklistLog {
+  id: string;
+  status: 'pending' | 'completed';
   result: 'pass' | 'fail' | null;
-  logs?: Array<{
-    id: string;
-    result: 'pass' | 'fail';
-  }>;
+  checked_at?: string | null;
+}
+
+interface ChecklistSchedule {
+  id: string;
+  date: string;
+  checklist_detail_id: string;
+  checklist_id: string;
+  description: string;
+  logs: ChecklistLog[];
 }
 
 interface ChecklistSession {
@@ -47,6 +61,7 @@ interface ChecklistSession {
   equipment?: EquipmentDetail | null;
   session_date: string | null;
   details?: ChecklistDetailItem[];
+  schedules?: ChecklistSchedule[];
   users?: UserOption[];
 }
 
@@ -78,6 +93,7 @@ const judgeDetails = ref<JudgeDetailItem[]>([]);
 const usersList = ref<UserOption[]>([]);
 const selectedUserIds = ref<string[]>([]);
 const selectedTimestamp = ref<string>(dayjs().format('YYYY-MM-DD HH:mm:ss'));
+const selectedExecutionDate = ref<string>(dayjs().format('YYYY-MM-DD'));
 
 const userOptions = computed(() => {
   return usersList.value.map(u => ({
@@ -132,15 +148,20 @@ async function fetchUsers(): Promise<void> {
   }
 }
 
+function getLatestCompletedLog(detail: ChecklistDetailItem): ChecklistLog | undefined {
+  return detail.logs
+    ?.filter(log => log.status === 'completed')
+    .sort((left, right) => (left.checked_at ?? '').localeCompare(right.checked_at ?? ''))
+    .at(-1);
+}
+
 function getSessionStatus(session: ChecklistSession): 'warning' | 'error' | 'success' {
   if (!session.details || session.details.length === 0) return 'warning'; // Pending
-  
-  // Find if any detail has a failing log
-  const hasFail = session.details.some(d => {
-    const latestLog = d.logs && d.logs.length > 0 ? d.logs[d.logs.length - 1] : null;
-    return latestLog?.result === 'fail';
-  });
-  
+
+  const completedLogs = session.details.map(getLatestCompletedLog);
+  if (completedLogs.some(log => !log)) return 'warning';
+
+  const hasFail = completedLogs.some(log => log?.result === 'fail');
   return hasFail ? 'error' : 'success';
 }
 
@@ -165,17 +186,44 @@ function getSessionClass(session: ChecklistSession): string {
 
 function getSessionsForDay(date: Dayjs): ChecklistSession[] {
   const dateStr = date.format('YYYY-MM-DD');
-  return sessions.value.filter(s => s.session_date && s.session_date.startsWith(dateStr));
+  const dailySessions = new Map<string, ChecklistSession>();
+
+  for (const session of sessions.value) {
+    const schedules = session.schedules ?? [];
+    for (const schedule of schedules) {
+      if (!schedule.date.startsWith(dateStr)) {
+        continue;
+      }
+
+      const key = `${session.id}-${dateStr}`;
+      const dailySession = dailySessions.get(key) ?? {
+        ...session,
+        session_date: schedule.date,
+        details: [],
+      };
+
+      dailySession.details?.push({
+        id: schedule.checklist_detail_id,
+        schedule_id: schedule.id,
+        checklist_id: schedule.checklist_id,
+        description: schedule.description,
+        logs: schedule.logs,
+      });
+      dailySessions.set(key, dailySession);
+    }
+  }
+
+  return [...dailySessions.values()];
 }
 
 function openJudgeModal(session: ChecklistSession): void {
   selectedSession.value = session;
   judgeDetails.value = session.details?.map(d => {
-    const latestLog = d.logs && d.logs.length > 0 ? d.logs[d.logs.length - 1] : null;
+    const latestLog = getLatestCompletedLog(d);
     return {
       checklist_id: d.checklist_id,
       description: d.description || '',
-      result: latestLog?.result || 'pass',
+      result: latestLog?.result || 'fail',
     };
   }) || [];
 
@@ -185,7 +233,12 @@ function openJudgeModal(session: ChecklistSession): void {
   } else {
     selectedUserIds.value = [];
   }
-  selectedTimestamp.value = dayjs().format('YYYY-MM-DD HH:mm:ss');
+  selectedTimestamp.value = session.session_date
+    ? dayjs(session.session_date).format('YYYY-MM-DD HH:mm:ss')
+    : dayjs().format('YYYY-MM-DD HH:mm:ss');
+  selectedExecutionDate.value = session.session_date
+    ? dayjs(session.session_date).format('YYYY-MM-DD')
+    : dayjs().format('YYYY-MM-DD');
   isModalOpen.value = true;
 }
 
@@ -194,6 +247,23 @@ async function handleJudgeOk(): Promise<void> {
   submitting.value = true;
 
   try {
+    const scheduleIds = selectedSession.value.details
+      ?.map(detail => detail.schedule_id)
+      .filter((id): id is string => Boolean(id));
+
+    if (scheduleIds && scheduleIds.length > 0) {
+      await axios.put(
+        `${API_BASE_URL}/v1/checklist-sessions/${selectedSession.value.id}`,
+        {
+          schedules: scheduleIds.map(id => ({
+            id,
+            date: selectedExecutionDate.value,
+          })),
+        },
+        { headers: getAuthHeaders() },
+      );
+    }
+
     const payload = {
       session_id: selectedSession.value.id,
       results: judgeDetails.value.map(item => ({
@@ -202,7 +272,9 @@ async function handleJudgeOk(): Promise<void> {
         description: item.description,
       })),
       user_ids: selectedUserIds.value.length > 0 ? selectedUserIds.value : undefined,
-      timestamp: selectedTimestamp.value || undefined,
+      timestamp: selectedExecutionDate.value
+        ? `${selectedExecutionDate.value} ${selectedTimestamp.value.slice(11)}`
+        : undefined,
     };
 
     await axios.post(`${API_BASE_URL}/v1/checklist-sessions/judge`, payload, {
@@ -227,7 +299,14 @@ watch(calendarValue, () => {
 
 function goToDetail(session: ChecklistSession): void {
   if (session && session.id) {
-    router.push({ name: 'OpsCheckListDetail', query: { id: session.id } });
+    router.push({
+      name: 'OpsCheckListDetail',
+      query: {
+        id: session.id,
+        equipment_id: session.equipment_id,
+        date: session.session_date,
+      },
+    });
   }
 }
 
@@ -288,6 +367,20 @@ onMounted(() => {
               {{ selectedSession.equipment?.name || $t('page.ops.unidentified') }}
             </h3>
           </div>
+        </div>
+
+        <!-- Execution date -->
+        <div class="space-y-2 border-t border-border pt-4">
+          <span class="text-xs text-gray-500 font-semibold uppercase tracking-wider block mb-1">
+            {{ $t('page.ops.colDate') }}
+          </span>
+          <DatePicker
+            v-model:value="selectedExecutionDate"
+            value-format="YYYY-MM-DD"
+            format="YYYY-MM-DD"
+            class="w-full"
+            :placeholder="$t('page.ops.placeholderDate')"
+          />
         </div>
 
         <!-- Checklist Item List -->
