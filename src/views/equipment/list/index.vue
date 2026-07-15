@@ -11,11 +11,12 @@ import {
   Tag,
   message,
   Spin,
-  Modal,
 } from 'ant-design-vue';
 import axios from 'axios';
 import { useAccessStore } from '@vben/stores';
 import { API_BASE_URL } from '#/api/config';
+import EquipmentSummaryWidgets from './components/EquipmentSummaryWidgets.vue';
+import EquipmentRelationModal from './components/EquipmentRelationModal.vue';
 
 interface CategoryOption {
   id: string;
@@ -73,9 +74,50 @@ const expandedErrors = ref<Record<string, boolean>>({});
 const expandedParameters = ref<Record<string, boolean>>({});
 
 const showChildrenModal = ref(false);
-const selectedEquipment = ref<EquipmentItem | null>(null);
-const childrenLoading = ref(false);
-const childrenEquipments = ref<EquipmentItem[]>([]);
+const activeEquipmentId = ref<string | null>(null);
+
+// Summary Widgets State
+interface SummaryItem {
+  active?: number;
+  description: string;
+  icon: string;
+  inactive?: number;
+  overdue?: number;
+  title: string;
+  upcoming?: number;
+  value: number | string;
+}
+
+interface DashboardSummary {
+  active_inactive: SummaryItem;
+  maintenance: SummaryItem;
+  total_assets: SummaryItem;
+  with_errors: SummaryItem;
+}
+
+const summaryData = ref<DashboardSummary | null>(null);
+const summaryLoading = ref(false);
+
+async function loadDashboardSummary() {
+  summaryLoading.value = true;
+  try {
+    const res = await axios.get(`${API_BASE_URL}/v1/equipment/dashboard/summary`, {
+      headers: getAuthHeaders(),
+    });
+    if (res.data?.status === 'success' && res.data?.data) {
+      summaryData.value = res.data.data;
+    } else if (res.data?.data) {
+      summaryData.value = res.data.data;
+    } else {
+      summaryData.value = res.data;
+    }
+  } catch {
+    // silently fail
+  } finally {
+    summaryLoading.value = false;
+  }
+}
+
 
 function toggleExpandErrors(id: string) {
   expandedErrors.value[id] = !expandedErrors.value[id];
@@ -243,26 +285,9 @@ function openEditModal(record: EquipmentItem) {
   router.push({ name: 'EquipmentDetail', query: { id: record.id } });
 }
 
-async function openChildrenModal(record: EquipmentItem) {
-  selectedEquipment.value = record;
-  childrenEquipments.value = [];
+function openChildrenModal(record: EquipmentItem) {
+  activeEquipmentId.value = record.id;
   showChildrenModal.value = true;
-  childrenLoading.value = true;
-  try {
-    const res = await axios.get(`${API_BASE_URL}/v1/equipment/${record.id}`, {
-      headers: getAuthHeaders(),
-      params: { include_parent: true, include_children: true },
-    });
-    const fetchedData = res.data?.data ?? res.data;
-    if (fetchedData) {
-      selectedEquipment.value = fetchedData;
-      childrenEquipments.value = fetchedData.children || [];
-    }
-  } catch (err: any) {
-    message.error(err?.response?.data?.message || 'Không thể tải sơ đồ quan hệ thiết bị');
-  } finally {
-    childrenLoading.value = false;
-  }
 }
 
 async function handleDelete(id: string) {
@@ -280,11 +305,20 @@ async function handleDelete(id: string) {
 onMounted(() => {
   loadEquipments();
   loadCategories();
+  loadDashboardSummary();
 });
 </script>
 
 <template>
   <div class="p-6 space-y-4">
+    <!-- Top Widgets Grid -->
+    <div class="mb-4">
+      <EquipmentSummaryWidgets
+        :loading="summaryLoading"
+        :summary="summaryData"
+      />
+    </div>
+
     <!-- Action Bar -->
     <div class="bg-card border border-border rounded-xl p-4 shadow-sm flex flex-nowrap items-center gap-3 overflow-x-auto w-full">
       <Input
@@ -457,99 +491,9 @@ onMounted(() => {
     </div>
 
     <!-- Sub-equipment Modal -->
-    <Modal
+    <EquipmentRelationModal
       v-model:open="showChildrenModal"
-      :title="selectedEquipment ? $t('page.equipment.relationModalTitle', { name: selectedEquipment.name || selectedEquipment.code }) : ''"
-      :footer="null"
-      width="750px"
-      @cancel="showChildrenModal = false"
-    >
-      <Spin :spinning="childrenLoading">
-        <div v-if="selectedEquipment" class="flex flex-col items-center gap-4 py-6 mt-4">
-          <!-- 1. Parent Node Section (Shown only if parent exists) -->
-          <template v-if="selectedEquipment.parent">
-            <div class="w-full max-w-[320px]">
-              <div class="text-center mb-2">
-                <span class="text-xs text-gray-400 font-semibold uppercase tracking-wider">
-                  {{ $t('page.equipment.diagramParent') }}
-                </span>
-              </div>
-              
-              <div class="p-4 bg-zinc-50 border border-zinc-200 rounded-xl shadow-xs text-center relative hover:shadow-sm hover:border-zinc-300 transition-all">
-                <router-link
-                  :to="{ name: 'EquipmentDetail', query: { id: selectedEquipment.parent.id } }"
-                  @click="showChildrenModal = false"
-                  class="block hover:underline group"
-                >
-                  <div class="text-sm font-bold text-zinc-800 group-hover:text-blue-400 transition-colors">{{ selectedEquipment.parent.code }}</div>
-                  <div class="text-xs text-zinc-500 mt-1 break-words group-hover:text-blue-400 transition-colors">{{ selectedEquipment.parent.name || '—' }}</div>
-                </router-link>
-              </div>
-            </div>
-
-            <!-- Connector Line 1: Parent -> Current -->
-            <div class="flex flex-col items-center my-1">
-              <div class="w-0.5 h-6 bg-zinc-300"></div>
-              <div class="text-zinc-400 -mt-1 font-bold text-xs">▼</div>
-            </div>
-          </template>
-
-          <!-- 2. Current Node Section (Always shown) -->
-          <div class="w-full max-w-[340px]">
-            <div class="text-center mb-2">
-              <span class="text-xs text-zinc-500 font-bold uppercase tracking-wider">
-                {{ $t('page.equipment.diagramCurrent') }}
-              </span>
-            </div>
-            
-            <div class="p-4 bg-zinc-50 border-2 border-zinc-400 rounded-xl shadow-xs text-center relative hover:shadow-sm transition-all text-zinc-800">
-              <router-link
-                :to="{ name: 'EquipmentDetail', query: { id: selectedEquipment.id } }"
-                @click="showChildrenModal = false"
-                class="block hover:underline group"
-              >
-                <div class="text-sm font-bold text-zinc-800 group-hover:text-blue-400 transition-colors">{{ selectedEquipment.code }}</div>
-                <div class="text-xs text-zinc-500 mt-1 break-words group-hover:text-blue-400 transition-colors">{{ selectedEquipment.name || '—' }}</div>
-              </router-link>
-            </div>
-          </div>
-
-          <!-- 3. Children Node Section (Shown only if children exist) -->
-          <template v-if="childrenEquipments && childrenEquipments.length > 0">
-            <!-- Connector Line 2: Current -> Children -->
-            <div class="flex flex-col items-center my-1">
-              <div class="w-0.5 h-6 bg-zinc-300"></div>
-              <div class="text-zinc-400 -mt-1 font-bold text-xs">▼</div>
-            </div>
-
-            <div class="w-full">
-              <div class="text-center mb-3">
-                <span class="text-xs text-zinc-400 font-semibold uppercase tracking-wider">
-                  {{ $t('page.equipment.diagramChildren') }}
-                </span>
-              </div>
-
-              <!-- Children list container -->
-              <div class="flex flex-wrap justify-center gap-4 px-4">
-                <div
-                  v-for="child in childrenEquipments"
-                  :key="child.id"
-                  class="p-4 bg-zinc-50 border border-zinc-200 rounded-xl shadow-xs text-center hover:shadow-sm hover:border-zinc-300 transition-all w-[200px] shrink-0"
-                >
-                  <router-link
-                    :to="{ name: 'EquipmentDetail', query: { id: child.id } }"
-                    @click="showChildrenModal = false"
-                    class="block hover:underline group"
-                  >
-                    <div class="text-sm font-bold text-zinc-800 group-hover:text-blue-400 transition-colors">{{ child.code }}</div>
-                    <div class="text-xs text-zinc-500 mt-1 break-words group-hover:text-blue-400 transition-colors">{{ child.name || '—' }}</div>
-                  </router-link>
-                </div>
-              </div>
-            </div>
-          </template>
-        </div>
-      </Spin>
-    </Modal>
+      :equipment-id="activeEquipmentId"
+    />
   </div>
 </template>

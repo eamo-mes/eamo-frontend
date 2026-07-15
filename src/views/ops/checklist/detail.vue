@@ -14,8 +14,7 @@ import {
   Popconfirm,
   message,
   Spin,
-  Card,
-  Tag
+  Card
 } from 'ant-design-vue';
 import axios from 'axios';
 import { useAccessStore, useUserStore } from '@vben/stores';
@@ -53,7 +52,6 @@ const formState = ref({
   equipment_id: undefined as string | undefined,
   user_ids: [] as string[],
   session_date: '',
-  status: 'Pending',
   checklist_details: [] as ChecklistDetailItem[],
 });
 
@@ -109,7 +107,6 @@ async function loadChecklistDetail(id: string) {
         equipment_id: record.equipment_id || undefined,
         user_ids: record.users?.map((u: any) => u.id) || [],
         session_date: record.session_date ? record.session_date.substring(0, 16).replace('T', ' ') : '',
-        status: record.status || 'Pending',
         checklist_details: record.details?.map((detail: any) => ({
           id: detail.id,
           checklist_id: detail.checklist_id,
@@ -117,18 +114,6 @@ async function loadChecklistDetail(id: string) {
           result: detail.result || 'pass',
         })) || [],
       };
-
-      sortChecklistDetails();
-
-      // Calculate status dynamically if not present on model
-      if (!record.status && record.details) {
-        if (record.details.length === 0) {
-          formState.value.status = 'Pending';
-        } else {
-          const hasFail = record.details.some((d: any) => d.result === 'fail');
-          formState.value.status = hasFail ? 'Failed' : 'Passed';
-        }
-      }
     }
   } catch (err: any) {
     message.error(err?.response?.data?.message || 'Không thể tải chi tiết phiên checklist');
@@ -136,14 +121,6 @@ async function loadChecklistDetail(id: string) {
   } finally {
     loading.value = false;
   }
-}
-
-function sortChecklistDetails() {
-  formState.value.checklist_details.sort((a, b) => {
-    if (a.result === 'fail' && b.result !== 'fail') return -1;
-    if (a.result !== 'fail' && b.result === 'fail') return 1;
-    return 0;
-  });
 }
 
 function addDetailRow() {
@@ -353,13 +330,7 @@ onMounted(() => {
             </FormItem>
 
 
-            <FormItem v-if="isEditing" :label="$t('page.ops.colStatus')" name="status" class="col-span-1">
-              <div class="pt-1">
-                <Tag :color="formState.status === 'Passed' ? 'green' : formState.status === 'Failed' ? 'red' : 'blue'">
-                  {{ formState.status }}
-                </Tag>
-              </div>
-            </FormItem>
+
 
             <!-- Checklist Details Dynamic Rows -->
             <div class="col-span-2 border-t border-gray-150 pt-4 mt-2">
@@ -378,20 +349,11 @@ onMounted(() => {
                 <div
                   v-for="(item, index) in formState.checklist_details"
                   :key="item.checklist_id"
-                  class="flex flex-wrap md:flex-nowrap gap-2 items-center p-3 rounded-lg border transition-all duration-200"
-                  :class="item.result === 'fail' ? 'bg-red-50/60 border-red-200' : 'bg-gray-50/50 border-gray-100'"
+                  class="flex flex-wrap md:flex-nowrap gap-2 items-center p-3 rounded-lg border transition-all duration-200 bg-gray-50/50 border-gray-100"
                 >
                   <div class="flex-1 min-w-[200px]">
                     <span class="text-xs text-gray-500 block mb-1 font-medium">{{ $t('page.ops.itemName') }}</span>
                     <Input v-model:value="item.description" :placeholder="$t('page.ops.itemNamePlaceholder')" />
-                  </div>
-
-                  <div class="w-[180px]">
-                    <span class="text-xs text-gray-500 block mb-1 font-medium">{{ $t('page.ops.colStatus') }}</span>
-                    <Select v-model:value="item.result" class="w-full" @change="sortChecklistDetails">
-                      <Select.Option value="pass">Pass (Đạt)</Select.Option>
-                      <Select.Option value="fail">Fail (Lỗi)</Select.Option>
-                    </Select>
                   </div>
 
                   <div class="flex flex-col">

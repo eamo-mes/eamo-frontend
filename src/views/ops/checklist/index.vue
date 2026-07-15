@@ -7,7 +7,6 @@ import {
   Table,
   Input,
   Popconfirm,
-  Tag,
   message,
   Spin,
   Modal,
@@ -18,7 +17,6 @@ import {
 import axios from 'axios';
 import { useAccessStore } from '@vben/stores';
 import { API_BASE_URL } from '#/api/config';
-import ChecklistCharts from './components/ChecklistCharts.vue';
 
 interface EquipmentDetail {
   id: string;
@@ -33,6 +31,12 @@ interface ChecklistDetailItem {
   result: 'pass' | 'fail';
 }
 
+interface UserDetail {
+  id: string;
+  name: string;
+  email: string;
+}
+
 interface ChecklistSession {
   id: string;
   name?: string;
@@ -40,6 +44,7 @@ interface ChecklistSession {
   equipment?: EquipmentDetail | null;
   session_date: string | null;
   details?: ChecklistDetailItem[];
+  users?: UserDetail[];
 }
 
 const router = useRouter();
@@ -62,10 +67,7 @@ const currentPage = ref(1);
 const pageSize = ref(10);
 const total = ref(0);
 
-// Charts States
-const showCharts = ref(false);
-const chartsLoading = ref(false);
-const chartSessions = ref<ChecklistSession[]>([]);
+
 
 // ECharts Refs
 // (Moved to ChecklistCharts component)
@@ -144,27 +146,7 @@ function handleEquipmentFilter(val: unknown) {
   loadSessions(1);
 }
 
-async function loadChartData() {
-  chartsLoading.value = true;
-  try {
-    const res = await axios.get(`${API_BASE_URL}/v1/checklist-sessions?include_details=true&per_page=1000`, {
-      headers: getAuthHeaders(),
-    });
-    const raw = res.data?.data ?? res.data ?? [];
-    chartSessions.value = Array.isArray(raw) ? raw : [];
-  } catch (err: any) {
-    message.error($t('page.ops.chartLoadError'));
-  } finally {
-    chartsLoading.value = false;
-  }
-}
 
-async function toggleCharts() {
-  showCharts.value = !showCharts.value;
-  if (showCharts.value) {
-    await loadChartData();
-  }
-}
 
 function handleSearch() {
   activeSearch.value = searchVal.value;
@@ -193,11 +175,6 @@ const filteredSessions = computed(() => sessions.value);
 
 const columns = computed(() => [
   {
-    title: $t('page.ops.colName'),
-    dataIndex: 'name',
-    key: 'name',
-  },
-  {
     title: $t('page.ops.colEquipment'),
     dataIndex: 'equipment_id',
     key: 'equipment',
@@ -213,13 +190,8 @@ const columns = computed(() => [
     },
   },
   {
-    title: $t('page.ops.colStatus'),
-    key: 'status',
-    sorter: (a: any, b: any) => {
-      const statusA = getSessionStatusText(a);
-      const statusB = getSessionStatusText(b);
-      return statusA.localeCompare(statusB);
-    },
+    title: $t('page.ops.colCreatedBy'),
+    key: 'created_by',
   },
   {
     title: $t('page.ops.colActions'),
@@ -246,9 +218,6 @@ async function handleDelete(id: string) {
     });
     message.success('Xóa phiên kiểm tra thành công');
     await loadSessions();
-    if (showCharts.value) {
-      await loadChartData();
-    }
   } catch (err: any) {
     message.error(err?.response?.data?.message || 'Không thể xóa phiên kiểm tra');
   } finally {
@@ -287,9 +256,6 @@ async function handleJudgeOk() {
     message.success('Đánh giá phiên kiểm tra thành công');
     isJudgeModalOpen.value = false;
     await loadSessions();
-    if (showCharts.value) {
-      await loadChartData();
-    }
   } catch (err: any) {
     message.error(err?.response?.data?.message || 'Đánh giá phiên kiểm tra thất bại');
   } finally {
@@ -314,12 +280,7 @@ function getSessionStatusText(record: any) {
   return hasFail ? 'Failed' : 'Passed';
 }
 
-function getSessionStatusColor(record: any) {
-  const status = getSessionStatusText(record);
-  if (status === 'Passed') return 'green';
-  if (status === 'Failed') return 'red';
-  return 'blue';
-}
+
 
 // (Charts rendering moved to ChecklistCharts component)
 
@@ -331,10 +292,6 @@ onMounted(() => {
 
 <template>
   <div class="p-6 space-y-4">
-    <!-- Dashboard Charts -->
-    <div v-if="showCharts" class="mb-4">
-      <ChecklistCharts :sessions="chartSessions" :loading="chartsLoading" />
-    </div>
 
     <!-- Action Bar -->
     <div class="bg-card border border-border rounded-xl p-4 shadow-sm flex flex-nowrap items-center gap-3 overflow-x-auto">
@@ -387,9 +344,6 @@ onMounted(() => {
         {{ $t('page.company.btnReset') }}
       </Button>
       <div class="ml-auto flex gap-2 shrink-0">
-        <Button type="default" @click="toggleCharts" :class="{ 'border-primary text-primary': showCharts }">
-          {{ showCharts ? $t('page.ops.btnHideCharts') : $t('page.ops.btnShowCharts') }}
-        </Button>
         <Button
           type="primary"
           class="bg-[#5c3e35] hover:bg-[#4b332b] border-[#5c3e35] rounded-md font-medium text-white h-full"
@@ -433,10 +387,8 @@ onMounted(() => {
               <span>{{ formatDate(record.session_date) }}</span>
             </template>
 
-            <template v-else-if="column.key === 'status'">
-              <Tag :color="getSessionStatusColor(record)">
-                {{ getSessionStatusText(record) }}
-              </Tag>
+            <template v-else-if="column.key === 'created_by'">
+              <span>{{ record.users && record.users.length > 0 ? record.users.map((u: any) => u.name).join(', ') : '—' }}</span>
             </template>
 
             <template v-else-if="column.key === 'actions'">
