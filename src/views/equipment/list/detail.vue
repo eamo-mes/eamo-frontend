@@ -53,9 +53,27 @@ const submitting = ref(false);
 const isEditing = ref(false);
 const editId = ref<string | null>(null);
 
+interface EquipmentListItem {
+  id: string;
+  code: string;
+  name: string | null;
+}
+
 const categories = ref<CategoryOption[]>([]);
 const errorsList = ref<ErrorOption[]>([]);
 const units = ref<UnitOption[]>([]);
+const allEquipments = ref<EquipmentListItem[]>([]);
+const initialChildIds = ref<string[]>([]);
+
+const parentOptions = computed(() => {
+  return allEquipments.value.filter(eq => eq.id !== editId.value);
+});
+
+const childrenOptions = computed(() => {
+  return allEquipments.value.filter(
+    eq => eq.id !== editId.value && eq.id !== formState.value.parent_id
+  );
+});
 
 const formState = ref({
   code: '',
@@ -65,6 +83,8 @@ const formState = ref({
   maintenance_interval_hours: undefined as number | undefined,
   equipment_error_ids: [] as string[],
   equipment_parameters: [] as { id?: string; code: string; name: string; unit_id: string | undefined; standard?: number; standard_max?: number; standard_min?: number }[],
+  parent_id: undefined as string | undefined,
+  child_ids: [] as string[],
 });
 
 const existingImages = ref<EquipmentImageOption[]>([]);
@@ -136,11 +156,25 @@ async function loadErrors() {
   }
 }
 
+async function loadAllEquipments() {
+  try {
+    const res = await axios.get(`${API_BASE_URL}/v1/equipment`, {
+      headers: getAuthHeaders(),
+      params: { per_page: 1000 },
+    });
+    const raw = res.data?.data ?? res.data ?? [];
+    allEquipments.value = Array.isArray(raw) ? raw : [];
+  } catch {
+    // silently fail
+  }
+}
+
 async function loadEquipmentDetail(id: string) {
   loading.value = true;
   try {
     const res = await axios.get(`${API_BASE_URL}/v1/equipment/${id}`, {
       headers: getAuthHeaders(),
+      params: { include_children: true },
     });
     const record = res.data?.data ?? res.data;
     if (record) {
@@ -160,7 +194,10 @@ async function loadEquipmentDetail(id: string) {
           standard_max: param.standard_max ?? undefined,
           standard_min: param.standard_min ?? undefined,
         })) || [],
+        parent_id: record.parent_id || undefined,
+        child_ids: record.children?.map((child: any) => child.id) || [],
       };
+      initialChildIds.value = record.children?.map((child: any) => child.id) || [];
       existingImages.value = record.equipment_images ? [...record.equipment_images] : [];
     }
   } catch (err: any) {
@@ -272,6 +309,11 @@ function buildBaseFormData() {
   if (formState.value.maintenance_interval_hours !== undefined && formState.value.maintenance_interval_hours !== null) {
     fd.append('maintenance_interval_hours', String(formState.value.maintenance_interval_hours));
   }
+  if (formState.value.parent_id !== undefined && formState.value.parent_id !== null) {
+    fd.append('parent_id', formState.value.parent_id);
+  } else {
+    fd.append('parent_id', '');
+  }
   
   formState.value.equipment_error_ids.forEach(errId => {
     fd.append('equipment_error_ids[]', errId);
@@ -379,6 +421,39 @@ async function handleSubmit() {
         }
       }
     }
+
+    // 3. Update child relationships if currentEquipmentId is set
+    if (currentEquipmentId) {
+      const addedChildren = formState.value.child_ids.filter(id => !initialChildIds.value.includes(id));
+      const removedChildren = initialChildIds.value.filter(id => !formState.value.child_ids.includes(id));
+
+      const childUpdatePromises: Promise<any>[] = [];
+      
+      addedChildren.forEach(childId => {
+        childUpdatePromises.push(
+          axios.patch(
+            `${API_BASE_URL}/v1/equipment/${childId}/parent`,
+            { parent_id: currentEquipmentId },
+            { headers: getAuthHeaders() }
+          )
+        );
+      });
+
+      removedChildren.forEach(childId => {
+        childUpdatePromises.push(
+          axios.patch(
+            `${API_BASE_URL}/v1/equipment/${childId}/parent`,
+            { parent_id: null },
+            { headers: getAuthHeaders() }
+          )
+        );
+      });
+
+      if (childUpdatePromises.length > 0) {
+        await Promise.all(childUpdatePromises);
+      }
+    }
+
     if (!isEditing.value && currentEquipmentId) {
       router.replace({ name: 'EquipmentDetail', query: { id: currentEquipmentId } });
     }
@@ -402,6 +477,7 @@ onMounted(() => {
   loadCategories();
   loadErrors();
   loadUnits();
+  loadAllEquipments();
 
   const id = route.query.id as string;
   if (id) {
@@ -429,7 +505,7 @@ onMounted(() => {
     <!-- Header -->
     <div class="flex items-center justify-between bg-card border border-border rounded-xl p-4 shadow-sm">
       <div class="flex items-center gap-3">
-        <Button class="flex items-center justify-center" @click="goBack">
+        <Button class="flex items-center justify-center mr-3" @click="goBack">
           <ChevronLeft class="size-5" />
         </Button>
         <h1 class="text-xl font-bold text-gray-800 m-0">
@@ -481,6 +557,35 @@ onMounted(() => {
                 style="width: 100%"
               />
             </FormItem>
+            <FormItem :label="$t('page.equipment.colParent')" name="parent_id" class="col-span-1">
+              <Select
+                v-model:value="formState.parent_id"
+                :placeholder="$t('page.equipment.placeholderParent')"
+                allow-clear
+                show-search
+                option-filter-prop="label"
+              >
+                <Select.Option v-for="eq in parentOptions" :key="eq.id" :value="eq.id" :label="eq.name || eq.code">
+                  {{ eq.name ? `${eq.name} (${eq.code})` : eq.code }}
+                </Select.Option>
+              </Select>
+            </FormItem>
+
+            <FormItem :label="$t('page.equipment.colChildren')" name="child_ids" class="col-span-1">
+              <Select
+                v-model:value="formState.child_ids"
+                mode="multiple"
+                :placeholder="$t('page.equipment.placeholderChildren')"
+                allow-clear
+                show-search
+                option-filter-prop="label"
+              >
+                <Select.Option v-for="eq in childrenOptions" :key="eq.id" :value="eq.id" :label="eq.name || eq.code">
+                  {{ eq.name ? `${eq.name} (${eq.code})` : eq.code }}
+                </Select.Option>
+              </Select>
+            </FormItem>
+
             <FormItem :label="$t('page.equipment.colActive')" name="is_active" class="col-span-2">
               <Switch v-model:checked="formState.is_active" />
             </FormItem>

@@ -11,6 +11,7 @@ import {
   Tag,
   message,
   Spin,
+  Modal,
 } from 'ant-design-vue';
 import axios from 'axios';
 import { useAccessStore } from '@vben/stores';
@@ -56,6 +57,9 @@ interface EquipmentItem {
   equipment_errors?: ErrorOption[];
   equipment_parameters?: ParameterItem[];
   checklist_details_count?: number;
+  parent_id?: string | null;
+  children?: EquipmentItem[];
+  parent?: EquipmentItem | null;
 }
 
 const router = useRouter();
@@ -67,6 +71,11 @@ const activeSearch = ref('');
 
 const expandedErrors = ref<Record<string, boolean>>({});
 const expandedParameters = ref<Record<string, boolean>>({});
+
+const showChildrenModal = ref(false);
+const selectedEquipment = ref<EquipmentItem | null>(null);
+const childrenLoading = ref(false);
+const childrenEquipments = ref<EquipmentItem[]>([]);
 
 function toggleExpandErrors(id: string) {
   expandedErrors.value[id] = !expandedErrors.value[id];
@@ -220,7 +229,7 @@ const columns = computed(() => [
   {
     title: $t('page.equipment.colActions'),
     key: 'actions',
-    width: 160,
+    width: 280,
     align: 'right' as const,
     fixed: 'right' as const,
   },
@@ -232,6 +241,28 @@ function openAddModal() {
 
 function openEditModal(record: EquipmentItem) {
   router.push({ name: 'EquipmentDetail', query: { id: record.id } });
+}
+
+async function openChildrenModal(record: EquipmentItem) {
+  selectedEquipment.value = record;
+  childrenEquipments.value = [];
+  showChildrenModal.value = true;
+  childrenLoading.value = true;
+  try {
+    const res = await axios.get(`${API_BASE_URL}/v1/equipment/${record.id}`, {
+      headers: getAuthHeaders(),
+      params: { include_parent: true, include_children: true },
+    });
+    const fetchedData = res.data?.data ?? res.data;
+    if (fetchedData) {
+      selectedEquipment.value = fetchedData;
+      childrenEquipments.value = fetchedData.children || [];
+    }
+  } catch (err: any) {
+    message.error(err?.response?.data?.message || 'Không thể tải sơ đồ quan hệ thiết bị');
+  } finally {
+    childrenLoading.value = false;
+  }
 }
 
 async function handleDelete(id: string) {
@@ -330,7 +361,7 @@ onMounted(() => {
               </Tag>
             </template>
             <template v-else-if="column.key === 'maintenance_interval_hours'">
-              <span>{{ record.maintenance_interval_hours !== null && record.maintenance_interval_hours !== undefined ? record.maintenance_interval_hours : '—' }}</span>
+              <span>{{ record.maintenance_interval_hours !== null && record.maintenance_interval_hours !== undefined ? `${record.maintenance_interval_hours} hrs` : '—' }}</span>
             </template>
             <template v-else-if="column.key === 'equipment_errors'">
                <div class="flex flex-col gap-1 max-w-[260px]">
@@ -389,13 +420,20 @@ onMounted(() => {
                <span>{{ record.checklist_details_count ?? 0 }}</span>
              </template>
              <template v-else-if="column.key === 'actions'">
-              <div class="space-x-2">
+              <div class="flex items-center justify-end gap-2 whitespace-nowrap">
                 <Button
                   size="small"
                   class="rounded hover:border-primary hover:text-primary"
                   @click="openEditModal(record as EquipmentItem)"
                 >
                   {{ $t('page.company.btnEdit') }}
+                </Button>
+                <Button
+                  size="small"
+                  class="rounded hover:border-primary hover:text-primary"
+                  @click="openChildrenModal(record as EquipmentItem)"
+                >
+                  {{ $t('page.equipment.btnChildren') }}
                 </Button>
                 <Popconfirm
                   :title="$t('page.company.deleteConfirm')"
@@ -417,5 +455,101 @@ onMounted(() => {
         </Table>
       </Spin>
     </div>
+
+    <!-- Sub-equipment Modal -->
+    <Modal
+      v-model:open="showChildrenModal"
+      :title="selectedEquipment ? $t('page.equipment.relationModalTitle', { name: selectedEquipment.name || selectedEquipment.code }) : ''"
+      :footer="null"
+      width="750px"
+      @cancel="showChildrenModal = false"
+    >
+      <Spin :spinning="childrenLoading">
+        <div v-if="selectedEquipment" class="flex flex-col items-center gap-4 py-6 mt-4">
+          <!-- 1. Parent Node Section (Shown only if parent exists) -->
+          <template v-if="selectedEquipment.parent">
+            <div class="w-full max-w-[320px]">
+              <div class="text-center mb-2">
+                <span class="text-xs text-gray-400 font-semibold uppercase tracking-wider">
+                  {{ $t('page.equipment.diagramParent') }}
+                </span>
+              </div>
+              
+              <div class="p-4 bg-zinc-50 border border-zinc-200 rounded-xl shadow-xs text-center relative hover:shadow-sm hover:border-zinc-300 transition-all">
+                <router-link
+                  :to="{ name: 'EquipmentDetail', query: { id: selectedEquipment.parent.id } }"
+                  @click="showChildrenModal = false"
+                  class="block hover:underline group"
+                >
+                  <div class="text-sm font-bold text-zinc-800 group-hover:text-blue-400 transition-colors">{{ selectedEquipment.parent.code }}</div>
+                  <div class="text-xs text-zinc-500 mt-1 break-words group-hover:text-blue-400 transition-colors">{{ selectedEquipment.parent.name || '—' }}</div>
+                </router-link>
+              </div>
+            </div>
+
+            <!-- Connector Line 1: Parent -> Current -->
+            <div class="flex flex-col items-center my-1">
+              <div class="w-0.5 h-6 bg-zinc-300"></div>
+              <div class="text-zinc-400 -mt-1 font-bold text-xs">▼</div>
+            </div>
+          </template>
+
+          <!-- 2. Current Node Section (Always shown) -->
+          <div class="w-full max-w-[340px]">
+            <div class="text-center mb-2">
+              <span class="text-xs text-zinc-500 font-bold uppercase tracking-wider">
+                {{ $t('page.equipment.diagramCurrent') }}
+              </span>
+            </div>
+            
+            <div class="p-4 bg-zinc-50 border-2 border-zinc-400 rounded-xl shadow-xs text-center relative hover:shadow-sm transition-all text-zinc-800">
+              <router-link
+                :to="{ name: 'EquipmentDetail', query: { id: selectedEquipment.id } }"
+                @click="showChildrenModal = false"
+                class="block hover:underline group"
+              >
+                <div class="text-sm font-bold text-zinc-800 group-hover:text-blue-400 transition-colors">{{ selectedEquipment.code }}</div>
+                <div class="text-xs text-zinc-500 mt-1 break-words group-hover:text-blue-400 transition-colors">{{ selectedEquipment.name || '—' }}</div>
+              </router-link>
+            </div>
+          </div>
+
+          <!-- 3. Children Node Section (Shown only if children exist) -->
+          <template v-if="childrenEquipments && childrenEquipments.length > 0">
+            <!-- Connector Line 2: Current -> Children -->
+            <div class="flex flex-col items-center my-1">
+              <div class="w-0.5 h-6 bg-zinc-300"></div>
+              <div class="text-zinc-400 -mt-1 font-bold text-xs">▼</div>
+            </div>
+
+            <div class="w-full">
+              <div class="text-center mb-3">
+                <span class="text-xs text-zinc-400 font-semibold uppercase tracking-wider">
+                  {{ $t('page.equipment.diagramChildren') }}
+                </span>
+              </div>
+
+              <!-- Children list container -->
+              <div class="flex flex-wrap justify-center gap-4 px-4">
+                <div
+                  v-for="child in childrenEquipments"
+                  :key="child.id"
+                  class="p-4 bg-zinc-50 border border-zinc-200 rounded-xl shadow-xs text-center hover:shadow-sm hover:border-zinc-300 transition-all w-[200px] shrink-0"
+                >
+                  <router-link
+                    :to="{ name: 'EquipmentDetail', query: { id: child.id } }"
+                    @click="showChildrenModal = false"
+                    class="block hover:underline group"
+                  >
+                    <div class="text-sm font-bold text-zinc-800 group-hover:text-blue-400 transition-colors">{{ child.code }}</div>
+                    <div class="text-xs text-zinc-500 mt-1 break-words group-hover:text-blue-400 transition-colors">{{ child.name || '—' }}</div>
+                  </router-link>
+                </div>
+              </div>
+            </div>
+          </template>
+        </div>
+      </Spin>
+    </Modal>
   </div>
 </template>
