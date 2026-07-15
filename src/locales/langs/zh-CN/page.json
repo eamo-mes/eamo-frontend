@@ -497,7 +497,21 @@
     "importChangeFile": "Thay đổi tệp",
     "importConfirm": "Xác nhận nhập",
     "importDateNoteTitle": "Lưu ý về định dạng ngày giờ:",
-    "importDateNoteDesc": "Đối với Excel, định dạng cột dưới dạng ô Date/Time chuẩn. Đối với CSV/văn bản, sử dụng định dạng: YYYY-MM-DD HH:mm:ss (ví dụ: 2026-07-14 08:00:00) hoặc YYYY-MM-DD HH:mm (ví dụ: 2026-07-14 08:00).",
-    "importEquipIdDesc": "Từ đồng nghĩa: equipment_id, equipment id, mã thiết bị. Giá trị: Nhập Mã thiết bị (eamo_equipment.code, ví dụ: CNC-HAAS-VF2) thay cho chuỗi UUID."
+    "importDateNoteDesc": "Lưu ý về định dạng ngày giờ: Đối với Excel, định dạng cột dưới dạng ô Date/Time chuẩn. Đối với CSV/văn bản, sử dụng định dạng: YYYY-MM-DD HH:mm:ss (ví dụ: 2026-07-14 08:00:00) hoặc YYYY-MM-DD HH:mm (ví dụ: 2026-07-14 08:00).",
+    "importEquipIdDesc": "Từ đồng nghĩa: equipment_id, equipment id, mã thiết bị. Giá trị: Nhập Mã thiết bị (eamo_equipment.code, ví dụ: CNC-HAAS-VF2) thay cho chuỗi UUID.",
+    "checklistCalendarTitle": "Lịch vận hành & checklist thiết bị",
+    "btnReloadCalendar": "Tải lại lịch",
+    "loadChecklistError": "Không thể tải dữ liệu lịch kiểm tra",
+    "statusPassed": "Đạt",
+    "statusFailed": "Lỗi",
+    "statusPending": "Chờ",
+    "judgeChecklistTitle": "Đánh giá checklist: {name}",
+    "placeholderItemDescription": "Mô tả/lý do chi tiết nếu cần",
+    "checkerLabel": "Người thực hiện kiểm tra",
+    "placeholderSelectChecker": "Chọn người nhập kết quả",
+    "judgeTimeLabel": "Thời gian đánh giá",
+    "placeholderSelectTime": "Chọn thời gian",
+    "judgeSuccess": "Đánh giá checklist thành công",
+    "judgeError": "Đánh giá checklist thất bại"
   }
 }

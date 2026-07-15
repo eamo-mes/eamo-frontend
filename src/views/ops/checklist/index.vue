@@ -17,6 +17,8 @@ import {
 import axios from 'axios';
 import { useAccessStore } from '@vben/stores';
 import { API_BASE_URL } from '#/api/config';
+import ChecklistCalendar from './components/ChecklistCalendar.vue';
+import ChecklistCharts from './components/ChecklistCharts.vue';
 
 interface EquipmentDetail {
   id: string;
@@ -78,6 +80,40 @@ const submittingJudge = ref(false);
 const selectedSession = ref<ChecklistSession | null>(null);
 const judgeDetails = ref<any[]>([]);
 
+const showCalendar = ref(false);
+const showCharts = ref(false);
+const chartStats = ref<any>(null);
+const chartsLoading = ref(false);
+
+async function loadChartData() {
+  chartsLoading.value = true;
+  try {
+    const params: Record<string, string> = {};
+    if (startDate.value) {
+      params['start_date'] = startDate.value;
+    }
+    if (endDate.value) {
+      params['end_date'] = endDate.value;
+    }
+    const res = await axios.get(`${API_BASE_URL}/v1/checklist-sessions/equipment-status`, {
+      headers: getAuthHeaders(),
+      params,
+    });
+    chartStats.value = res.data;
+  } catch {
+    message.error($t('page.ops.chartLoadError'));
+  } finally {
+    chartsLoading.value = false;
+  }
+}
+
+async function toggleCharts() {
+  showCharts.value = !showCharts.value;
+  if (showCharts.value) {
+    await loadChartData();
+  }
+}
+
 function getAuthHeaders() {
   const accessStore = useAccessStore();
   return {
@@ -128,6 +164,9 @@ async function loadSessions(page = currentPage.value, size = pageSize.value) {
     // Read pagination meta from response
     total.value = res.data?.total ?? sessions.value.length;
     currentPage.value = res.data?.current_page ?? page;
+    if (showCharts.value) {
+      loadChartData();
+    }
   } catch (err: any) {
     message.error(err?.response?.data?.message || 'Không thể tải danh sách phiên kiểm tra');
   } finally {
@@ -292,6 +331,12 @@ onMounted(() => {
 
 <template>
   <div class="p-6 space-y-4">
+    <!-- Chart Panel -->
+    <ChecklistCharts
+      v-if="showCharts"
+      :stats="chartStats"
+      :loading="chartsLoading"
+    />
 
     <!-- Action Bar -->
     <div class="bg-card border border-border rounded-xl p-4 shadow-sm flex flex-nowrap items-center gap-3 overflow-x-auto">
@@ -345,6 +390,21 @@ onMounted(() => {
       </Button>
       <div class="ml-auto flex gap-2 shrink-0">
         <Button
+          type="default"
+          class="rounded-md font-medium h-full"
+          :class="{ 'border-[#5c3e35] text-[#5c3e35]': showCharts }"
+          @click="toggleCharts"
+        >
+          {{ showCharts ? $t('page.ops.btnHideCharts') : $t('page.ops.btnShowCharts') }}
+        </Button>
+        <Button
+          type="default"
+          class="rounded-md font-medium h-full"
+          @click="showCalendar = !showCalendar"
+        >
+          {{ showCalendar ? $t('page.ops.btnListView') : $t('page.ops.btnCalendarView') }}
+        </Button>
+        <Button
           type="primary"
           class="bg-[#5c3e35] hover:bg-[#4b332b] border-[#5c3e35] rounded-md font-medium text-white h-full"
           @click="openAddPage"
@@ -354,8 +414,15 @@ onMounted(() => {
       </div>
     </div>
 
+    <!-- Calendar Component -->
+    <ChecklistCalendar
+      v-if="showCalendar"
+      :equipments="equipments"
+      @refresh-list="loadSessions"
+    />
+
     <!-- Table -->
-    <div class="bg-card border border-border rounded-xl shadow-sm overflow-hidden">
+    <div v-else class="bg-card border border-border rounded-xl shadow-sm overflow-hidden">
       <Spin :spinning="loading">
         <Table
           :columns="columns"
