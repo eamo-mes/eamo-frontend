@@ -56,7 +56,7 @@
     "@vitejs/plugin-vue-jsx": "catalog:",
     "tailwindcss": "catalog:",
     "typescript": "catalog:",
-    "vite": "8.0.10",
+    "vite": "8.1.5",
     "vue-tsc": "catalog:"
   }
 }
