@@ -107,14 +107,13 @@ async function loadUsers() {
   }
 }
 
-async function loadChecklistDetail(id: string, equipmentId?: string, date?: string) {
+async function loadChecklistDetail(id: string) {
   loading.value = true;
   try {
+    // Editing should load the session template by id.
+    // The daily endpoint depends on generated schedules for a specific date and can 404
+    // even when the session itself exists.
     let url = `${API_BASE_URL}/v1/checklist-sessions/${id}?include_details=true`;
-    if (equipmentId && date) {
-      const cleanDate = date.substring(0, 10);
-      url = `${API_BASE_URL}/v1/checklist-sessions/daily?equipment_id=${equipmentId}&date=${cleanDate}`;
-    }
     const res = await axios.get(url, {
       headers: getAuthHeaders(),
     });
@@ -259,8 +258,6 @@ function handleCalendarRefresh() {
   if (editId.value && formState.value.equipment_id) {
     loadChecklistDetail(
       editId.value,
-      formState.value.equipment_id,
-      formState.value.session_date,
     );
   }
 }
@@ -270,12 +267,10 @@ onMounted(() => {
   loadUsers();
 
   const id = route.query.id as string;
-  const equipmentId = route.query.equipment_id as string;
-  const date = route.query.date as string;
   if (id) {
     isEditing.value = true;
     editId.value = id;
-    loadChecklistDetail(id, equipmentId, date);
+    loadChecklistDetail(id);
   } else {
     isEditing.value = false;
     editId.value = null;
@@ -413,7 +408,7 @@ onMounted(() => {
                 </div>
               </div>
 
-              <div class="px-3 py-2">
+              <div class="py-2">
                 <div v-if="formState.checklist_details.length === 0" class="py-5 text-center text-sm text-muted-foreground">
                   {{ $t('page.ops.noDetailItems') }}
                 </div>
@@ -424,9 +419,6 @@ onMounted(() => {
                     :key="item.checklist_id"
                     class="flex items-center gap-3 py-2 first:pt-0 last:pb-0"
                   >
-                    <span class="w-5 shrink-0 text-right text-xs tabular-nums text-muted-foreground">
-                      {{ index + 1 }}
-                    </span>
                     <Input
                       v-model:value="item.description"
                       class="flex-1"

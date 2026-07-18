@@ -667,49 +667,54 @@ onMounted(() => {
             </FormItem>
 
             <!-- Parameters Dynamic List -->
-            <div class="col-span-2 border-t border-gray-150 pt-4 mt-2">
-              <div class="flex items-center justify-between mb-3">
-                <span class="font-semibold text-gray-700">{{ $t('page.equipment.parametersTitle') }}</span>
-                <Button type="dashed" size="small" @click="addParameterRow">
-                  {{ $t('page.equipment.btnAddParameter') }}
-                </Button>
+            <div class="col-span-2 mt-2 pt-2">
+              <div class="mb-3 flex items-end justify-between gap-3">
+                <div>
+                  <div class="font-semibold text-foreground">
+                    {{ $t('page.equipment.parametersTitle') }}
+                  </div>
+                </div>
               </div>
-              <div v-if="formState.equipment_parameters.length === 0" class="text-center py-4 text-gray-400 bg-gray-50 rounded-lg border border-dashed border-gray-200">
+              <div v-if="formState.equipment_parameters.length === 0" class="py-5 text-center text-sm text-muted-foreground">
                 {{ $t('page.equipment.noParameters') }}
               </div>
-              <div v-else class="space-y-3">
-                <div v-for="(param, index) in formState.equipment_parameters" :key="index" class="flex flex-wrap md:flex-nowrap gap-2 items-end bg-gray-50/50 p-3 rounded-lg border border-gray-100">
+              <div v-else class="max-h-[320px] divide-y divide-border overflow-y-auto">
+                <div v-for="(param, index) in formState.equipment_parameters" :key="index" class="flex flex-wrap items-end gap-2 py-3 first:pt-0 last:pb-0">
                   <div class="flex-1 min-w-[150px]">
-                    <span class="text-xs text-gray-500 block mb-1 font-medium">Mã thông số</span>
-                    <Input v-model:value="param.code" placeholder="Mã thông số" />
+                    <span class="text-xs text-gray-500 block mb-1 font-medium">{{ $t('page.equipment.parameterCode') }}</span>
+                    <Input v-model:value="param.code" :placeholder="$t('page.equipment.parameterCode')" />
                   </div>
                   <div class="w-[120px]">
-                    <span class="text-xs text-gray-500 block mb-1 font-medium">Tiêu chuẩn</span>
-                    <InputNumber v-model:value="param.standard" placeholder="Tiêu chuẩn" class="w-full" />
+                    <span class="text-xs text-gray-500 block mb-1 font-medium">{{ $t('page.equipment.parameterStandard') }}</span>
+                    <InputNumber v-model:value="param.standard" :placeholder="$t('page.equipment.parameterStandard')" class="w-full" />
                   </div>
                   <div class="w-[120px]">
-                    <span class="text-xs text-gray-500 block mb-1 font-medium">Tối thiểu</span>
-                    <InputNumber v-model:value="param.standard_min" placeholder="Tối thiểu" class="w-full" />
+                    <span class="text-xs text-gray-500 block mb-1 font-medium">{{ $t('page.equipment.parameterMin') }}</span>
+                    <InputNumber v-model:value="param.standard_min" :placeholder="$t('page.equipment.parameterMin')" class="w-full" />
                   </div>
                   <div class="w-[120px]">
-                    <span class="text-xs text-gray-500 block mb-1 font-medium">Tối đa</span>
-                    <InputNumber v-model:value="param.standard_max" placeholder="Tối đa" class="w-full" />
+                    <span class="text-xs text-gray-500 block mb-1 font-medium">{{ $t('page.equipment.parameterMax') }}</span>
+                    <InputNumber v-model:value="param.standard_max" :placeholder="$t('page.equipment.parameterMax')" class="w-full" />
                   </div>
                   <div class="w-[180px]">
-                    <span class="text-xs text-gray-500 block mb-1 font-medium">Đơn vị</span>
-                    <Select v-model:value="param.unit_id" placeholder="Đơn vị" class="w-full" allow-clear>
+                    <span class="text-xs text-gray-500 block mb-1 font-medium">{{ $t('page.equipment.parameterUnit') }}</span>
+                    <Select v-model:value="param.unit_id" :placeholder="$t('page.equipment.parameterUnit')" class="w-full" allow-clear>
                       <Select.Option v-for="u in units" :key="u.id" :value="u.id">
                         {{ u.name }} ({{ u.code }})
                       </Select.Option>
                     </Select>
                   </div>
-                  <div>
-                    <Button type="text" danger @click="removeParameterRow(index)">
-                      Xóa
+                  <div class="pb-1">
+                    <Button type="text" danger class="shrink-0 px-2" @click="removeParameterRow(index)">
+                      {{ $t('page.equipment.btnDeleteParameter') }}
                     </Button>
                   </div>
                 </div>
               </div>
+
+              <Button type="dashed" block class="mt-3" @click="addParameterRow">
+                {{ $t('page.equipment.btnAddParameter') }}
+              </Button>
             </div>
           </div>
         </Form>

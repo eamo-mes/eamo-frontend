@@ -1,7 +1,6 @@
 <script lang="ts" setup>
 import { computed } from 'vue';
 import { Statistic, Skeleton } from 'ant-design-vue';
-import { IconifyIcon } from '@vben/icons';
 import { $t } from '#/locales';
 
 interface SummaryItem {
@@ -43,21 +42,6 @@ const errorsRate = computed(() => percentage(errorsCount.value, totalAssets.valu
 const maintenanceTotal = computed(() => overdueCount.value + upcomingCount.value);
 const overdueRate = computed(() => percentage(overdueCount.value, maintenanceTotal.value));
 
-function iconFor(name: string): string {
-  switch (name) {
-    case 'DatabaseOutlined':
-      return 'ant-design:database-outlined';
-    case 'CheckCircleOutlined':
-      return 'ant-design:check-circle-outlined';
-    case 'WarningOutlined':
-      return 'ant-design:warning-outlined';
-    case 'ClockCircleOutlined':
-      return 'ant-design:clock-circle-outlined';
-    default:
-      return 'ant-design:info-circle-outlined';
-  }
-}
-
 function titleFor(key: string): string {
   switch (key) {
     case 'total_assets':
@@ -78,7 +62,7 @@ function titleFor(key: string): string {
   <div class="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
     <!-- 1. Active / Inactive -->
     <div
-      class="bg-card border border-border rounded-xl shadow-sm p-5 flex flex-col gap-3 transition-all duration-300 hover:-translate-y-0.5 hover:shadow-md text-foreground"
+      class="bg-card border border-border rounded-xl shadow-sm p-5 flex flex-col gap-3 transition-all duration-300"
     >
       <Skeleton :loading="loading" :paragraph="{ rows: 2 }" active>
         <div class="flex items-center justify-between">
@@ -127,7 +111,7 @@ function titleFor(key: string): string {
 
     <!-- 3. With Errors -->
     <div
-      class="bg-card border border-border rounded-xl shadow-sm p-5 flex flex-col gap-3 transition-all duration-300 hover:-translate-y-0.5 hover:shadow-md text-foreground"
+      class="bg-card border border-border rounded-xl shadow-sm p-5 flex flex-col gap-3 transition-all duration-300"
     >
       <Skeleton :loading="loading" :paragraph="{ rows: 2 }" active>
         <div class="flex items-center justify-between">
@@ -162,7 +146,7 @@ function titleFor(key: string): string {
 
     <!-- 4. Maintenance -->
     <div
-      class="bg-card border border-border rounded-xl shadow-sm p-5 flex flex-col gap-3 transition-all duration-300 hover:-translate-y-0.5 hover:shadow-md text-foreground"
+      class="bg-card border border-border rounded-xl shadow-sm p-5 flex flex-col gap-3 transition-all duration-300"
     >
       <Skeleton :loading="loading" :paragraph="{ rows: 2 }" active>
         <div class="flex items-center justify-between">

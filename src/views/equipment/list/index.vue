@@ -1,6 +1,7 @@
 <script lang="ts" setup>
 import { ref, computed, onMounted } from 'vue';
 import { useRouter } from 'vue-router';
+import { Eye, EyeOff } from '@vben/icons';
 import { $t } from '#/locales';
 import {
   Button,
@@ -97,6 +98,13 @@ interface DashboardSummary {
 
 const summaryData = ref<DashboardSummary | null>(null);
 const summaryLoading = ref(false);
+const showWidgets = ref(true);
+const _icons = { Eye, EyeOff };
+
+function toggleWidgets() {
+  showWidgets.value = !showWidgets.value;
+  localStorage.setItem('equipment_list_show_widgets', String(showWidgets.value));
+}
 
 async function loadDashboardSummary() {
   summaryLoading.value = true;
@@ -307,13 +315,17 @@ onMounted(() => {
   loadEquipments();
   loadCategories();
   loadDashboardSummary();
+  const saved = localStorage.getItem('equipment_list_show_widgets');
+  if (saved !== null) {
+    showWidgets.value = saved !== 'false';
+  }
 });
 </script>
 
 <template>
   <div class="p-6 space-y-4">
     <!-- Top Widgets Grid -->
-    <div class="mb-4">
+    <div v-if="showWidgets" class="mb-4">
       <EquipmentSummaryWidgets
         :loading="summaryLoading"
         :summary="summaryData"
@@ -356,7 +368,10 @@ onMounted(() => {
       <Button type="default" @click="handleReset">
         {{ $t('page.company.btnReset') }}
       </Button>
-      <div class="ml-auto">
+      <div class="ml-auto flex items-center gap-2">
+        <Button type="default" class="flex items-center gap-1.5" @click="toggleWidgets">
+          {{ showWidgets ? $t('page.equipment.btnHideWidgets') : $t('page.equipment.btnShowWidgets') }}
+        </Button>
         <Button
           type="primary"
           class="bg-[#5c3e35] hover:bg-[#4b332b] border-[#5c3e35] rounded-md font-medium text-white h-full"
