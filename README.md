@@ -21,13 +21,7 @@ git clone https://github.com/eamo-mes/eamo-frontend.git
 cd eamo-frontend
 ```
 
-### 2.2. Dependency Installation
-Since the project utilizes a monorepo workspace architecture, install all necessary dependencies using the pnpm package manager:
-```bash
-pnpm install
-```
-
-### 2.3. Environment Configuration
+### 2.2. Environment Configuration
 The project uses Vite's layered environment file system. Files are loaded in the following order of priority (higher overrides lower):
 
 | File | Committed | Purpose |
@@ -66,17 +60,39 @@ VITE_AUTH_AUTHORIZE_URL=http://localhost:8000/oauth/authorize
 VITE_AUTH_TOKEN_URL=http://localhost:8000/oauth/token
 ```
 
+### 2.3. Dependency Installation & Build Internal Packages
+
+This project is a **pnpm monorepo**. It contains several internal packages (e.g. `@vben/vite-config`, `@vben/node-utils`) whose compiled output (`dist/`) is **not committed to Git**. You must build them locally before the dev server can start.
+
+**Option A (Recommended) — One-liner setup:**
+```bash
+pnpm setup
+```
+This command installs all dependencies **and** compiles all internal packages in one step.
+
+**Option B — Manual steps:**
+```bash
+# Step 1: Install all dependencies
+pnpm install
+
+# Step 2: Build all internal workspace packages
+pnpm stub
+```
+
+> **Why is this needed?** The dev server's `vite.config.ts` imports from `@vben/vite-config`, which is an internal workspace package. If this package has not been compiled yet, Vite cannot resolve it and will throw:
+> `Failed to resolve entry for package "@vben/vite-config"`
+
 ### 2.4. Execution of the Development Server
 Initiate the local development environment server:
 ```bash
-pnpm run dev
+pnpm dev
 ```
 Upon successful compilation, the application will be accessible at: [http://localhost:5173](http://localhost:5173)
 
 ### 2.5. Production Compilation
 To compile and optimize the application assets for production deployments:
 ```bash
-pnpm run build
+pnpm build
 ```
 
 ---
@@ -97,7 +113,9 @@ The application utilizes OAuth 2.0 Authorization Code Flow with Proof Key for Co
 ## 4. Development Command Directory
 
 The following scripts are defined in the workspace:
-- `pnpm run dev`: Boots the local hot-reloading development server.
-- `pnpm run build`: Packages and optimizes the source code into production assets.
-- `pnpm run preview`: Launches a local web server to preview production builds.
-- `pnpm run typecheck`: Evaluates the project files for TypeScript compilation errors.
+- `pnpm setup`: **First-time setup** — installs all dependencies and compiles all internal workspace packages. Run this once after cloning.
+- `pnpm stub`: Compiles all internal workspace packages (e.g. `@vben/vite-config`). Re-run this if internal packages are updated.
+- `pnpm dev`: Boots the local hot-reloading development server.
+- `pnpm build`: Packages and optimizes the source code into production assets.
+- `pnpm preview`: Launches a local web server to preview production builds.
+- `pnpm typecheck`: Evaluates the project files for TypeScript compilation errors.

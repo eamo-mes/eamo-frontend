@@ -20,6 +20,8 @@
     "build:analyze": "vite build --mode analyze",
     "dev": "vite --mode development",
     "preview": "vite preview",
+    "setup": "pnpm install && pnpm stub",
+    "stub": "pnpm -r run stub",
     "typecheck": "vue-tsc --noEmit --skipLibCheck"
   },
   "imports": {
@@ -55,6 +57,7 @@
     "@vitejs/plugin-vue": "catalog:",
     "@vitejs/plugin-vue-jsx": "catalog:",
     "tailwindcss": "catalog:",
+    "tsdown": "catalog:",
     "typescript": "catalog:",
     "vite": "8.0.10",
     "vue-tsc": "catalog:"
