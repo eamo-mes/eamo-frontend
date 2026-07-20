@@ -17,6 +17,12 @@ import {
   Spin
 } from 'ant-design-vue';
 
+interface CompanyItem {
+  id: string;
+  name: string;
+  contact?: string | null;
+}
+
 const companyStore = useCompanyStore();
 const loading = ref(false);
 const submitting = ref(false);
@@ -40,7 +46,7 @@ const total = ref(0);
 async function loadCompanies(page = currentPage.value, size = pageSize.value) {
   loading.value = true;
   try {
-    const params: Record<string, any> = {
+    const params: Record<string, string | number> = {
       page,
       per_page: size,
     };
@@ -56,7 +62,7 @@ async function loadCompanies(page = currentPage.value, size = pageSize.value) {
     total.value = res.data?.meta?.total ?? raw.length;
     currentPage.value = res.data?.meta?.current_page ?? page;
   } catch {
-    message.error('Không thể tải danh sách công ty');
+    message.error($t('page.company.loadError'));
   } finally {
     loading.value = false;
   }
@@ -83,10 +89,10 @@ function handleReset() {
   loadCompanies(1);
 }
 
-function handleTableChange(pagination: any) {
-  currentPage.value = pagination.current;
-  pageSize.value = pagination.pageSize;
-  loadCompanies(pagination.current, pagination.pageSize);
+function handleTableChange(pagination: { current?: number; pageSize?: number }) {
+  currentPage.value = pagination.current ?? 1;
+  pageSize.value = pagination.pageSize ?? 10;
+  loadCompanies(pagination.current ?? 1, pagination.pageSize ?? 10);
 }
 
 const filteredCompanies = computed(() => companyStore.companies);
@@ -102,16 +108,16 @@ const formState = ref({
   contact: ''
 });
 
-const rules = {
-  name: [{ required: true, message: 'Vui lòng nhập tên công ty' }]
-};
+const rules = computed(() => ({
+  name: [{ required: true, message: $t('page.company.validationNameRequired') }]
+}));
 
 const columns = computed(() => [
   {
     title: $t('page.company.colName'),
     dataIndex: 'name',
     key: 'name',
-    sorter: (a: any, b: any) => a.name.localeCompare(b.name)
+    sorter: (a: CompanyItem, b: CompanyItem) => a.name.localeCompare(b.name)
   },
   {
     title: $t('page.company.colContact'),
@@ -136,7 +142,7 @@ function openAddModal() {
   showModal.value = true;
 }
 
-function openEditModal(record: any) {
+function openEditModal(record: CompanyItem) {
   isEditing.value = true;
   editId.value = record.id;
   formState.value = {
@@ -146,7 +152,7 @@ function openEditModal(record: any) {
   showModal.value = true;
 }
 
-async function handleDelete(id: any) {
+async function handleDelete(id: string) {
   try {
     await axios.delete(`${BASE_URL}/companies/${id}`, {
       headers: getAuthHeaders(),
@@ -154,9 +160,9 @@ async function handleDelete(id: any) {
     companyStore.companies = companyStore.companies.filter(c => c.id !== id);
     // Also delete departments associated with this company
     companyStore.departments = companyStore.departments.filter(d => d.company_id !== id);
-    message.success('Xóa công ty thành công');
+    message.success($t('page.company.deleteSuccess'));
   } catch {
-    message.error('Không thể xóa công ty');
+    message.error($t('page.company.deleteError'));
   }
 }
 
@@ -177,7 +183,7 @@ async function handleOk() {
       if (idx !== -1) {
         companyStore.companies[idx] = updated;
       }
-      message.success('Cập nhật thông tin công ty thành công');
+      message.success($t('page.company.updateSuccess'));
     } else {
       const res = await axios.post(`${BASE_URL}/companies`, {
         name: formState.value.name,
@@ -187,14 +193,14 @@ async function handleOk() {
       });
       const created = res.data?.data ?? res.data;
       companyStore.companies.push(created);
-      message.success('Thêm công ty thành công');
+      message.success($t('page.company.createSuccess'));
     }
     showModal.value = false;
-  } catch (error: any) {
-    if (error?.errorFields) {
-      // form validation failed
-    } else {
-      const msg = error?.response?.data?.message ?? 'Không thể lưu công ty';
+  } catch (error) {
+    const errorFields = (error as { errorFields?: unknown })?.errorFields;
+    if (!errorFields) {
+      const responseData = (error as { response?: { data?: { message?: string } } })?.response?.data;
+      const msg = responseData?.message || $t('page.company.saveError');
       message.error(msg);
     }
   } finally {
@@ -240,7 +246,7 @@ async function handleOk() {
             pageSize: pageSize,
             total: total,
             showSizeChanger: true,
-            showTotal: (tot: number) => `Tổng ${tot} bản ghi`,
+            showTotal: (tot: number) => $t('page.equipment.totalRecords', { total: tot }),
           }"
           class="w-full"
           @change="handleTableChange"
@@ -275,8 +281,8 @@ async function handleOk() {
       :confirm-loading="submitting"
       @ok="handleOk"
       @cancel="showModal = false"
-      ok-text="Xác nhận"
-      cancel-text="Hủy"
+      :ok-text="$t('page.company.btnOk')"
+      :cancel-text="$t('page.company.btnCancel')"
       width="500px"
     >
       <Form
@@ -290,7 +296,7 @@ async function handleOk() {
           <Input v-model:value="formState.name" />
         </FormItem>
         <FormItem :label="$t('page.company.colContact')" name="contact">
-          <Input v-model:value="formState.contact" placeholder="Tên liên hệ, số điện thoại, email..." />
+          <Input v-model:value="formState.contact" :placeholder="$t('page.company.placeholderContact')" />
         </FormItem>
       </Form>
     </Modal>

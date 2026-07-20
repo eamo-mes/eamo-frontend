@@ -112,7 +112,7 @@ async function loadEquipments() {
 async function loadErrors(page = currentPage.value, size = pageSize.value) {
   loading.value = true;
   try {
-    const params: Record<string, any> = {
+    const params: Record<string, string | number> = {
       page,
       per_page: size,
     };
@@ -127,8 +127,9 @@ async function loadErrors(page = currentPage.value, size = pageSize.value) {
     errorsList.value = Array.isArray(raw) ? raw : [];
     total.value = res.data?.total ?? errorsList.value.length;
     currentPage.value = res.data?.current_page ?? page;
-  } catch (err: any) {
-    message.error(err?.response?.data?.message || 'Không thể tải danh sách báo lỗi');
+  } catch (err: unknown) {
+    const errObj = err as { response?: { data?: { message?: string } } };
+    message.error(errObj?.response?.data?.message || $t('page.equipment.msgLoadErrorsError'));
   } finally {
     loading.value = false;
   }
@@ -147,10 +148,10 @@ function handleReset() {
   loadErrors(1);
 }
 
-function handleTableChange(pagination: any) {
-  currentPage.value = pagination.current;
-  pageSize.value = pagination.pageSize;
-  loadErrors(pagination.current, pagination.pageSize);
+function handleTableChange(pagination: { current?: number; pageSize?: number }) {
+  currentPage.value = pagination.current ?? 1;
+  pageSize.value = pagination.pageSize ?? 10;
+  loadErrors(pagination.current ?? 1, pagination.pageSize ?? 10);
 }
 
 const filteredErrors = computed(() => errorsList.value);
@@ -209,9 +210,9 @@ const formState = ref({
   equipment_ids: [] as string[],
 });
 
-const rules = {
+const rules = computed(() => ({
   name: [{ required: true, message: $t('page.equipment.validationName') }],
-};
+}));
 
 function openAddModal() {
   isEditing.value = false;
@@ -245,9 +246,10 @@ async function handleDelete(id: string) {
       headers: getAuthHeaders(),
     });
     errorsList.value = errorsList.value.filter(e => e.id !== id);
-    message.success('Xóa báo lỗi thành công');
-  } catch (err: any) {
-    message.error(err?.response?.data?.message || 'Không thể xóa báo lỗi');
+    message.success($t('page.equipment.msgDeleteErrorSuccess'));
+  } catch (err: unknown) {
+    const errObj = err as { response?: { data?: { message?: string } } };
+    message.error(errObj?.response?.data?.message || $t('page.equipment.msgDeleteErrorError'));
   }
 }
 
@@ -271,21 +273,22 @@ async function handleOk() {
       const updated = res.data;
       const idx = errorsList.value.findIndex(e => e.id === editId.value);
       if (idx !== -1) errorsList.value[idx] = updated;
-      message.success('Cập nhật báo lỗi thành công');
+      message.success($t('page.equipment.msgUpdateErrorSuccess'));
     } else {
       const res = await axios.post(`${API_BASE_URL}/v1/equipment-errors`, payload, {
         headers: getAuthHeaders(),
       });
       const created = res.data;
       errorsList.value.push(created);
-      message.success('Thêm báo lỗi thành công');
+      message.success($t('page.equipment.msgCreateErrorSuccess'));
     }
     showModal.value = false;
-  } catch (err: any) {
-    if (err?.errorFields) {
+  } catch (err: unknown) {
+    if (err && typeof err === 'object' && 'errorFields' in err) {
       // Validation failed
     } else {
-      const msg = err?.response?.data?.message || 'Không thể lưu báo lỗi';
+      const errObj = err as { response?: { data?: { message?: string } } };
+      const msg = errObj?.response?.data?.message || $t('page.equipment.msgSaveErrorError');
       message.error(msg);
     }
   } finally {
@@ -351,7 +354,7 @@ onMounted(() => {
             pageSize: pageSize,
             total: total,
             showSizeChanger: true,
-            showTotal: (tot: number) => `Tổng ${tot} bản ghi`,
+            showTotal: (tot: number) => $t('page.equipment.totalRecords', { total: tot }),
           }"
           class="w-full"
           @change="handleTableChange"
@@ -395,8 +398,8 @@ onMounted(() => {
                 </Button>
                 <Popconfirm
                   :title="$t('page.company.deleteConfirm')"
-                  ok-text="Yes"
-                  cancel-text="No"
+                  :ok-text="$t('page.equipment.modalConfirm')"
+                  :cancel-text="$t('page.equipment.modalCancel')"
                   @confirm="handleDelete(record.id)"
                 >
                   <Button
@@ -419,8 +422,8 @@ onMounted(() => {
       v-model:open="showModal"
       :title="isEditing ? $t('page.equipment.btnEditError') : $t('page.equipment.btnAddError')"
       :confirm-loading="submitting"
-      ok-text="Xác nhận"
-      cancel-text="Hủy"
+      :ok-text="$t('page.equipment.modalConfirm')"
+      :cancel-text="$t('page.equipment.modalCancel')"
       width="580px"
       @ok="handleOk"
       @cancel="showModal = false"
