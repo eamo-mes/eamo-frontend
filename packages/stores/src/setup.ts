@@ -53,16 +53,16 @@ export async function initStores(app: App, options: InitStoreOptions) {
     createPersistedState({
       // key $appName-$store.id
       key: (storeKey) => `${namespace}-${storeKey}`,
-      storage: import.meta.env.DEV
-        ? localStorage
-        : {
-            getItem(key) {
-              return ls.get(key);
-            },
-            setItem(key, value) {
-              ls.set(key, value);
-            },
-          },
+      // AES encrypted storage — applied in ALL environments (including dev)
+      // Key is sourced from VITE_APP_STORE_SECURE_KEY in .env.local
+      storage: {
+        getItem(key) {
+          return ls.get(key);
+        },
+        setItem(key, value) {
+          ls.set(key, value);
+        },
+      },
     }),
   );
   app.use(pinia);

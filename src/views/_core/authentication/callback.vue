@@ -28,10 +28,14 @@ onMounted(async () => {
 
   try {
     statusText.value = 'Đang xác thực thông tin tài khoản...';
-    const token = await handleCallback(code);
+    const { accessToken, refreshToken } = await handleCallback(code);
 
     statusText.value = 'Đang chuẩn bị phiên làm việc...';
-    accessStore.setAccessToken(token);
+
+    accessStore.setAccessToken(accessToken);
+    if (refreshToken) {
+      accessStore.setRefreshToken(refreshToken);
+    }
 
     // Lấy thông tin user và phân quyền song song
     const [userInfo, accessCodes] = await Promise.all([

@@ -64,8 +64,8 @@ async function loadDepartments() {
 const roleColorMap: Record<string, string> = {
   admin: 'red',
   manager: 'orange',
+  engineer: 'purple',
   user: 'blue',
-  staff: 'cyan',
 };
 
 function roleColor(role: string) {
@@ -248,7 +248,7 @@ const formState = ref({
 const roleOptions = [
   { value: 'admin', label: 'ADMIN' },
   { value: 'manager', label: 'MANAGER' },
-  { value: 'staff', label: 'STAFF' },
+  { value: 'engineer', label: 'ENGINEER' },
   { value: 'user', label: 'USER' },
 ];
 

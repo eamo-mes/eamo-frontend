@@ -64,9 +64,27 @@ function setupAccessGuard(router: Router) {
 
     // accessToken 检查
     if (!accessStore.accessToken) {
-      // 明确声明忽略权限访问权限，则可以访问
+      //明确声明忽略权限访问权限，则可以访问
       if (to.meta.ignoreAccess) {
         return true;
+      }
+
+      // accessToken is null (e.g. after F5/reload — it's in-memory only).
+      // If a refreshToken is available (encrypted localStorage), attempt silent refresh first.
+      if (accessStore.refreshToken) {
+        try {
+          const { refreshAccessToken } = await import('#/api/core/pkce');
+          const result = await refreshAccessToken(accessStore.refreshToken);
+          accessStore.setAccessToken(result.accessToken);
+          if (result.refreshToken) {
+            accessStore.setRefreshToken(result.refreshToken);
+          }
+          // Silent refresh succeeded — continue navigation
+          return true;
+        } catch {
+          // Refresh token is expired or revoked — clear it and force re-login
+          accessStore.setRefreshToken(null);
+        }
       }
 
       // Không có token → trigger PKCE flow thẳng về backend,
@@ -80,6 +98,7 @@ function setupAccessGuard(router: Router) {
       // Trả về false để dừng navigation hiện tại (browser sẽ redirect sang backend)
       return false;
     }
+
 
     // 是否已经生成过动态路由
     if (accessStore.isAccessChecked) {
