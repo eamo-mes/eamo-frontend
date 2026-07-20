@@ -117,7 +117,7 @@ async function loadErrors(page = currentPage.value, size = pageSize.value) {
     const params: Record<string, string | number> = {
       page,
       per_page: size,
-      with_trashed: true,
+      with_trashed: 'true',
     };
     if (activeSearch.value) {
       params.q = activeSearch.value;

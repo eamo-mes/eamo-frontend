@@ -51,7 +51,7 @@ async function loadCategories(page = currentPage.value, size = pageSize.value) {
     const params: Record<string, number | string> = {
       page,
       per_page: size,
-      with_trashed: true,
+      with_trashed: 'true',
     };
     if (activeSearch.value) {
       params.q = activeSearch.value;
@@ -85,10 +85,12 @@ function handleReset() {
   loadCategories(1);
 }
 
-function handleTableChange(pagination: { current: number; pageSize: number }) {
-  currentPage.value = pagination.current;
-  pageSize.value = pagination.pageSize;
-  loadCategories(pagination.current, pagination.pageSize);
+function handleTableChange(pagination: { current?: number; pageSize?: number }) {
+  const current = pagination.current ?? 1;
+  const size = pagination.pageSize ?? pageSize.value;
+  currentPage.value = current;
+  pageSize.value = size;
+  loadCategories(current, size);
 }
 
 const filteredCategories = computed(() => categories.value);
