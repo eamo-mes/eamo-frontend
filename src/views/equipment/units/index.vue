@@ -47,7 +47,7 @@ const total = ref(0);
 async function loadUnits(page = currentPage.value, size = pageSize.value) {
   loading.value = true;
   try {
-    const params: Record<string, any> = {
+    const params: Record<string, number | string> = {
       page,
       per_page: size,
     };
@@ -62,8 +62,9 @@ async function loadUnits(page = currentPage.value, size = pageSize.value) {
     units.value = Array.isArray(raw) ? raw : [];
     total.value = res.data?.total ?? units.value.length;
     currentPage.value = res.data?.current_page ?? page;
-  } catch (err: any) {
-    message.error(err?.response?.data?.message || 'Không thể tải danh sách đơn vị');
+  } catch (err: unknown) {
+    const axiosErr = err as { response?: { data?: { message?: string } } };
+    message.error(axiosErr?.response?.data?.message || $t('page.equipment.msgLoadUnitsError'));
   } finally {
     loading.value = false;
   }
@@ -82,7 +83,7 @@ function handleReset() {
   loadUnits(1);
 }
 
-function handleTableChange(pagination: any) {
+function handleTableChange(pagination: { current: number; pageSize: number }) {
   currentPage.value = pagination.current;
   pageSize.value = pagination.pageSize;
   loadUnits(pagination.current, pagination.pageSize);
@@ -161,9 +162,10 @@ async function handleDelete(id: string) {
       headers: getAuthHeaders(),
     });
     units.value = units.value.filter(u => u.id !== id);
-    message.success('Xóa đơn vị thành công');
-  } catch (err: any) {
-    message.error(err?.response?.data?.message || 'Không thể xóa đơn vị do đang có liên kết hoặc lỗi hệ thống');
+    message.success($t('page.equipment.msgDeleteUnitSuccess'));
+  } catch (err: unknown) {
+    const axiosErr = err as { response?: { data?: { message?: string } } };
+    message.error(axiosErr?.response?.data?.message || $t('page.equipment.msgDeleteUnitError'));
   }
 }
 
@@ -185,7 +187,7 @@ async function handleOk() {
       const updated = res.data?.data ?? res.data;
       const idx = units.value.findIndex(u => u.id === editId.value);
       if (idx !== -1 && updated) units.value[idx] = updated;
-      message.success('Cập nhật đơn vị thành công');
+      message.success($t('page.equipment.msgUpdateUnitSuccess'));
       await loadUnits(); // Reload to be safe
     } else {
       const res = await axios.post(`${API_BASE_URL}/v1/units`, payload, {
@@ -193,15 +195,17 @@ async function handleOk() {
       });
       const created = res.data?.data ?? res.data;
       if (created) units.value.push(created);
-      message.success('Thêm đơn vị thành công');
+      message.success($t('page.equipment.msgCreateUnitSuccess'));
       await loadUnits(); // Reload to be safe
     }
     showModal.value = false;
-  } catch (err: any) {
-    if (err?.errorFields) {
+  } catch (err: unknown) {
+    const formErr = err as { errorFields?: unknown[] };
+    if (formErr?.errorFields) {
       // Validation error
     } else {
-      const msg = err?.response?.data?.message || 'Không thể lưu đơn vị';
+      const axiosErr = err as { response?: { data?: { message?: string } } };
+      const msg = axiosErr?.response?.data?.message || $t('page.equipment.msgSaveUnitError');
       message.error(msg);
     }
   } finally {
@@ -255,7 +259,7 @@ onMounted(() => {
             pageSize: pageSize,
             total: total,
             showSizeChanger: true,
-            showTotal: (tot: number) => `Tổng ${tot} bản ghi`,
+            showTotal: (tot: number) => $t('page.equipment.totalRecords', { total: tot }),
           }"
           class="w-full"
           @change="handleTableChange"
@@ -299,8 +303,8 @@ onMounted(() => {
       v-model:open="showModal"
       :title="isEditing ? $t('page.equipment.btnEditUnit') : $t('page.equipment.btnAddUnit')"
       :confirm-loading="submitting"
-      ok-text="Xác nhận"
-      cancel-text="Hủy"
+      :ok-text="$t('page.equipment.modalConfirm')"
+      :cancel-text="$t('page.equipment.modalCancel')"
       width="500px"
       @ok="handleOk"
       @cancel="showModal = false"

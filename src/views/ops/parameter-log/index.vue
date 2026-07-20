@@ -39,6 +39,13 @@ interface EquipmentOption {
   equipment_parameters?: ParameterOption[];
 }
 
+interface RawEquipmentItem {
+  id: string;
+  code: string;
+  name?: string | null;
+  equipment_parameters?: ParameterOption[];
+}
+
 interface ParameterLogItem {
   id: string;
   equipment_id: string;
@@ -121,7 +128,7 @@ async function loadInitialData() {
       headers: getAuthHeaders(),
     });
     const equipData = equipRes.data?.data ?? equipRes.data ?? [];
-    equipments.value = equipData.map((item: any) => ({
+    equipments.value = (equipData as RawEquipmentItem[]).map((item) => ({
       id: item.id,
       code: item.code,
       name: item.name || item.code,
@@ -145,7 +152,7 @@ async function loadItems() {
     });
     items.value = res.data?.data ?? res.data ?? [];
   } catch (error) {
-    message.error('Failed to load parameter logs');
+    message.error($t('page.ops.loadError'));
     console.error(error);
   } finally {
     loading.value = false;
@@ -232,7 +239,7 @@ async function handleDelete(id: string) {
     message.success($t('page.ops.successDelete'));
     loadItems();
   } catch (error) {
-    message.error('Xóa thất bại');
+    message.error($t('page.ops.deleteFailed'));
     console.error(error);
   }
 }
@@ -256,18 +263,20 @@ async function handleOk() {
       await axios.put(`${API_BASE_URL}/v1/equipment/equipment-parameter/logs/${editId.value}`, payload, {
         headers: getAuthHeaders(),
       });
-      message.success('Cập nhật bản ghi thành công');
+      message.success($t('page.ops.successSave'));
     } else {
       await axios.post(`${API_BASE_URL}/v1/equipment/equipment-parameter/logs`, payload, {
         headers: getAuthHeaders(),
       });
-      message.success('Thêm bản ghi thành công');
+      message.success($t('page.ops.successSave'));
     }
     showModal.value = false;
     loadItems();
-  } catch (err: any) {
-    if (!err?.errorFields) {
-      const msg = err?.response?.data?.message || 'Không thể lưu bản ghi';
+  } catch (err) {
+    const errorFields = (err as { errorFields?: unknown })?.errorFields;
+    if (!errorFields) {
+      const responseData = (err as { response?: { data?: { message?: string } } })?.response?.data;
+      const msg = responseData?.message || $t('page.ops.saveFailed');
       message.error(msg);
     }
   } finally {
@@ -282,21 +291,21 @@ const columns = computed(() => [
     key: 'equipment_id',
   },
   {
-    title: 'Parameter',
+    title: $t('page.ops.parameter'),
     dataIndex: 'equipment_parameter_id',
     key: 'equipment_parameter_id',
   },
   {
-    title: 'Value',
+    title: $t('page.ops.value'),
     dataIndex: 'value',
     key: 'value',
   },
   {
-    title: 'Product / Lot',
+    title: $t('page.ops.productLot'),
     key: 'product_lot',
   },
   {
-    title: 'Logged Time',
+    title: $t('page.ops.loggedTime'),
     dataIndex: 'created_at',
     key: 'created_at',
   },
@@ -333,7 +342,7 @@ const columns = computed(() => [
           class="bg-[#5c3e35] hover:bg-[#4b332b] border-[#5c3e35] rounded-md font-medium text-white h-full"
           @click="openAddModal"
         >
-          Thêm bản ghi
+          {{ $t('page.ops.btnAddRecord') }}
         </Button>
       </div>
     </div>
@@ -349,13 +358,13 @@ const columns = computed(() => [
           :pagination="{
             pageSize: 10,
             showSizeChanger: true,
-            showTotal: (tot: number) => `Tổng ${tot} bản ghi`,
+            showTotal: (tot: number) => $t('page.equipment.totalRecords', { total: tot }),
           }"
           class="w-full"
         >
           <template #bodyCell="{ column, record }">
             <template v-if="column.key === 'equipment_id'">
-              <span>{{ getEquipmentName(record.equipment_id) }}</span>
+               <span>{{ getEquipmentName(record.equipment_id) }}</span>
             </template>
             <template v-else-if="column.key === 'equipment_parameter_id'">
               <span>{{ getParameterName(record.equipment_id, record.equipment_parameter_id) }}</span>
@@ -368,8 +377,8 @@ const columns = computed(() => [
             <template v-else-if="column.key === 'product_lot'">
               <span v-if="!record.product_id && !record.lot_id">—</span>
               <Space v-else direction="vertical" size="small">
-                <Tag v-if="record.product_id" color="blue">Product: {{ record.product_id }}</Tag>
-                <Tag v-if="record.lot_id" color="purple">Lot: {{ record.lot_id }}</Tag>
+                <Tag v-if="record.product_id" color="blue">{{ $t('page.ops.product') }}: {{ record.product_id }}</Tag>
+                <Tag v-if="record.lot_id" color="purple">{{ $t('page.ops.lot') }}: {{ record.lot_id }}</Tag>
               </Space>
             </template>
             <template v-else-if="column.key === 'created_at'">

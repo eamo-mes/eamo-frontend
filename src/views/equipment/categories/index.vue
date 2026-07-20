@@ -46,7 +46,7 @@ const total = ref(0);
 async function loadCategories(page = currentPage.value, size = pageSize.value) {
   loading.value = true;
   try {
-    const params: Record<string, any> = {
+    const params: Record<string, number | string> = {
       page,
       per_page: size,
     };
@@ -61,8 +61,9 @@ async function loadCategories(page = currentPage.value, size = pageSize.value) {
     categories.value = Array.isArray(raw) ? raw : [];
     total.value = res.data?.total ?? categories.value.length;
     currentPage.value = res.data?.current_page ?? page;
-  } catch (err: any) {
-    message.error(err?.response?.data?.message || 'Không thể tải danh sách loại thiết bị');
+  } catch (err: unknown) {
+    const axiosErr = err as { response?: { data?: { message?: string } } };
+    message.error(axiosErr?.response?.data?.message || $t('page.equipment.msgLoadCategoriesError'));
   } finally {
     loading.value = false;
   }
@@ -81,7 +82,7 @@ function handleReset() {
   loadCategories(1);
 }
 
-function handleTableChange(pagination: any) {
+function handleTableChange(pagination: { current: number; pageSize: number }) {
   currentPage.value = pagination.current;
   pageSize.value = pagination.pageSize;
   loadCategories(pagination.current, pagination.pageSize);
@@ -122,10 +123,10 @@ const formState = ref({
   name: '',
 });
 
-const rules = {
-  code: [{ required: true, message: 'Vui lòng nhập mã loại thiết bị' }],
+const rules = computed(() => ({
+  code: [{ required: true, message: $t('page.equipment.validationCategoryCode') }],
   name: [{ required: true, message: $t('page.equipment.validationName') }],
-};
+}));
 
 function openAddModal() {
   isEditing.value = false;
@@ -153,9 +154,10 @@ async function handleDelete(id: string) {
       headers: getAuthHeaders(),
     });
     categories.value = categories.value.filter(c => c.id !== id);
-    message.success('Xóa loại thiết bị thành công');
-  } catch (err: any) {
-    message.error(err?.response?.data?.message || 'Không thể xóa loại thiết bị');
+    message.success($t('page.equipment.msgDeleteCategorySuccess'));
+  } catch (err: unknown) {
+    const axiosErr = err as { response?: { data?: { message?: string } } };
+    message.error(axiosErr?.response?.data?.message || $t('page.equipment.msgDeleteCategoryError'));
   }
 }
 
@@ -174,7 +176,7 @@ async function handleOk() {
       const updated = res.data;
       const idx = categories.value.findIndex(c => c.id === editId.value);
       if (idx !== -1) categories.value[idx] = updated;
-      message.success('Cập nhật loại thiết bị thành công');
+      message.success($t('page.equipment.msgUpdateCategorySuccess'));
     } else {
       const res = await axios.post(`${API_BASE_URL}/v1/equipment-categories`, {
         code: formState.value.code,
@@ -184,14 +186,16 @@ async function handleOk() {
       });
       const created = res.data;
       categories.value.push(created);
-      message.success('Thêm loại thiết bị thành công');
+      message.success($t('page.equipment.msgCreateCategorySuccess'));
     }
     showModal.value = false;
-  } catch (err: any) {
-    if (err?.errorFields) {
+  } catch (err: unknown) {
+    const formErr = err as { errorFields?: unknown[] };
+    if (formErr?.errorFields) {
       // Form validation failed
     } else {
-      const msg = err?.response?.data?.message || 'Không thể lưu loại thiết bị';
+      const axiosErr = err as { response?: { data?: { message?: string } } };
+      const msg = axiosErr?.response?.data?.message || $t('page.equipment.msgSaveCategoryError');
       message.error(msg);
     }
   } finally {
@@ -245,7 +249,7 @@ onMounted(() => {
             pageSize: pageSize,
             total: total,
             showSizeChanger: true,
-            showTotal: (tot: number) => `Tổng ${tot} bản ghi`,
+            showTotal: (tot: number) => $t('page.equipment.totalRecords', { total: tot }),
           }"
           class="w-full"
           @change="handleTableChange"
@@ -286,8 +290,8 @@ onMounted(() => {
       v-model:open="showModal"
       :title="isEditing ? $t('page.equipment.btnEditCategory') : $t('page.equipment.btnAddCategory')"
       :confirm-loading="submitting"
-      ok-text="Xác nhận"
-      cancel-text="Hủy"
+      :ok-text="$t('page.equipment.modalConfirm')"
+      :cancel-text="$t('page.equipment.modalCancel')"
       width="500px"
       @ok="handleOk"
       @cancel="showModal = false"
@@ -300,7 +304,7 @@ onMounted(() => {
         class="mt-4"
       >
         <FormItem :label="$t('page.equipment.colCode') || 'Mã loại'" name="code">
-          <Input v-model:value="formState.code" placeholder="Nhập mã loại thiết bị" />
+          <Input v-model:value="formState.code" :placeholder="$t('page.equipment.placeholderCategoryCode')" />
         </FormItem>
         <FormItem :label="$t('page.equipment.colName')" name="name">
           <Input v-model:value="formState.name" :placeholder="$t('page.equipment.placeholderName')" />

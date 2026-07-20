@@ -18,6 +18,19 @@ import {
   Spin
 } from 'ant-design-vue';
 
+interface CompanyItem {
+  id: string;
+  name: string;
+}
+
+interface DepartmentItem {
+  id: string;
+  name: string;
+  company_id: string;
+  company_name?: string;
+  contact?: string | null;
+}
+
 const companyStore = useCompanyStore();
 const loading = ref(false);
 const submitting = ref(false);
@@ -55,7 +68,7 @@ async function loadCompanies() {
 async function loadDepartments(page = currentPage.value, size = pageSize.value) {
   loading.value = true;
   try {
-    const params: Record<string, any> = {
+    const params: Record<string, string | number> = {
       page,
       per_page: size,
     };
@@ -74,7 +87,7 @@ async function loadDepartments(page = currentPage.value, size = pageSize.value) 
     total.value = res.data?.meta?.total ?? raw.length;
     currentPage.value = res.data?.meta?.current_page ?? page;
   } catch {
-    message.error('Không thể tải danh sách phòng ban');
+    message.error($t('page.company.loadDeptError'));
   } finally {
     loading.value = false;
   }
@@ -108,10 +121,10 @@ function handleCompanyFilterChange() {
   loadDepartments(1);
 }
 
-function handleTableChange(pagination: any) {
-  currentPage.value = pagination.current;
-  pageSize.value = pagination.pageSize;
-  loadDepartments(pagination.current, pagination.pageSize);
+function handleTableChange(pagination: { current?: number; pageSize?: number }) {
+  currentPage.value = pagination.current ?? 1;
+  pageSize.value = pagination.pageSize ?? 10;
+  loadDepartments(pagination.current ?? 1, pagination.pageSize ?? 10);
 }
 
 const filteredDepartments = computed(() => companyStore.departments);
@@ -128,17 +141,17 @@ const formState = ref({
   contact: ''
 });
 
-const rules = {
-  name: [{ required: true, message: 'Vui lòng nhập tên phòng ban' }],
-  company_id: [{ required: true, message: 'Vui lòng chọn công ty' }]
-};
+const rules = computed(() => ({
+  name: [{ required: true, message: $t('page.company.validationDeptNameRequired') }],
+  company_id: [{ required: true, message: $t('page.company.pleaseSelectCompany') }]
+}));
 
 const columns = computed(() => [
   {
     title: $t('page.company.colDeptName'),
     dataIndex: 'name',
     key: 'name',
-    sorter: (a: any, b: any) => a.name.localeCompare(b.name)
+    sorter: (a: DepartmentItem, b: DepartmentItem) => a.name.localeCompare(b.name)
   },
   {
     title: $t('page.company.colCompany'),
@@ -174,7 +187,7 @@ function openAddModal() {
   showModal.value = true;
 }
 
-function openEditModal(record: any) {
+function openEditModal(record: DepartmentItem) {
   isEditing.value = true;
   editId.value = record.id;
   formState.value = {
@@ -185,15 +198,15 @@ function openEditModal(record: any) {
   showModal.value = true;
 }
 
-async function handleDelete(id: any) {
+async function handleDelete(id: string) {
   try {
     await axios.delete(`${BASE_URL}/departments/${id}`, {
       headers: getAuthHeaders(),
     });
     companyStore.departments = companyStore.departments.filter(d => d.id !== id);
-    message.success('Xóa phòng ban thành công');
+    message.success($t('page.company.deleteDeptSuccess'));
   } catch {
-    message.error('Không thể xóa phòng ban');
+    message.error($t('page.company.deleteDeptError'));
   }
 }
 
@@ -215,7 +228,7 @@ async function handleOk() {
       if (idx !== -1) {
         companyStore.departments[idx] = updated;
       }
-      message.success('Cập nhật thông tin phòng ban thành công');
+      message.success($t('page.company.updateDeptSuccess'));
     } else {
       const res = await axios.post(`${BASE_URL}/departments`, {
         name: formState.value.name,
@@ -226,14 +239,14 @@ async function handleOk() {
       });
       const created = res.data?.data ?? res.data;
       companyStore.departments.push(created);
-      message.success('Thêm phòng ban thành công');
+      message.success($t('page.company.createDeptSuccess'));
     }
     showModal.value = false;
-  } catch (error: any) {
-    if (error?.errorFields) {
-      // form validation failed
-    } else {
-      const msg = error?.response?.data?.message ?? 'Không thể lưu phòng ban';
+  } catch (error) {
+    const errorFields = (error as { errorFields?: unknown })?.errorFields;
+    if (!errorFields) {
+      const responseData = (error as { response?: { data?: { message?: string } } })?.response?.data;
+      const msg = responseData?.message || $t('page.company.saveDeptError');
       message.error(msg);
     }
   } finally {
@@ -290,7 +303,7 @@ async function handleOk() {
             pageSize: pageSize,
             total: total,
             showSizeChanger: true,
-            showTotal: (tot: number) => `Tổng ${tot} bản ghi`,
+            showTotal: (tot: number) => $t('page.equipment.totalRecords', { total: tot }),
           }"
           class="w-full"
           @change="handleTableChange"
@@ -299,7 +312,7 @@ async function handleOk() {
             <template v-if="column.key === 'company_id'">
               <span>{{ record.company_name || getCompanyName(record.company_id) }}</span>
             </template>
-            <template v-else-if="column.key === 'actions'">
+            <template v-if="column.key === 'actions'">
               <div class="space-x-2">
                 <Button size="small" class="rounded hover:border-primary hover:text-primary" @click="openEditModal(record)">
                   {{ $t('page.company.btnEdit') }}
@@ -328,8 +341,8 @@ async function handleOk() {
       :confirm-loading="submitting"
       @ok="handleOk"
       @cancel="showModal = false"
-      ok-text="Xác nhận"
-      cancel-text="Hủy"
+      :ok-text="$t('page.company.btnOk')"
+      :cancel-text="$t('page.company.btnCancel')"
       width="550px"
     >
       <Form
@@ -340,7 +353,7 @@ async function handleOk() {
         class="mt-4"
       >
         <FormItem :label="$t('page.company.colDeptName')" name="name">
-          <Input v-model:value="formState.name" placeholder="Ví dụ: Phòng Nghiên cứu phát triển..." />
+          <Input v-model:value="formState.name" :placeholder="$t('page.company.placeholderDeptName')" />
         </FormItem>
         <FormItem :label="$t('page.company.colCompany')" name="company_id">
           <Select v-model:value="formState.company_id" :placeholder="$t('page.company.pleaseSelectCompany')">
@@ -350,7 +363,7 @@ async function handleOk() {
           </Select>
         </FormItem>
         <FormItem :label="$t('page.company.colContact')" name="contact">
-          <Input v-model:value="formState.contact" placeholder="Tên liên hệ, số điện thoại, email..." />
+          <Input v-model:value="formState.contact" :placeholder="$t('page.company.placeholderContact')" />
         </FormItem>
       </Form>
     </Modal>

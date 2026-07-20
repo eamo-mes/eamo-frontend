@@ -19,6 +19,7 @@ import {
   updateUserApi,
   destroyUserApi,
   type UserItem,
+  type UpdateUserPayload,
 } from '#/api/core/users';
 import axios from 'axios';
 import { useAccessStore } from '@vben/stores';
@@ -39,7 +40,7 @@ async function loadCompanies() {
       params: { per_page: 1000 },
     });
     const raw = res.data?.data ?? [];
-    companies.value = raw.map((c: any) => ({ id: c.id, name: c.name }));
+    companies.value = (raw as CompanyOption[]).map((c) => ({ id: c.id, name: c.name }));
   } catch {
     // silently fail
   }
@@ -53,7 +54,7 @@ async function loadDepartments() {
       params: { per_page: 1000 },
     });
     const raw = res.data?.data ?? [];
-    departments.value = raw.map((d: any) => ({ id: d.id, name: d.name, company_id: d.company_id }));
+    departments.value = (raw as DeptOption[]).map((d) => ({ id: d.id, name: d.name, company_id: d.company_id }));
   } catch {
     // silently fail, dropdown will be empty
   }
@@ -106,7 +107,7 @@ async function loadUsers(page = currentPage.value, size = pageSize.value) {
   loading.value = true;
   try {
     const accessStore = useAccessStore();
-    const params: Record<string, any> = {
+    const params: Record<string, string | number> = {
       page,
       per_page: size,
     };
@@ -167,10 +168,10 @@ function handleFilterChange() {
   loadUsers(1);
 }
 
-function handleTableChange(pagination: any) {
-  currentPage.value = pagination.current;
-  pageSize.value = pagination.pageSize;
-  loadUsers(pagination.current, pagination.pageSize);
+function handleTableChange(pagination: { current?: number; pageSize?: number }) {
+  currentPage.value = pagination.current ?? 1;
+  pageSize.value = pagination.pageSize ?? 10;
+  loadUsers(pagination.current ?? 1, pagination.pageSize ?? 10);
 }
 
 const filteredUsers = computed(() => users.value);
@@ -294,7 +295,7 @@ function openAddModal() {
   showModal.value = true;
 }
 
-function openEditModal(record: any) {
+function openEditModal(record: UserItem) {
   isEditing.value = true;
   editId.value = record.id;
 
@@ -335,7 +336,7 @@ async function handleOk() {
     submitting.value = true;
 
     if (isEditing.value && editId.value) {
-      const payload: any = {
+      const payload: UpdateUserPayload = {
         name: formState.value.name,
         email: formState.value.email,
         department_id: formState.value.department_id || null,
@@ -362,11 +363,12 @@ async function handleOk() {
       message.success($t('page.company.users.createSuccess'));
     }
     showModal.value = false;
-  } catch (err: any) {
-    if (err?.errorFields) {
+  } catch (err: unknown) {
+    if (err && typeof err === 'object' && 'errorFields' in err) {
       // form validation errors, do nothing
     } else {
-      const msg = err?.response?.data?.message ?? $t('page.company.users.saveError');
+      const errObj = err as { response?: { data?: { message?: string } } };
+      const msg = errObj?.response?.data?.message ?? $t('page.company.users.saveError');
       message.error(msg);
     }
   } finally {
@@ -456,7 +458,7 @@ onMounted(() => {
             pageSize: pageSize,
             total: total,
             showSizeChanger: true,
-            showTotal: (tot: number) => `Tổng ${tot} bản ghi`,
+            showTotal: (tot: number) => $t('page.company.users.showTotal', { total: tot }),
           }"
           class="w-full"
           @change="handleTableChange"
@@ -487,14 +489,14 @@ onMounted(() => {
                 <Button
                   size="small"
                   class="rounded hover:border-primary hover:text-primary"
-                  @click="openEditModal(record as any)"
+                  @click="openEditModal(record as UserItem)"
                 >
                   {{ $t('page.company.btnEdit') }}
                 </Button>
                 <Popconfirm
                   :title="$t('page.company.deleteConfirm')"
-                  ok-text="Yes"
-                  cancel-text="No"
+                  :ok-text="$t('page.company.btnOk')"
+                  :cancel-text="$t('page.company.btnCancel')"
                   @confirm="handleDelete(record.id)"
                 >
                   <Button
@@ -517,8 +519,8 @@ onMounted(() => {
       v-model:open="showModal"
       :title="isEditing ? $t('page.company.users.formTitleEdit') : $t('page.company.users.formTitleAdd')"
       :confirm-loading="submitting"
-      ok-text="Xác nhận"
-      cancel-text="Hủy"
+      :ok-text="$t('page.company.btnOk')"
+      :cancel-text="$t('page.company.btnCancel')"
       width="580px"
       @ok="handleOk"
       @cancel="showModal = false"
