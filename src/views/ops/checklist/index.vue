@@ -17,6 +17,7 @@ import {
 import axios from 'axios';
 import { useAccessStore } from '@vben/stores';
 import { API_BASE_URL } from '#/api/config';
+import { isSoftDeleted, softDeletedRowClass } from '#/utils/soft-delete';
 import ChecklistCalendar from './components/ChecklistCalendar.vue';
 import ChecklistCharts from './components/ChecklistCharts.vue';
 
@@ -54,6 +55,7 @@ interface ChecklistSession {
   session_date: string | null;
   details?: ChecklistDetailItem[];
   users?: UserDetail[];
+  deleted_at?: string | null;
 }
 
 const router = useRouter();
@@ -149,6 +151,7 @@ async function loadSessions(page = currentPage.value, size = pageSize.value) {
       include_details: true,
       page,
       per_page: size,
+      with_trashed: true,
     };
     if (activeSearch.value) {
       params['search'] = activeSearch.value;
@@ -466,6 +469,7 @@ onMounted(() => {
           :columns="columns"
           :data-source="filteredSessions"
           row-key="id"
+          :row-class-name="softDeletedRowClass"
           :scroll="{ x: 'max-content' }"
           :pagination="{
             current: currentPage,
@@ -501,6 +505,7 @@ onMounted(() => {
                 <Button
                   v-if="getSessionStatusText(record as ChecklistSession) === 'Pending'"
                   size="small"
+                  :disabled="isSoftDeleted(record as ChecklistSession)"
                   class="rounded border-green-500 text-green-600 hover:border-green-600 hover:text-green-700"
                   @click="openJudgeModal(record as ChecklistSession)"
                 >
@@ -508,6 +513,7 @@ onMounted(() => {
                 </Button>
                 <Button
                   size="small"
+                  :disabled="isSoftDeleted(record as ChecklistSession)"
                   class="rounded hover:border-primary hover:text-primary"
                   @click="openEditPage(record)"
                 >
@@ -522,6 +528,7 @@ onMounted(() => {
                   <Button
                     size="small"
                     danger
+                    :disabled="isSoftDeleted(record as ChecklistSession)"
                     class="rounded bg-red-50/50 hover:bg-red-500 hover:text-white border-red-200"
                   >
                     {{ $t('page.company.btnDelete') }}

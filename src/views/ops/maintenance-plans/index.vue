@@ -16,6 +16,7 @@ import axios from 'axios';
 import { listUsersApi, type UserItem } from '#/api/core/users';
 import { useAccessStore } from '@vben/stores';
 import { API_BASE_URL } from '#/api/config';
+import { isSoftDeleted, softDeletedRowClass } from '#/utils/soft-delete';
 import VisualMaintenanceCalendar from './components/VisualMaintenanceCalendar.vue';
 
 interface EquipmentInfo {
@@ -43,6 +44,7 @@ interface MaintenancePlanItem {
   cycle_type: string | null;
   cycle_interval: number | null;
   notes: string | null;
+  deleted_at?: string | null;
 }
 
 interface EquipmentOption {
@@ -131,7 +133,7 @@ async function loadCategories(): Promise<void> {
 async function loadPlans(page = currentPage.value, size = pageSize.value): Promise<void> {
   loading.value = true;
   try {
-    const params: Record<string, string | number> = { page, per_page: size };
+    const params: Record<string, boolean | number | string> = { page, per_page: size, with_trashed: true };
     if (activeSearch.value) params.q = activeSearch.value;
     if (selectedEquipmentId.value) params.equipment_id = selectedEquipmentId.value;
     if (selectedCategoryId.value) params.maintenance_category_id = selectedCategoryId.value;
@@ -534,6 +536,7 @@ onMounted(() => {
             :columns="columns"
             :data-source="plans"
             row-key="id"
+            :row-class-name="softDeletedRowClass"
             :scroll="{ x: 'max-content' }"
             :pagination="{
               current: currentPage,
@@ -555,7 +558,7 @@ onMounted(() => {
 
               <template v-else-if="column.key === 'actions'">
                 <div class="flex items-center justify-center gap-2">
-                  <Button size="small" class="rounded hover:border-primary hover:text-primary" @click="openEdit(record.id)">
+                  <Button size="small" class="rounded hover:border-primary hover:text-primary" :disabled="isSoftDeleted(record as MaintenancePlanItem)" @click="openEdit(record.id)">
                     {{ $t('page.company.btnEdit') }}
                   </Button>
                   <Popconfirm
@@ -564,7 +567,7 @@ onMounted(() => {
                     :cancel-text="$t('page.ops.btnCancel')"
                     @confirm="handleDelete(record.id)"
                   >
-                    <Button size="small" danger class="rounded bg-red-50/50 border-red-200 hover:bg-red-500 hover:text-white">
+                    <Button size="small" danger class="rounded bg-red-50/50 border-red-200 hover:bg-red-500 hover:text-white" :disabled="isSoftDeleted(record as MaintenancePlanItem)">
                       {{ $t('page.company.btnDelete') }}
                     </Button>
                   </Popconfirm>

@@ -17,6 +17,7 @@ import dayjs from 'dayjs';
 import { API_BASE_URL } from '#/api/config';
 import { useAccessStore } from '@vben/stores';
 import { $t } from '#/locales';
+import { isSoftDeleted, softDeletedRowClass } from '#/utils/soft-delete';
 
 import type { OperatingTimeItem, EquipmentOption } from './types';
 import OperatingTimesCharts from './components/OperatingTimesCharts.vue';
@@ -76,6 +77,7 @@ async function loadItems() {
   try {
     const res = await axios.get(`${API_BASE_URL}/v1/equipment/error-monitoring/operating-times`, {
       headers: getAuthHeaders(),
+      params: { with_trashed: true },
     });
     items.value = res.data?.data ?? res.data ?? [];
     await loadMaintenanceStatus();
@@ -323,6 +325,7 @@ const columns = computed(() => [
           :columns="columns"
           :data-source="filteredItems"
           row-key="id"
+          :row-class-name="softDeletedRowClass"
           :scroll="{ x: 'max-content' }"
           :pagination="{
             pageSize: 10,
@@ -348,6 +351,7 @@ const columns = computed(() => [
                 <Progress
                   :percent="calculateRowAvailabilityFactor(record as OperatingTimeItem)"
                   size="small"
+                  :disabled="isSoftDeleted(record as OperatingTimeItem)"
                   :strokeColor="calculateRowAvailabilityFactor(record as OperatingTimeItem) >= 90 ? '#2ec7c9' : calculateRowAvailabilityFactor(record as OperatingTimeItem) >= 75 ? '#5ab1ef' : '#b6a2de'"
                 />
                 <Tag :color="calculateRowAvailabilityFactor(record as OperatingTimeItem) >= 90 ? '#2ec7c9' : calculateRowAvailabilityFactor(record as OperatingTimeItem) >= 75 ? '#5ab1ef' : '#b6a2de'">
@@ -376,6 +380,7 @@ const columns = computed(() => [
                   <Button
                     size="small"
                     danger
+                    :disabled="isSoftDeleted(record as OperatingTimeItem)"
                     class="rounded bg-red-50/50 hover:bg-red-500 hover:text-white border-red-200"
                   >
                     {{ $t('page.company.btnDelete') }}

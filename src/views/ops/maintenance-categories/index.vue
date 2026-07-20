@@ -17,6 +17,7 @@ import axios from 'axios';
 import { useAccessStore } from '@vben/stores';
 import { API_BASE_URL } from '#/api/config';
 import { listUsersApi, type UserItem } from '#/api/core/users';
+import { isSoftDeleted, softDeletedRowClass } from '#/utils/soft-delete';
 
 interface CategoryItem {
   id: string;
@@ -32,6 +33,7 @@ interface CategoryItem {
     }[];
   }[];
   created_at?: string;
+  deleted_at?: string | null;
 }
 
 interface MaintenanceItemRow {
@@ -78,9 +80,10 @@ const total = ref(0);
 async function loadCategories(page: number = currentPage.value, size: number = pageSize.value): Promise<void> {
   loading.value = true;
   try {
-    const params: Record<string, string | number> = {
+    const params: Record<string, boolean | number | string> = {
       page,
       per_page: size,
+      with_trashed: true,
     };
     if (activeSearch.value) {
       params.q = activeSearch.value;
@@ -323,6 +326,7 @@ onMounted(() => {
           :columns="columns"
           :data-source="categories"
           row-key="id"
+          :row-class-name="softDeletedRowClass"
           :scroll="{ x: 'max-content' }"
           :pagination="{
             current: currentPage,
@@ -339,6 +343,7 @@ onMounted(() => {
               <div class="space-x-2">
                 <Button
                   size="small"
+                  :disabled="isSoftDeleted(record as CategoryItem)"
                   class="rounded hover:border-primary hover:text-primary"
                   @click="openEditModal(record as CategoryItem)"
                 >
@@ -353,6 +358,7 @@ onMounted(() => {
                   <Button
                     size="small"
                     danger
+                    :disabled="isSoftDeleted(record as CategoryItem)"
                     class="rounded bg-red-50/50 hover:bg-red-500 hover:text-white border-red-200"
                   >
                     {{ $t('page.company.btnDelete') }}

@@ -19,6 +19,7 @@ import dayjs from 'dayjs';
 import { API_BASE_URL } from '#/api/config';
 import { useAccessStore } from '@vben/stores';
 import { $t } from '#/locales';
+import { isSoftDeleted, softDeletedRowClass } from '#/utils/soft-delete';
 
 interface UnitOption {
   id: string;
@@ -59,6 +60,7 @@ interface ParameterLogItem {
   equipment?: { name: string; code: string };
   parameter?: { name: string; code: string };
   unit?: { name: string };
+  deleted_at?: string | null;
 }
 
 const loading = ref(false);
@@ -149,6 +151,7 @@ async function loadItems() {
   try {
     const res = await axios.get(`${API_BASE_URL}/v1/equipment/equipment-parameter/logs`, {
       headers: getAuthHeaders(),
+      params: { with_trashed: true },
     });
     items.value = res.data?.data ?? res.data ?? [];
   } catch (error) {
@@ -354,6 +357,7 @@ const columns = computed(() => [
           :columns="columns"
           :data-source="filteredItems"
           row-key="id"
+          :row-class-name="softDeletedRowClass"
           :scroll="{ x: 'max-content' }"
           :pagination="{
             pageSize: 10,
@@ -388,6 +392,7 @@ const columns = computed(() => [
               <div class="space-x-2">
                 <Button
                   size="small"
+                  :disabled="isSoftDeleted(record as ParameterLogItem)"
                   class="rounded hover:border-primary hover:text-primary"
                   @click="openEditModal(record as ParameterLogItem)"
                 >
@@ -402,6 +407,7 @@ const columns = computed(() => [
                   <Button
                     size="small"
                     danger
+                    :disabled="isSoftDeleted(record as ParameterLogItem)"
                     class="rounded bg-red-50/50 hover:bg-red-500 hover:text-white border-red-200"
                   >
                     {{ $t('page.company.btnDelete') }}

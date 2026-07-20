@@ -16,6 +16,7 @@ import {
 import axios from 'axios';
 import { useAccessStore } from '@vben/stores';
 import { API_BASE_URL } from '#/api/config';
+import { isSoftDeleted, softDeletedRowClass } from '#/utils/soft-delete';
 import EquipmentSummaryWidgets from './components/EquipmentSummaryWidgets.vue';
 import EquipmentRelationModal from './components/EquipmentRelationModal.vue';
 
@@ -62,6 +63,7 @@ interface EquipmentItem {
   parent_id?: string | null;
   children?: EquipmentItem[];
   parent?: EquipmentItem | null;
+  deleted_at?: string | null;
 }
 
 const router = useRouter();
@@ -176,6 +178,7 @@ async function loadEquipments(page = currentPage.value, size = pageSize.value) {
     const params: Record<string, any> = {
       page,
       per_page: size,
+      with_trashed: true,
     };
     if (filterCategoryId.value) {
       params.equipment_category_id = filterCategoryId.value;
@@ -389,6 +392,7 @@ onMounted(() => {
           :columns="columns"
           :data-source="filteredEquipments"
           row-key="id"
+          :row-class-name="softDeletedRowClass"
           :scroll="{ x: 'max-content' }"
           :pagination="{
             current: currentPage,
@@ -473,6 +477,7 @@ onMounted(() => {
               <div class="flex items-center justify-end gap-2 whitespace-nowrap">
                 <Button
                   size="small"
+                  :disabled="isSoftDeleted(record as EquipmentItem)"
                   class="rounded hover:border-primary hover:text-primary"
                   @click="openEditModal(record as EquipmentItem)"
                 >
@@ -480,6 +485,7 @@ onMounted(() => {
                 </Button>
                 <Button
                   size="small"
+                  :disabled="isSoftDeleted(record as EquipmentItem)"
                   class="rounded hover:border-primary hover:text-primary"
                   @click="openChildrenModal(record as EquipmentItem)"
                 >
@@ -494,6 +500,7 @@ onMounted(() => {
                   <Button
                     size="small"
                     danger
+                    :disabled="isSoftDeleted(record as EquipmentItem)"
                     class="rounded bg-red-50/50 hover:bg-red-500 hover:text-white border-red-200"
                   >
                     {{ $t('page.company.btnDelete') }}

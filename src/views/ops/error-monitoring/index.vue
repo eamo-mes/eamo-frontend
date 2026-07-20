@@ -20,6 +20,7 @@ import type { Dayjs } from 'dayjs';
 import { API_BASE_URL } from '#/api/config';
 import { useAccessStore } from '@vben/stores';
 import { $t } from '#/locales';
+import { isSoftDeleted, softDeletedRowClass } from '#/utils/soft-delete';
 
 interface UserOption {
   id: string;
@@ -51,6 +52,7 @@ interface ErrorLogItem {
   equipment?: { name: string; code: string };
   equipment_error?: { name: string };
   handlers?: Array<{ id: string; name: string }>;
+  deleted_at?: string | null;
 }
 
 const loading = ref(false);
@@ -58,6 +60,13 @@ const submitting = ref(false);
 const syncingAll = ref(false);
 const syncingId = ref<string | null>(null);
 const items = ref<ErrorLogItem[]>([]);
+
+function getRowClassName(record: ErrorLogItem): string {
+  return [
+    softDeletedRowClass(record),
+    record.is_synced ? 'opacity-40 pointer-events-none bg-gray-50/20 dark:bg-zinc-900/10' : '',
+  ].filter(Boolean).join(' ');
+}
 const equipments = ref<EquipmentOption[]>([]);
 const users = ref<UserOption[]>([]);
 const showModal = ref(false);
@@ -134,6 +143,7 @@ async function loadItems() {
   try {
     const res = await axios.get(`${API_BASE_URL}/v1/equipment/error-monitoring/equipment-error-logs`, {
       headers: getAuthHeaders(),
+      params: { with_trashed: true },
     });
     items.value = res.data?.data ?? res.data ?? [];
   } catch (error) {
@@ -409,7 +419,7 @@ const columns = computed(() => [
           :columns="columns"
           :data-source="filteredItems"
           row-key="id"
-          :row-class-name="(record) => (record as ErrorLogItem).is_synced ? 'opacity-40 pointer-events-none bg-gray-50/20 dark:bg-zinc-900/10' : ''"
+          :row-class-name="getRowClassName"
           :scroll="{ x: 'max-content' }"
           :pagination="{
             pageSize: 10,
@@ -446,6 +456,7 @@ const columns = computed(() => [
               <div class="flex items-center gap-2 justify-center">
                 <Button
                   size="small"
+                  :disabled="isSoftDeleted(record as ErrorLogItem)"
                   class="rounded hover:border-primary hover:text-primary"
                   @click="openEditModal(record as ErrorLogItem)"
                 >
@@ -460,6 +471,7 @@ const columns = computed(() => [
                 >
                   <Button
                     size="small"
+                    :disabled="isSoftDeleted(record as ErrorLogItem)"
                     :loading="syncingId === record.id"
                     class="rounded border-blue-400 text-blue-600 hover:bg-blue-50"
                   >
@@ -475,6 +487,7 @@ const columns = computed(() => [
                   <Button
                     size="small"
                     danger
+                    :disabled="isSoftDeleted(record as ErrorLogItem)"
                     class="rounded bg-red-50/50 hover:bg-red-500 hover:text-white border-red-200"
                   >
                     {{ $t('page.company.btnDelete') }}

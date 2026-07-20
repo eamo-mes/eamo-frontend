@@ -18,6 +18,7 @@ import {
 import axios from 'axios';
 import { useAccessStore } from '@vben/stores';
 import { API_BASE_URL } from '#/api/config';
+import { isSoftDeleted, softDeletedRowClass } from '#/utils/soft-delete';
 import ErrorCharts from './error-charts.vue';
 
 interface EquipmentOption {
@@ -33,6 +34,7 @@ interface ErrorItem {
   fix?: string;
   protection_measures?: string;
   equipment?: EquipmentOption[];
+  deleted_at?: string | null;
 }
 
 const router = useRouter();
@@ -115,6 +117,7 @@ async function loadErrors(page = currentPage.value, size = pageSize.value) {
     const params: Record<string, string | number> = {
       page,
       per_page: size,
+      with_trashed: true,
     };
     if (activeSearch.value) {
       params.q = activeSearch.value;
@@ -348,6 +351,7 @@ onMounted(() => {
           :columns="columns"
           :data-source="filteredErrors"
           row-key="id"
+          :row-class-name="softDeletedRowClass"
           :scroll="{ x: 'max-content' }"
           :pagination="{
             current: currentPage,
@@ -391,6 +395,7 @@ onMounted(() => {
               <div class="space-x-2">
                 <Button
                   size="small"
+                  :disabled="isSoftDeleted(record as ErrorItem)"
                   class="rounded hover:border-primary hover:text-primary"
                   @click="openEditModal(record as ErrorItem)"
                 >
@@ -405,6 +410,7 @@ onMounted(() => {
                   <Button
                     size="small"
                     danger
+                    :disabled="isSoftDeleted(record as ErrorItem)"
                     class="rounded bg-red-50/50 hover:bg-red-500 hover:text-white border-red-200"
                   >
                     {{ $t('page.company.btnDelete') }}
