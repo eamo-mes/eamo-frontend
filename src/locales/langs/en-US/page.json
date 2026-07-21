@@ -5,7 +5,21 @@
     "codeLogin": "Code Login",
     "qrcodeLogin": "Qr Code Login",
     "forgetPassword": "Forget Password",
-    "profile": "Profile"
+    "profile": "Profile",
+    "callback": {
+      "processing": "Processing login...",
+      "verifying": "Authenticating user account...",
+      "preparing": "Preparing workspace session...",
+      "codeParamNotFound": "Code parameter not found in callback URL.",
+      "loginSuccess": "Login successful",
+      "welcomeBack": "Welcome back, {name}!",
+      "authFailed": "Authentication failed",
+      "invalidOrExpiredCode": "Code is invalid or has expired.",
+      "invalidData": "Invalid data",
+      "authFailedTryAgain": "Authentication failed. Please try again.",
+      "loginErrorTitle": "Login Error",
+      "backToLogin": "Back to Login"
+    }
   },
   "dashboard": {
     "title": "Dashboard",

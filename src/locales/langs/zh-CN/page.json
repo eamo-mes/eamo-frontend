@@ -5,7 +5,21 @@
     "codeLogin": "Đăng nhập mã xác thực",
     "qrcodeLogin": "Đăng nhập mã QR",
     "forgetPassword": "Quên mật khẩu",
-    "profile": "Thông tin cá nhân"
+    "profile": "Thông tin cá nhân",
+    "callback": {
+      "processing": "Đang xử lý đăng nhập...",
+      "verifying": "Đang xác thực thông tin tài khoản...",
+      "preparing": "Đang chuẩn bị phiên làm việc...",
+      "codeParamNotFound": "Không tìm thấy tham số code trong URL callback.",
+      "loginSuccess": "Đăng nhập thành công",
+      "welcomeBack": "Chào mừng quay trở lại, {name}!",
+      "authFailed": "Xác thực thất bại",
+      "invalidOrExpiredCode": "Mã code không hợp lệ hoặc đã hết hạn.",
+      "invalidData": "Dữ liệu không hợp lệ",
+      "authFailedTryAgain": "Xác thực thất bại. Vui lòng thử lại.",
+      "loginErrorTitle": "Xảy ra lỗi đăng nhập",
+      "backToLogin": "Quay lại Đăng nhập"
+    }
   },
   "dashboard": {
     "title": "Tổng quan",
