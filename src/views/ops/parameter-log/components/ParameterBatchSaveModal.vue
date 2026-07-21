@@ -234,7 +234,7 @@ function handleCancel(): void {
       <div v-if="selectedParameterId" class="mt-6 space-y-4">
         <div class="flex items-center justify-between border-b border-slate-200 dark:border-gray-700 pb-2">
           <div class="font-semibold text-slate-700 dark:text-gray-200 text-sm">
-            📝 {{ $t('page.ops.nestedTimeRecordsTitle') }}
+            {{ $t('page.ops.nestedTimeRecordsTitle') }}
           </div>
         </div>
 

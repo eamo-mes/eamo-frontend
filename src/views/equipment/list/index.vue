@@ -327,14 +327,6 @@ onMounted(() => {
 
 <template>
   <div class="p-6 space-y-4">
-    <!-- Top Widgets Grid -->
-    <div v-if="showWidgets" class="mb-4">
-      <EquipmentSummaryWidgets
-        :loading="summaryLoading"
-        :summary="summaryData"
-      />
-    </div>
-
     <!-- Action Bar -->
     <div class="action-bar bg-card border border-border rounded-xl p-4 shadow-sm flex flex-nowrap items-center gap-3 overflow-x-auto w-full">
       <Input
@@ -372,9 +364,6 @@ onMounted(() => {
         {{ $t('page.company.btnReset') }}
       </Button>
       <div class="ml-auto flex items-center gap-2">
-        <Button type="default" class="flex items-center gap-1.5" @click="toggleWidgets">
-          {{ showWidgets ? $t('page.equipment.btnHideWidgets') : $t('page.equipment.btnShowWidgets') }}
-        </Button>
         <Button
           type="primary"
           class="bg-[#5c3e35] hover:bg-[#4b332b] border-[#5c3e35] rounded-md font-medium text-white h-full"

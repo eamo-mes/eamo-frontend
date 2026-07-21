@@ -391,17 +391,6 @@ const columns = computed(() => [
       <div class="ml-auto flex items-center gap-2">
         <Button
           type="default"
-          :class="showEmbeddedChart ? 'border-blue-500 bg-blue-50 text-blue-600 dark:bg-blue-950 dark:text-blue-300' : 'border-slate-300 text-slate-700 hover:bg-slate-50 dark:border-gray-700 dark:text-gray-300 dark:hover:bg-gray-800'"
-          class="font-medium flex items-center gap-1.5"
-          @click="showEmbeddedChart = !showEmbeddedChart"
-        >
-          {{ $t('page.ops.btnWeeklyChart') }}
-        </Button>
-
-
-
-        <Button
-          type="default"
           class="border-slate-300 text-slate-700 hover:bg-slate-50 dark:border-gray-700 dark:text-gray-300 dark:hover:bg-gray-800 font-medium"
           @click="openBatchSaveModal"
         >

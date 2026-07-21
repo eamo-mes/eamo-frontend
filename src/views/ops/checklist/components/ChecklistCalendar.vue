@@ -414,20 +414,6 @@ onMounted(() => {
             </h3>
           </div>
         </div>
-
-        <div class="space-y-2 border-t border-border pt-4">
-          <span class="text-xs text-gray-500 font-semibold uppercase tracking-wider block mb-1">
-            {{ $t('page.ops.colDate') }}
-          </span>
-          <DatePicker
-            v-model:value="selectedExecutionDate"
-            value-format="YYYY-MM-DD"
-            format="YYYY-MM-DD"
-            class="w-full"
-            :placeholder="$t('page.ops.placeholderDate')"
-          />
-        </div>
-
         <div class="space-y-4 border-t border-border pt-4">
           <span class="text-xs text-gray-400 font-semibold uppercase tracking-wider block">
             {{ $t('page.ops.detailItemsHeader') }}
