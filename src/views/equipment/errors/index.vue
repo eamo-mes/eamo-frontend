@@ -18,7 +18,7 @@ import {
 import axios from 'axios';
 import { useAccessStore } from '@vben/stores';
 import { API_BASE_URL } from '#/api/config';
-import { isSoftDeleted, softDeletedRowClass } from '#/utils/soft-delete';
+import { isSoftDeleted, softDeletedRowClass, sortBySoftDeleted } from '#/utils/soft-delete';
 import ErrorCharts from './error-charts.vue';
 
 interface EquipmentOption {
@@ -157,7 +157,7 @@ function handleTableChange(pagination: { current?: number; pageSize?: number }) 
   loadErrors(pagination.current ?? 1, pagination.pageSize ?? 10);
 }
 
-const filteredErrors = computed(() => errorsList.value);
+const filteredErrors = computed(() => sortBySoftDeleted(errorsList.value));
 
 const columns = computed(() => [
   {

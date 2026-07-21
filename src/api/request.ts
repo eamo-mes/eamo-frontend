@@ -7,7 +7,6 @@ import { useAppConfig } from '@vben/hooks';
 import { preferences } from '@vben/preferences';
 import {
   authenticateResponseInterceptor,
-  defaultResponseInterceptor,
   errorMessageResponseInterceptor,
   RequestClient,
 } from '@vben/request';
@@ -17,7 +16,7 @@ import { message } from 'ant-design-vue';
 
 import { useAuthStore } from '#/store';
 
-import { refreshTokenApi } from './core';
+
 
 const { apiURL } = useAppConfig(import.meta.env, import.meta.env.PROD);
 
@@ -46,13 +45,21 @@ function createRequestClient(baseURL: string, options?: RequestClientOptions) {
   }
 
   /**
-   * 刷新token逻辑
+   * 刷新token逻辑 (PKCE OAuth 2.0 refresh_token)
    */
   async function doRefreshToken() {
     const accessStore = useAccessStore();
-    const resp = await refreshTokenApi();
-    const newToken = resp.data;
+    const refreshToken = accessStore.refreshToken;
+    if (!refreshToken) {
+      throw new Error('No refresh token available');
+    }
+    const { refreshAccessToken } = await import('./core/pkce');
+    const result = await refreshAccessToken(refreshToken);
+    const newToken = result.accessToken;
     accessStore.setAccessToken(newToken);
+    if (result.refreshToken) {
+      accessStore.setRefreshToken(result.refreshToken);
+    }
     return newToken;
   }
 
@@ -72,13 +79,28 @@ function createRequestClient(baseURL: string, options?: RequestClientOptions) {
   });
 
   // 处理返回的响应数据格式
-  client.addResponseInterceptor(
-    defaultResponseInterceptor({
-      codeField: 'code',
-      dataField: 'data',
-      successCode: 0,
-    }),
-  );
+  // Backend returns { status: 'success', data: ... } — no "code" field.
+  // We use responseReturn: 'body' to pass the full response body through.
+  client.addResponseInterceptor({
+    fulfilled: (response) => {
+      const { config, data, status } = response;
+      if (config.responseReturn === 'raw') {
+        return response;
+      }
+      if (status >= 200 && status < 400) {
+        // If caller requested raw body, return as-is
+        if (config.responseReturn === 'body') {
+          return data;
+        }
+        // Backend wraps results in { status, data } — unwrap data if present, else return full body
+        if (data && typeof data === 'object' && 'data' in data) {
+          return data.data;
+        }
+        return data;
+      }
+      throw Object.assign({}, response, { response });
+    },
+  });
 
   // token过期的处理
   client.addResponseInterceptor(
@@ -86,7 +108,7 @@ function createRequestClient(baseURL: string, options?: RequestClientOptions) {
       client,
       doReAuthenticate,
       doRefreshToken,
-      enableRefreshToken: preferences.app.enableRefreshToken,
+      enableRefreshToken: true,
       formatToken,
     }),
   );
@@ -94,11 +116,12 @@ function createRequestClient(baseURL: string, options?: RequestClientOptions) {
   // 通用的错误处理,如果没有进入上面的错误处理逻辑，就会进入这里
   client.addResponseInterceptor(
     errorMessageResponseInterceptor((msg: string, error) => {
-      // 这里可以根据业务进行定制,你可以拿到 error 内的信息进行定制化处理，根据不同的 code 做不同的提示，而不是直接使用 message.error 提示 msg
-      // 当前mock接口返回的错误字段是 error 或者 message
+      // Ignore 401 error toasts as authenticateResponseInterceptor handles 401 refresh / re-login
+      if (error?.response?.status === 401) {
+        return;
+      }
       const responseData = error?.response?.data ?? {};
       const errorMessage = responseData?.error ?? responseData?.message ?? '';
-      // 如果没有错误信息，则会根据状态码进行提示
       message.error(errorMessage || msg);
     }),
   );

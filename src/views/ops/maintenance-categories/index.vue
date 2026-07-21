@@ -17,7 +17,7 @@ import axios from 'axios';
 import { useAccessStore } from '@vben/stores';
 import { API_BASE_URL } from '#/api/config';
 import { listUsersApi, type UserItem } from '#/api/core/users';
-import { isSoftDeleted, softDeletedRowClass } from '#/utils/soft-delete';
+import { isSoftDeleted, softDeletedRowClass, sortBySoftDeleted } from '#/utils/soft-delete';
 
 interface CategoryItem {
   id: string;
@@ -124,6 +124,8 @@ function handleTableChange(pagination: TablePagination): void {
   pageSize.value = size;
   loadCategories(current, size);
 }
+
+const sortedCategories = computed(() => sortBySoftDeleted(categories.value));
 
 const columns = computed(() => [
   {
@@ -324,7 +326,7 @@ onMounted(() => {
       <Spin :spinning="loading">
         <Table
           :columns="columns"
-          :data-source="categories"
+          :data-source="sortedCategories"
           row-key="id"
           :row-class-name="softDeletedRowClass"
           :scroll="{ x: 'max-content' }"

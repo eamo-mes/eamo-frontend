@@ -16,7 +16,7 @@ import axios from 'axios';
 import { listUsersApi, type UserItem } from '#/api/core/users';
 import { useAccessStore } from '@vben/stores';
 import { API_BASE_URL } from '#/api/config';
-import { isSoftDeleted, softDeletedRowClass } from '#/utils/soft-delete';
+import { isSoftDeleted, softDeletedRowClass, sortBySoftDeleted } from '#/utils/soft-delete';
 import VisualMaintenanceCalendar from './components/VisualMaintenanceCalendar.vue';
 
 interface EquipmentInfo {

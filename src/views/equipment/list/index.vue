@@ -16,7 +16,7 @@ import {
 import axios from 'axios';
 import { useAccessStore } from '@vben/stores';
 import { API_BASE_URL } from '#/api/config';
-import { isSoftDeleted, softDeletedRowClass } from '#/utils/soft-delete';
+import { isSoftDeleted, softDeletedRowClass, sortBySoftDeleted } from '#/utils/soft-delete';
 import EquipmentSummaryWidgets from './components/EquipmentSummaryWidgets.vue';
 import EquipmentRelationModal from './components/EquipmentRelationModal.vue';
 
@@ -230,7 +230,7 @@ function handleTableChange(pagination: any) {
   loadEquipments(pagination.current, pagination.pageSize);
 }
 
-const filteredEquipments = computed(() => equipments.value);
+const filteredEquipments = computed(() => sortBySoftDeleted(equipments.value));
 
 const columns = computed(() => [
   {

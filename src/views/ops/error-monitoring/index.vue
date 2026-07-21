@@ -20,7 +20,7 @@ import type { Dayjs } from 'dayjs';
 import { API_BASE_URL } from '#/api/config';
 import { useAccessStore } from '@vben/stores';
 import { $t } from '#/locales';
-import { isSoftDeleted, softDeletedRowClass } from '#/utils/soft-delete';
+import { isSoftDeleted, softDeletedRowClass, sortBySoftDeleted } from '#/utils/soft-delete';
 
 interface UserOption {
   id: string;
@@ -200,7 +200,7 @@ const filteredItems = computed(() => {
       return equipName.includes(q) || errName.includes(q) || handlerName.includes(q);
     });
   }
-  return [...res].sort((a, b) => {
+  return sortBySoftDeleted([...res].sort((a, b) => {
     const aSynced = a.is_synced ? 1 : 0;
     const bSynced = b.is_synced ? 1 : 0;
     if (aSynced !== bSynced) {
@@ -209,7 +209,7 @@ const filteredItems = computed(() => {
     const aTime = a.occurred_at ? new Date(a.occurred_at).getTime() : 0;
     const bTime = b.occurred_at ? new Date(b.occurred_at).getTime() : 0;
     return bTime - aTime;
-  });
+  }));
 });
 
 function openAddModal() {

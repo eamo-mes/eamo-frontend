@@ -17,7 +17,7 @@ import {
 import axios from 'axios';
 import { useAccessStore } from '@vben/stores';
 import { API_BASE_URL } from '#/api/config';
-import { isSoftDeleted, softDeletedRowClass } from '#/utils/soft-delete';
+import { isSoftDeleted, softDeletedRowClass, sortBySoftDeleted } from '#/utils/soft-delete';
 import ChecklistCalendar from './components/ChecklistCalendar.vue';
 import ChecklistCharts from './components/ChecklistCharts.vue';
 
@@ -220,7 +220,7 @@ function handleTableChange(pagination: any) {
 }
 
 // With server-side search, just use sessions directly
-const filteredSessions = computed(() => sessions.value);
+const filteredSessions = computed(() => sortBySoftDeleted(sessions.value));
 
 const columns = computed(() => [
   {
