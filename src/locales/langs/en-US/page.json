@@ -326,6 +326,8 @@
     "loadError": "Failed to load parameter logs",
     "btnBatchSave": "Batch Record",
     "batchSaveTitle": "Batch Record Equipment Parameters",
+    "selectedParameter": "Selected Parameter",
+    "unitLabel": "Measurement Unit",
     "btnOverview": "Equipment Overview",
     "overviewTitle": "Equipment Parameter Logs Overview",
     "btnViewDetail": "View Details",

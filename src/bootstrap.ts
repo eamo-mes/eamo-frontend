@@ -3,9 +3,11 @@ import { createApp, watchEffect } from 'vue';
 import { registerAccessDirective } from '@vben/access';
 import { registerLoadingDirective } from '@vben/common-ui/es/loading';
 import { preferences } from '@vben/preferences';
-import { initStores } from '@vben/stores';
+import { initStores, useAccessStore } from '@vben/stores';
 import '@vben/styles';
 import '@vben/styles/antd';
+import axios from 'axios';
+import { useAuthStore } from '#/store';
 
 import { useTitle } from '@vueuse/core';
 
@@ -45,6 +47,27 @@ async function bootstrap(namespace: string) {
 
   // 配置 pinia-tore
   await initStores(app, { namespace });
+
+  // Register global axios response interceptor to handle 401 Unauthorized errors
+  axios.interceptors.response.use(
+    (response) => response,
+    async (error) => {
+      if (error?.response?.status === 401) {
+        console.warn('Axios global interceptor: 401 Unauthorized received. Redirecting to logout.');
+        try {
+          const accessStore = useAccessStore();
+          const authStore = useAuthStore();
+          accessStore.setAccessToken(null);
+          accessStore.setRefreshToken(null);
+          await authStore.logout();
+        } catch (err) {
+          console.error('Failed to log out inside Axios interceptor:', err);
+          window.location.href = `${import.meta.env.VITE_BACKEND_BASE_URL ?? 'http://localhost:8000'}/logout`;
+        }
+      }
+      return Promise.reject(error);
+    }
+  );
 
   // 安装权限指令
   registerAccessDirective(app);

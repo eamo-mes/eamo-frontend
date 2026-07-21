@@ -332,6 +332,8 @@
     "loadError": "Không thể tải nhật ký thông số",
     "btnBatchSave": "Ghi nhận hàng loạt",
     "batchSaveTitle": "Ghi nhận thông số thiết bị hàng loạt",
+    "selectedParameter": "Thông số chọn",
+    "unitLabel": "Đơn vị đo",
     "btnOverview": "Tổng quan thiết bị",
     "overviewTitle": "Tổng quan nhật ký thông số thiết bị",
     "btnViewDetail": "Xem chi tiết",

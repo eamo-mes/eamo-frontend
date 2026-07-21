@@ -30,7 +30,6 @@ import {
 
 import ParameterLogDetailModal from './components/ParameterLogDetailModal.vue';
 import ParameterBatchSaveModal from './components/ParameterBatchSaveModal.vue';
-import EquipmentOverviewModal from './components/EquipmentOverviewModal.vue';
 import WeeklyParameterChart from './components/WeeklyParameterChart.vue';
 
 const loading = ref(false);
@@ -40,7 +39,7 @@ const equipments = ref<EquipmentOption[]>([]);
 const units = ref<UnitOption[]>([]);
 
 // Embedded Chart visibility state
-const showEmbeddedChart = ref(true);
+const showEmbeddedChart = ref(false);
 
 // Modals / Drawers state
 const showAddEditModal = ref(false);
@@ -51,10 +50,6 @@ const showDetailDrawer = ref(false);
 const selectedDetailId = ref<string | null>(null);
 
 const showBatchSaveModal = ref(false);
-
-const showOverviewModal = ref(false);
-const selectedOverviewEquipmentId = ref<string | undefined>(undefined);
-const overviewInitialTab = ref<string>('chart');
 
 // Filter & search state
 const searchVal = ref('');
@@ -237,16 +232,11 @@ function openDetailDrawer(record: ParameterLogItem) {
   showDetailDrawer.value = true;
 }
 
-function openOverviewModal(equipmentId?: string) {
-  selectedOverviewEquipmentId.value = equipmentId;
-  overviewInitialTab.value = 'summary';
-  showOverviewModal.value = true;
-}
-
-function openWeeklyChartModal(equipmentId?: string) {
-  selectedOverviewEquipmentId.value = equipmentId;
-  overviewInitialTab.value = 'chart';
-  showOverviewModal.value = true;
+function openWeeklyChart(equipmentId?: string) {
+  if (equipmentId) {
+    selectedEquipmentFilter.value = equipmentId;
+  }
+  showEmbeddedChart.value = true;
 }
 
 function openBatchSaveModal() {
@@ -408,13 +398,7 @@ const columns = computed(() => [
           {{ $t('page.ops.btnWeeklyChart') }}
         </Button>
 
-        <Button
-          type="default"
-          class="border-slate-300 text-slate-700 hover:bg-slate-50 dark:border-gray-700 dark:text-gray-300 dark:hover:bg-gray-800 font-medium"
-          @click="() => openOverviewModal(selectedEquipmentFilter)"
-        >
-          {{ $t('page.ops.btnOverview') }}
-        </Button>
+
 
         <Button
           type="default"
@@ -483,7 +467,7 @@ const columns = computed(() => [
                 <Button
                   size="small"
                   class="rounded border-blue-400 text-blue-600 hover:bg-blue-50 dark:border-blue-600 dark:text-blue-400 font-medium"
-                  @click="openWeeklyChartModal(record.equipment_id)"
+                  @click="openWeeklyChart(record.equipment_id)"
                 >
                   {{ $t('page.ops.btnWeeklyChart') }}
                 </Button>
@@ -613,15 +597,6 @@ const columns = computed(() => [
       :equipments="equipments"
       :units="units"
       @success="loadItems"
-    />
-
-    <!-- Equipment Parameter Overview Modal (GET /overview/{id}) -->
-    <EquipmentOverviewModal
-      v-model:open="showOverviewModal"
-      :equipments="equipments"
-      :units="units"
-      :initial-equipment-id="selectedOverviewEquipmentId"
-      :initial-tab="overviewInitialTab"
     />
   </div>
 </template>

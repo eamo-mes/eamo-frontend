@@ -12,6 +12,9 @@ export interface ParameterOption {
   max_value?: number | string | null;
   upper_limit?: number | string | null;
   lower_limit?: number | string | null;
+  standard_max?: number | string | null;
+  standard_min?: number | string | null;
+  standard?: number | string | null;
 }
 
 export interface EquipmentOption {
@@ -48,6 +51,9 @@ export interface ParameterLogItem {
     max_value?: number | string | null;
     upper_limit?: number | string | null;
     lower_limit?: number | string | null;
+    standard_max?: number | string | null;
+    standard_min?: number | string | null;
+    standard?: number | string | null;
   };
   equipment_parameter?: {
     id?: string;
@@ -57,6 +63,9 @@ export interface ParameterLogItem {
     max_value?: number | string | null;
     upper_limit?: number | string | null;
     lower_limit?: number | string | null;
+    standard_max?: number | string | null;
+    standard_min?: number | string | null;
+    standard?: number | string | null;
   };
   unit?: { id?: string; name: string };
   user?: { id?: string; name: string; email?: string };

@@ -1,6 +1,6 @@
 <script lang="ts" setup>
 import { ref, computed, watch, nextTick } from 'vue';
-import { Spin, Empty, RadioGroup, RadioButton } from 'ant-design-vue';
+import { Spin, Empty } from 'ant-design-vue';
 import dayjs from 'dayjs';
 import { $t } from '#/locales';
 import { EchartsUI, useEcharts, type EchartsUIType } from '@vben/plugins/echarts';
@@ -16,19 +16,13 @@ const props = defineProps<{
 
 const loading = ref(false);
 const logs = ref<ParameterLogItem[]>([]);
-const scaleMode = ref<'actual' | 'normalized'>('actual');
+const scaleMode = ref<'actual' | 'normalized'>('normalized');
 const showLimitLines = ref<boolean>(true);
+const selectedParamId = ref<string | null>(null);
 const connectNullsMode = ref<boolean>(true);
-const hiddenParamIds = ref<Set<string>>(new Set());
 
-function toggleParam(paramId: string) {
-  const newSet = new Set(hiddenParamIds.value);
-  if (newSet.has(paramId)) {
-    newSet.delete(paramId);
-  } else {
-    newSet.add(paramId);
-  }
-  hiddenParamIds.value = newSet;
+function selectParam(paramId: string) {
+  selectedParamId.value = paramId;
   updateChart();
 }
 
@@ -37,17 +31,6 @@ const { renderEcharts } = useEcharts(chartRef);
 
 const LINE_COLORS = [
   '#3b82f6', // Blue
-  '#10b981', // Emerald Green
-  '#f59e0b', // Amber
-  '#ef4444', // Red
-  '#8b5cf6', // Purple
-  '#ec4899', // Pink
-  '#06b6d4', // Cyan
-  '#f97316', // Orange
-  '#14b8a6', // Teal
-  '#6366f1', // Indigo
-  '#a855f7', // Violet
-  '#84cc16', // Lime
 ];
 
 interface ParameterStats {
@@ -61,6 +44,7 @@ interface ParameterStats {
   count: number;
   color: string;
   limitMax?: number;
+  limitMin?: number;
 }
 
 function getUnitName(unitId: string | null | undefined): string {
@@ -104,7 +88,7 @@ async function loadData() {
 watch(
   () => props.equipmentId,
   () => {
-    hiddenParamIds.value.clear();
+    selectedParamId.value = null;
     loadData();
   },
   { immediate: true }
@@ -121,27 +105,45 @@ watch(
   { deep: true }
 );
 
-watch([scaleMode, showLimitLines, connectNullsMode], () => {
+watch([scaleMode, showLimitLines, connectNullsMode, selectedParamId], () => {
   updateChart();
 });
 
 // Calculate metrics per parameter
 const parameterStats = computed<ParameterStats[]>(() => {
-  const map = new Map<string, { info: { id: string; name: string; code: string; unit: string }; values: number[]; rawLimitMax?: number }>();
+  const map = new Map<
+    string,
+    {
+      info: { id: string; name: string; code: string; unit: string };
+      values: number[];
+      rawLimitMax?: number;
+      rawLimitMin?: number;
+    }
+  >();
 
   logs.value.forEach((item) => {
     const numVal = parseFloat(item.value);
     if (isNaN(numVal)) return;
 
     const info = getParamInfo(item);
-    const paramMeta = item.parameter || item.equipment_parameter;
-    const rawLimit = paramMeta?.upper_limit ?? paramMeta?.max_value;
-    const parsedLimit = rawLimit != null ? parseFloat(String(rawLimit)) : undefined;
+    const paramMeta = (item.parameter || item.equipment_parameter) as Record<string, any> | undefined;
+    const rawLimitMax = paramMeta?.standard_max ?? paramMeta?.upper_limit ?? paramMeta?.max_value;
+    const rawLimitMin = paramMeta?.standard_min ?? paramMeta?.lower_limit ?? paramMeta?.min_value;
+    const parsedLimitMax = rawLimitMax != null ? parseFloat(String(rawLimitMax)) : undefined;
+    const parsedLimitMin = rawLimitMin != null ? parseFloat(String(rawLimitMin)) : undefined;
 
     if (!map.has(info.id)) {
-      map.set(info.id, { info, values: [numVal], rawLimitMax: parsedLimit });
+      map.set(info.id, {
+        info,
+        values: [numVal],
+        rawLimitMax: parsedLimitMax,
+        rawLimitMin: parsedLimitMin,
+      });
     } else {
-      map.get(info.id)?.values.push(numVal);
+      const entry = map.get(info.id);
+      if (entry) {
+        entry.values.push(numVal);
+      }
     }
   });
 
@@ -158,9 +160,16 @@ const parameterStats = computed<ParameterStats[]>(() => {
     colorIdx++;
 
     // Calculate parameter upper limit (from metadata or peak value)
-    const limitMax = item.rawLimitMax !== undefined && !isNaN(item.rawLimitMax)
-      ? item.rawLimitMax
-      : parseFloat((max * 1.05).toFixed(2));
+    const limitMax =
+      item.rawLimitMax !== undefined && !isNaN(item.rawLimitMax)
+        ? item.rawLimitMax
+        : parseFloat((max * 1.05).toFixed(2));
+
+    // Calculate parameter lower limit (from metadata or min value)
+    const limitMin =
+      item.rawLimitMin !== undefined && !isNaN(item.rawLimitMin)
+        ? item.rawLimitMin
+        : parseFloat((min * 0.95).toFixed(2));
 
     stats.push({
       id: paramId,
@@ -173,11 +182,23 @@ const parameterStats = computed<ParameterStats[]>(() => {
       count: vals.length,
       color,
       limitMax,
+      limitMin,
     });
   });
 
   return stats;
 });
+
+watch(parameterStats, (stats) => {
+  if (stats && stats.length > 0) {
+    const firstStat = stats[0];
+    if (firstStat && (!selectedParamId.value || !stats.some((s) => s.id === selectedParamId.value))) {
+      selectedParamId.value = firstStat.id;
+    }
+  } else {
+    selectedParamId.value = null;
+  }
+}, { immediate: true });
 
 async function updateChart() {
   await nextTick();
@@ -222,75 +243,122 @@ async function updateChart() {
   const selectedMap: Record<string, boolean> = {};
   parameterStats.value.forEach((stat) => {
     const seriesName = stat.code ? `${stat.name} (${stat.code})` : stat.name;
-    selectedMap[seriesName] = !hiddenParamIds.value.has(stat.id);
+    selectedMap[seriesName] = stat.id === selectedParamId.value;
   });
 
-  // Build ECharts series for each parameter
-  const seriesList = parameterStats.value.map((stat) => {
-    const isNormalized = scaleMode.value === 'normalized';
+  // Build ECharts series for the active parameter
+  const seriesList = parameterStats.value
+    .filter((stat) => stat.id === selectedParamId.value)
+    .map((stat) => {
+      const isNormalized = scaleMode.value === 'normalized';
 
-    const dataPoints = timestamps.map((ts) => {
-      const found = validLogs.find(
-        (item) => item.equipment_parameter_id === stat.id && item.formattedTime === ts
-      );
-      if (!found) return null;
+      const dataPoints = timestamps.map((ts) => {
+        const found = validLogs.find(
+          (item) => item.equipment_parameter_id === stat.id && item.formattedTime === ts
+        );
+        if (!found) return null;
 
-      if (isNormalized) {
-        const range = stat.max - stat.min;
-        if (range === 0) return 100;
-        const norm = ((found.numValue - stat.min) / range) * 100;
-        return parseFloat(norm.toFixed(1));
-      }
-      return found.numValue;
-    });
-
-    const markLineData = [];
-    if (showLimitLines.value && stat.limitMax !== undefined) {
-      const limitValStr = `${stat.limitMax}${stat.unit ? ' ' + stat.unit : ''}`;
-      markLineData.push({
-        name: `${stat.name} ${$t('page.ops.paramLimit')}`,
-        yAxis: isNormalized ? 100 : stat.limitMax,
-        label: {
-          show: true,
-          formatter: isNormalized
-            ? `${stat.name} ${$t('page.ops.paramLimit')}`
-            : `${stat.name} ${$t('page.ops.paramLimit')}: ${limitValStr}`,
-          position: 'end' as const,
-          fontSize: 10,
-          color: stat.color,
-          fontWeight: 'bold' as const,
-        },
-        lineStyle: {
-          color: stat.color,
-          type: 'dashed' as const,
-          width: 1.5,
-        },
+        if (isNormalized) {
+          const range = stat.max - stat.min;
+          if (range === 0) return 100;
+          const norm = ((found.numValue - stat.min) / range) * 100;
+          return parseFloat(norm.toFixed(1));
+        }
+        return found.numValue;
       });
-    }
 
-    return {
-      name: stat.code ? `${stat.name} (${stat.code})` : stat.name,
-      type: 'line' as const,
-      smooth: true,
-      connectNulls: connectNullsMode.value,
-      symbol: 'circle',
-      symbolSize: 6,
-      showSymbol: true,
-      data: dataPoints,
-      itemStyle: {
-        color: stat.color,
-      },
-      lineStyle: {
-        width: 2.5,
-        color: stat.color,
-      },
-      markLine: markLineData.length > 0 ? {
-        silent: false,
-        symbol: ['none', 'none'],
-        data: markLineData,
-      } : undefined,
-    };
-  });
+      const markLineData = [];
+
+      // Max Limit Line
+      if (showLimitLines.value && stat.limitMax !== undefined) {
+        const limitValStr = `${stat.limitMax}${stat.unit ? ' ' + stat.unit : ''}`;
+        markLineData.push({
+          name: 'Max Limit',
+          yAxis: isNormalized ? 100 : stat.limitMax,
+          label: {
+            show: true,
+            formatter: isNormalized ? 'Max Limit' : `Max Limit: ${limitValStr}`,
+            position: 'end' as const,
+            fontSize: 10,
+            color: '#ef4444',
+            fontWeight: 'bold' as const,
+          },
+          lineStyle: {
+            color: '#ef4444',
+            type: 'dashed' as const,
+            width: 1.5,
+          },
+        });
+      }
+
+      // Min Limit Line
+      if (showLimitLines.value && stat.limitMin !== undefined) {
+        const limitValStr = `${stat.limitMin}${stat.unit ? ' ' + stat.unit : ''}`;
+        markLineData.push({
+          name: 'Min Limit',
+          yAxis: isNormalized ? 0 : stat.limitMin,
+          label: {
+            show: true,
+            formatter: isNormalized ? 'Min Limit' : `Min Limit: ${limitValStr}`,
+            position: 'end' as const,
+            fontSize: 10,
+            color: '#ef4444',
+            fontWeight: 'bold' as const,
+          },
+          lineStyle: {
+            color: '#ef4444',
+            type: 'dashed' as const,
+            width: 1.5,
+          },
+        });
+      }
+
+      // Average Line
+      if (stat.avg !== undefined) {
+        const avgValStr = `${stat.avg}${stat.unit ? ' ' + stat.unit : ''}`;
+        const normalizedAvg = isNormalized
+          ? ((stat.avg - stat.min) / (stat.max - stat.min || 1)) * 100
+          : stat.avg;
+        markLineData.push({
+          name: 'Average',
+          yAxis: parseFloat(normalizedAvg.toFixed(1)),
+          label: {
+            show: true,
+            formatter: `Avg: ${avgValStr}`,
+            position: 'end' as const,
+            fontSize: 10,
+            color: '#64748b',
+            fontWeight: 'bold' as const,
+          },
+          lineStyle: {
+            color: '#64748b',
+            type: 'dashed' as const,
+            width: 1.5,
+          },
+        });
+      }
+
+      const seriesObj: any = {
+        name: stat.code ? `${stat.name} (${stat.code})` : stat.name,
+        type: 'bar',
+        barWidth: '40%',
+        data: dataPoints,
+        itemStyle: {
+          color: stat.color,
+          borderRadius: [4, 4, 0, 0],
+        },
+      };
+
+      if (markLineData.length > 0) {
+        seriesObj.markLine = {
+          silent: false,
+          symbol: ['none', 'none'],
+          data: markLineData,
+        };
+      }
+
+      return seriesObj;
+    });
 
   renderEcharts({
     tooltip: {
@@ -380,44 +448,9 @@ async function updateChart() {
 
 <template>
   <div class="space-y-4">
-    <!-- Header Controls: Mode Selector & Parameter Cards -->
-    <div class="flex flex-wrap items-center justify-between gap-3 bg-gray-50 dark:bg-gray-800/60 p-3 rounded-lg border border-gray-100 dark:border-gray-700">
-      <div class="flex flex-wrap items-center gap-4">
-        <div class="flex items-center gap-2">
-          <span class="text-sm font-medium text-gray-700 dark:text-gray-300">
-            {{ $t('page.ops.scaleMode') }}:
-          </span>
-          <RadioGroup v-model:value="scaleMode" size="small" button-style="solid">
-            <RadioButton value="actual">
-              {{ $t('page.ops.actualValues') }}
-            </RadioButton>
-            <RadioButton value="normalized">
-              {{ $t('page.ops.normalizedValues') }}
-            </RadioButton>
-          </RadioGroup>
-        </div>
 
-        <div class="flex items-center gap-2 border-l border-gray-200 dark:border-gray-700 pl-4">
-          <span class="text-sm font-medium text-gray-700 dark:text-gray-300">
-            {{ $t('page.ops.limitLines') }}:
-          </span>
-          <RadioGroup v-model:value="showLimitLines" size="small" button-style="solid">
-            <RadioButton :value="true">
-              {{ $t('page.ops.showLimitLines') }}
-            </RadioButton>
-            <RadioButton :value="false">
-              {{ $t('page.ops.hideLimitLines') }}
-            </RadioButton>
-          </RadioGroup>
-        </div>
-      </div>
 
-      <div class="text-xs text-gray-500 flex items-center gap-3">
-        <span>Total Parameters: <strong class="text-primary">{{ parameterStats.length }}</strong></span>
-      </div>
-    </div>
-
-    <!-- Parameter Stats Summary Badge Chips (Interactive Toggle) -->
+    <!-- Parameter Stats Summary Badge Chips (Single Select) -->
     <div v-if="parameterStats.length > 0" class="flex flex-wrap gap-2">
       <button
         v-for="stat in parameterStats"
@@ -425,20 +458,20 @@ async function updateChart() {
         type="button"
         class="px-2.5 py-1.5 rounded-md text-xs font-medium border shadow-2xs flex items-center gap-2 cursor-pointer transition-all duration-200 select-none hover:shadow-sm"
         :class="[
-          hiddenParamIds.has(stat.id)
-            ? 'bg-gray-100 dark:bg-gray-800/40 text-gray-400 dark:text-gray-500 border-gray-200 dark:border-gray-700/60 opacity-60 line-through'
-            : 'bg-card text-gray-800 dark:text-gray-200 hover:scale-[1.02]'
+          selectedParamId === stat.id
+            ? 'bg-card text-gray-800 dark:text-gray-200 hover:scale-[1.02] border-primary font-semibold ring-2 ring-primary/20 shadow-xs'
+            : 'bg-gray-50 dark:bg-gray-800/30 text-gray-400 dark:text-gray-500 border-gray-200 dark:border-gray-700/60 opacity-60 hover:opacity-85'
         ]"
-        :style="hiddenParamIds.has(stat.id) ? {} : { borderColor: stat.color + '60', backgroundColor: stat.color + '0A' }"
-        @click="toggleParam(stat.id)"
+        :style="selectedParamId === stat.id ? { borderColor: stat.color, backgroundColor: stat.color + '12' } : {}"
+        @click="selectParam(stat.id)"
       >
         <span
           class="w-2.5 h-2.5 rounded-full shrink-0 transition-opacity"
-          :class="hiddenParamIds.has(stat.id) ? 'bg-gray-300 dark:bg-gray-600' : ''"
-          :style="hiddenParamIds.has(stat.id) ? {} : { backgroundColor: stat.color }"
+          :class="selectedParamId === stat.id ? '' : 'bg-gray-300 dark:bg-gray-600'"
+          :style="selectedParamId === stat.id ? { backgroundColor: stat.color } : {}"
         ></span>
-        <span class="font-semibold">
-          <span v-if="stat.code" :class="hiddenParamIds.has(stat.id) ? 'text-gray-400' : 'text-gray-500'">({{ stat.code }})</span>
+        <span class="font-semibold text-xs" :class="selectedParamId === stat.id ? 'text-gray-900 dark:text-gray-100' : 'text-gray-500'">
+          <span v-if="stat.code" :class="selectedParamId === stat.id ? 'text-gray-500' : 'text-gray-400'">({{ stat.code }})</span>
         </span>
       </button>
     </div>

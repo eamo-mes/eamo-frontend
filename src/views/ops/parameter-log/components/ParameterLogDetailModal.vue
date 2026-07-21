@@ -50,7 +50,7 @@ const parameterInfo = computed(() => {
   const name = param?.name || paramObj?.name || detailLog.value.equipment_parameter_id;
   const code = param?.code || paramObj?.code || '';
   return {
-    name: code ? `${name} (${code})` : name,
+    name,
     code,
   };
 });
@@ -121,23 +121,25 @@ const columns = computed(() => [
     title: $t('page.ops.recordedAt'),
     dataIndex: 'recorded_at',
     key: 'recorded_at',
-    width: 200,
+    width: 220,
   },
   {
     title: $t('page.ops.value'),
     dataIndex: 'value',
     key: 'value',
+    align: 'left' as const,
   },
   {
     title: 'Created At',
     dataIndex: 'created_at',
     key: 'created_at',
-    width: 200,
+    width: 220,
   },
   {
     title: $t('page.ops.colCreatedBy'),
     key: 'user',
     width: 180,
+    align: 'center' as const,
   },
 ]);
 </script>
@@ -145,91 +147,131 @@ const columns = computed(() => [
 <template>
   <Modal
     :open="props.open"
-    :title="$t('page.ops.detailTitle')"
     width="950px"
     :footer="null"
+    destroy-on-close
     @cancel="handleClose"
   >
+    <!-- Custom Modal Header -->
+    <template #title>
+      <div class="flex items-center gap-2">
+        <span class="text-lg font-semibold text-gray-900 dark:text-gray-100">
+          {{ $t('page.ops.detailTitle') }}
+        </span>
+      </div>
+    </template>
+
     <Spin :spinning="loading">
-      <div class="min-h-[250px]">
-        <div v-if="detailLog" class="space-y-5 my-2">
-          <!-- Top Info Banner -->
-          <div class="bg-slate-50 dark:bg-gray-800/40 border border-slate-200 dark:border-gray-700 rounded-xl p-4 shadow-2xs">
-            <div class="grid grid-cols-1 md:grid-cols-3 gap-4 divide-y md:divide-y-0 md:divide-x divide-slate-200 dark:divide-gray-700">
-              <!-- Equipment Info -->
-              <div class="flex flex-col justify-center">
-                <span class="text-xs text-slate-500 font-medium uppercase tracking-wider mb-1">
+      <div class="min-h-[320px] py-2">
+        <div v-if="detailLog" class="space-y-6">
+          <!-- Top Info Cards Section -->
+          <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+            <!-- Equipment Card -->
+            <div class="bg-gray-50/50 dark:bg-gray-800/20 border border-gray-150 dark:border-gray-800 rounded-xl p-4 flex items-start gap-3 shadow-2xs">
+              <div class="space-y-0.5">
+                <span class="text-[11px] text-gray-400 dark:text-gray-500 font-semibold uppercase tracking-wider">
                   {{ $t('page.ops.colEquipment') }}
                 </span>
-                <div class="flex items-center gap-2">
-                  <span class="font-semibold text-slate-800 dark:text-gray-200 text-base">
-                    {{ equipmentInfo?.name }}
-                  </span>
+                <h4 class="font-bold text-gray-800 dark:text-gray-200 text-[15px] leading-tight m-0">
+                  {{ equipmentInfo?.name }}
+                </h4>
+                <div v-if="equipmentInfo?.code" class="mt-1">
+                  <Tag color="blue" class="m-0 font-mono text-[10px] uppercase font-semibold">
+                    {{ equipmentInfo.code }}
+                  </Tag>
                 </div>
               </div>
+            </div>
 
-              <!-- Parameter Info -->
-              <div class="flex flex-col justify-center md:pl-4 pt-2 md:pt-0">
-                <span class="text-xs text-slate-500 font-medium uppercase tracking-wider mb-1">
+            <!-- Parameter Card -->
+            <div class="bg-gray-50/50 dark:bg-gray-800/20 border border-gray-150 dark:border-gray-800 rounded-xl p-4 flex items-start gap-3 shadow-2xs">
+              <div class="space-y-0.5">
+                <span class="text-[11px] text-gray-400 dark:text-gray-500 font-semibold uppercase tracking-wider">
                   {{ $t('page.ops.parameter') }}
                 </span>
-                <div class="flex items-center gap-2">
-                  <span class="font-semibold text-slate-800 dark:text-gray-200 text-base">
-                    {{ parameterInfo?.name }}
-                  </span>
+                <h4 class="font-bold text-gray-800 dark:text-gray-200 text-[15px] leading-tight m-0">
+                  {{ parameterInfo?.name }}
+                </h4>
+                <div v-if="parameterInfo?.code" class="mt-1">
+                  <Tag color="blue" class="m-0 font-mono text-[10px] uppercase font-semibold">
+                    {{ parameterInfo.code }}
+                  </Tag>
                 </div>
               </div>
+            </div>
 
-              <!-- Unit Info & Total Records -->
-              <div class="flex flex-col justify-center md:pl-4 pt-2 md:pt-0">
-                <span class="text-xs text-slate-500 font-medium uppercase tracking-wider mb-1">
-                  {{ $t('page.ops.unit') }} & Total
+            <!-- Unit Card -->
+            <div class="bg-gray-50/50 dark:bg-gray-800/20 border border-gray-150 dark:border-gray-800 rounded-xl p-4 flex items-start gap-3 shadow-2xs">
+              <div class="space-y-0.5">
+                <span class="text-[11px] text-gray-400 dark:text-gray-500 font-semibold uppercase tracking-wider">
+                  {{ $t('page.ops.unit') }} & Total Records
                 </span>
-                <div class="flex items-center gap-2">
-                  <span class="font-semibold text-slate-800 dark:text-gray-200 text-base">
-                    {{ unitName || '-' }}
-                  </span>
+                <h4 class="font-bold text-gray-800 dark:text-gray-200 text-[15px] leading-tight m-0">
+                  {{ unitName || '-' }}
+                </h4>
+                <div class="mt-1">
+                  <Tag color="blue" class="m-0 text-[10px] font-semibold">
+                    {{ filteredRecords.length }} Records
+                  </Tag>
                 </div>
               </div>
             </div>
           </div>
 
+          <!-- History Section Header -->
+          <div class="border-b border-gray-100 dark:border-gray-800 pb-2">
+            <h3 class="text-sm font-bold text-gray-800 dark:text-gray-200 m-0">
+              Parameter Logs History
+            </h3>
+          </div>
+
+          <!-- Empty State -->
           <Empty
             v-if="filteredRecords.length === 0"
             :description="$t('page.ops.noTimeRecords')"
             class="my-8"
           />
 
+          <!-- Data History Table -->
           <Table
             v-else
             :columns="columns"
             :data-source="filteredRecords"
             row-key="id"
-            size="small"
-            :pagination="{ pageSize: 5, showSizeChanger: true }"
-            bordered
+            size="middle"
+            :pagination="{ pageSize: 5, showSizeChanger: true, size: 'small' }"
+            class="w-full border border-gray-100 dark:border-gray-800 rounded-lg overflow-hidden shadow-2xs"
           >
             <template #bodyCell="{ column, record }">
+              <!-- Recorded At Column -->
               <template v-if="column.key === 'recorded_at'">
-                <span class="text-slate-700 dark:text-gray-300">
-                  {{ record.recorded_at ? dayjs(record.recorded_at).format('YYYY-MM-DD HH:mm:ss') : (record.created_at ? dayjs(record.created_at).format('YYYY-MM-DD HH:mm:ss') : '-') }}
-                </span>
+                <div class="flex items-center gap-1.5 text-gray-600 dark:text-gray-300">
+                  <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                    <path stroke-linecap="round" stroke-linejoin="round" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                  </svg>
+                  <span>
+                    {{ record.recorded_at ? dayjs(record.recorded_at).format('YYYY-MM-DD HH:mm:ss') : (record.created_at ? dayjs(record.created_at).format('YYYY-MM-DD HH:mm:ss') : '-') }}
+                  </span>
+                </div>
               </template>
 
+              <!-- Value Column -->
               <template v-else-if="column.key === 'value'">
-                <span class="font-semibold text-slate-800 dark:text-gray-100 text-sm">
-                  {{ record.value }} {{ unitName }}
+                <span class="text-gray-800 dark:text-gray-250 font-semibold">
+                  {{ record.value }}<span class="text-gray-400 dark:text-gray-500 ml-0.5">{{ unitName }}</span>
                 </span>
               </template>
 
+              <!-- Created At Column -->
               <template v-else-if="column.key === 'created_at'">
-                <span class="text-slate-700 dark:text-gray-300">
+                <span class="text-gray-600 dark:text-gray-300">
                   {{ record.created_at ? dayjs(record.created_at).format('YYYY-MM-DD HH:mm:ss') : '-' }}
                 </span>
               </template>
 
+              <!-- Creator Column -->
               <template v-else-if="column.key === 'user'">
-                <Tag color="geekblue" class="rounded font-medium">
+                <Tag color="blue" class="m-0 font-medium px-2 rounded-sm border-0">
                   {{ getUserDisplayName(record) }}
                 </Tag>
               </template>
@@ -239,10 +281,21 @@ const columns = computed(() => [
       </div>
     </Spin>
 
-    <div class="flex justify-end mt-4 pt-2 border-t border-gray-100 dark:border-gray-800">
-      <Button type="primary" class="bg-primary px-6" @click="handleClose">
+    <!-- Footer Actions -->
+    <div class="flex justify-end mt-6 pt-3 border-t border-gray-100 dark:border-gray-800">
+      <Button type="primary" class="px-6 rounded-md font-medium" @click="handleClose">
         {{ $t('page.ops.btnOk') }}
       </Button>
     </div>
   </Modal>
 </template>
+
+<style scoped>
+:deep(.ant-table-thead > tr > th) {
+  background-color: var(--ant-table-header-bg, #fafafa) !important;
+  font-weight: 600 !important;
+}
+.dark :deep(.ant-table-thead > tr > th) {
+  background-color: #1f1f1f !important;
+}
+</style>

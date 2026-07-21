@@ -219,6 +219,8 @@ const columns = computed(() => [
   },
 ]);
 
+const sortedPlans = computed(() => sortBySoftDeleted(plans.value));
+
 function handleTableChange(pagination: TablePagination): void {
   const current = pagination.current ?? 1;
   const size = pagination.pageSize ?? 15;
@@ -534,7 +536,7 @@ onMounted(() => {
         <Spin :spinning="loading">
           <Table
             :columns="columns"
-            :data-source="plans"
+            :data-source="sortedPlans"
             row-key="id"
             :row-class-name="softDeletedRowClass"
             :scroll="{ x: 'max-content' }"

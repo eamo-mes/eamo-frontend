@@ -30,18 +30,12 @@ function createRequestClient(baseURL: string, options?: RequestClientOptions) {
    * 重新认证逻辑
    */
   async function doReAuthenticate() {
-    console.warn('Access token or refresh token is invalid or expired. ');
+    console.warn('Access token or refresh token is invalid or expired. Redirecting to logout.');
     const accessStore = useAccessStore();
     const authStore = useAuthStore();
     accessStore.setAccessToken(null);
-    if (
-      preferences.app.loginExpiredMode === 'modal' &&
-      accessStore.isAccessChecked
-    ) {
-      accessStore.setLoginExpired(true);
-    } else {
-      await authStore.logout();
-    }
+    accessStore.setRefreshToken(null);
+    await authStore.logout();
   }
 
   /**

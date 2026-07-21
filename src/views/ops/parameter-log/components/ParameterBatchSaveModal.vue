@@ -213,7 +213,7 @@ function handleCancel(): void {
       <!-- Selected Parameter Summary Banner (Slate Styling) -->
       <div v-if="selectedParameterObj" class="bg-slate-50 dark:bg-gray-800 border border-slate-200 dark:border-gray-700 rounded-xl p-3.5 flex items-center justify-between">
         <div class="flex items-center gap-2">
-          <span class="text-xs text-slate-500 font-medium uppercase">Thông số chọn:</span>
+          <span class="text-xs text-slate-500 font-medium uppercase">{{ $t('page.ops.selectedParameter') }}:</span>
           <span class="font-semibold text-slate-800 dark:text-gray-200 text-sm">
             {{ selectedParameterObj.name }}
           </span>
@@ -223,7 +223,7 @@ function handleCancel(): void {
         </div>
 
         <div class="flex items-center gap-2">
-          <span class="text-xs text-slate-500 font-medium">Đơn vị đo:</span>
+          <span class="text-xs text-slate-500 font-medium">{{ $t('page.ops.unitLabel') }}:</span>
           <Tag class="m-0 font-semibold bg-slate-100 text-slate-700 border-slate-200 dark:bg-gray-700 dark:text-gray-300 dark:border-gray-600">
             {{ unitName || '-' }}
           </Tag>
