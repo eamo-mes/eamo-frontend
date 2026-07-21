@@ -1,7 +1,7 @@
 <script lang="ts" setup>
 import type { EchartsUIType } from '@vben/plugins/echarts';
 
-import { nextTick, ref, watch, computed } from 'vue';
+import { nextTick, ref, watch } from 'vue';
 
 import { $t } from '#/locales';
 import { EchartsUI, useEcharts } from '@vben/plugins/echarts';
@@ -36,28 +36,6 @@ const barChartRef = ref<EchartsUIType>();
 const pieChartRef = ref<EchartsUIType>();
 const { renderEcharts: renderBarChart } = useEcharts(barChartRef);
 const { renderEcharts: renderPieChart } = useEcharts(pieChartRef);
-
-const affectedEquipmentsCount = computed(() => {
-  const ids = new Set<string>();
-  props.errors.forEach((err) => {
-    err.equipment?.forEach((eq) => ids.add(eq.id));
-  });
-  return ids.size;
-});
-
-const topCriticalError = computed(() => {
-  if (!props.errors || props.errors.length === 0) return null;
-  let maxCount = -1;
-  let topErr: ErrorItem | null = null;
-  for (const err of props.errors) {
-    const count = err.equipment ? err.equipment.length : 0;
-    if (count > maxCount) {
-      maxCount = count;
-      topErr = err;
-    }
-  }
-  return topErr ? { name: topErr.name, count: maxCount } : null;
-});
 
 async function updateCharts() {
   await nextTick();
@@ -100,7 +78,7 @@ async function updateCharts() {
       top: '5%',
     },
     legend: {
-      data: [{ name: 'Equipment Links', icon: 'roundRect' }],
+      data: [{ name: $t('page.equipment.chartEquipmentLinks'), icon: 'roundRect' }],
       bottom: 0,
       textStyle: { color: '#4b5563', fontSize: 11 },
     },
@@ -116,20 +94,13 @@ async function updateCharts() {
             fontSize: 11,
           },
           itemStyle: {
-            color: {
-              type: 'linear',
-              x: 0, y: 0, x2: 1, y2: 0,
-              colorStops: [
-                { offset: 0, color: '#5ab1ef' },
-                { offset: 1, color: '#1890ff' },
-              ],
-            },
+            color: '#1890ff',
           },
         })),
         itemStyle: {
           borderRadius: [0, 4, 4, 0],
         },
-        name: 'Equipment Links',
+        name: $t('page.equipment.chartEquipmentLinks'),
         type: 'bar',
         barWidth: '52%',
       },
@@ -151,7 +122,7 @@ async function updateCharts() {
         }
         const p = list[0];
         if (!p) return '';
-        return `<strong>${p.name}</strong><br/>Equipment links: <strong>${p.value}</strong>`;
+        return `<strong>${p.name}</strong><br/>${$t('page.equipment.chartEquipmentLinks')}: <strong>${p.value}</strong>`;
       },
     },
     xAxis: {
@@ -211,7 +182,7 @@ async function updateCharts() {
           color: '#1e293b',
           fontSize: 14,
           fontWeight: 'bold',
-          formatter: `${totalLinked}\nLinks`,
+          formatter: `${totalLinked}\n${$t('page.equipment.chartLinksLabel')}`,
         },
         labelLine: { show: false },
         name: $t('page.equipment.chartErrorCount'),
@@ -224,7 +195,14 @@ async function updateCharts() {
       color: '#4b5563',
     },
     tooltip: {
-      formatter: '{b}<br/>Equipment links: <strong>{c}</strong> ({d}%)',
+      formatter: (params: unknown) => {
+        const p = params as {
+          name: string;
+          value: number;
+          percent: number;
+        };
+        return `${p.name}<br/>${$t('page.equipment.chartEquipmentLinks')}: <strong>${p.value}</strong> (${p.percent}%)`;
+      },
       trigger: 'item',
     },
   });
@@ -253,26 +231,26 @@ watch(
         <!-- ECharts Section -->
         <div v-if="props.errors.length > 0" class="grid grid-cols-1 md:grid-cols-2 gap-5">
           <!-- Bar Chart Card -->
-          <div class="border border-[#1890ff]/15 dark:border-[#1890ff]/30 rounded-xl p-4">
+          <div class="border border-border rounded-xl p-4">
             <div class="mb-1">
-              <h5 class="text-xs font-bold uppercase tracking-wider m-0">
-                Frequency by Equipment Count
+              <h5 class="text-xs font-bold text-foreground uppercase tracking-wider m-0">
+                {{ $t('page.equipment.chartFrequencyTitle') }}
               </h5>
-              <p class="text-[11px] mt-0.5 m-0">
-                Number of equipments linked to each error definition
+              <p class="text-[11px] text-muted-foreground mt-0.5 m-0">
+                {{ $t('page.equipment.chartFrequencyDesc') }}
               </p>
             </div>
             <EchartsUI ref="barChartRef" height="300px" />
           </div>
 
           <!-- Pie Chart Card -->
-          <div class="border border-[#1890ff]/15 dark:border-[#1890ff]/30 rounded-xl p-4">
+          <div class="border border-border rounded-xl p-4">
             <div class="mb-1">
-              <h5 class="text-xs font-bold uppercase tracking-wider m-0">
-                Contribution Ratio
+              <h5 class="text-xs font-bold text-foreground uppercase tracking-wider m-0">
+                {{ $t('page.equipment.chartRatioTitle') }}
               </h5>
-              <p class="text-[11px] mt-0.5 m-0">
-                Proportion of each error relative to total equipment linkages
+              <p class="text-[11px] text-muted-foreground mt-0.5 m-0">
+                {{ $t('page.equipment.chartRatioDesc') }}
               </p>
             </div>
             <EchartsUI ref="pieChartRef" height="300px" />
@@ -281,7 +259,7 @@ watch(
 
         <!-- Empty State -->
         <div v-else class="py-12 flex justify-center">
-          <Empty description="No error charts data available" />
+          <Empty :description="$t('page.equipment.chartNoData')" />
         </div>
       </div>
     </Spin>

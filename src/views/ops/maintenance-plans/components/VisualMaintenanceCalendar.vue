@@ -237,6 +237,7 @@ async function handleSaveDrawer(): Promise<void> {
           ...s,
           date: drawerSchedule.value!.date,
           user_ids: [...drawerSchedule.value!.user_ids],
+          result: logResult.value || null,
         };
       }
       return s;
@@ -630,6 +631,7 @@ function showLastMaintenanceForDate(dateStr: string): void {
             format="YYYY-MM-DD"
             :placeholder="$t('page.ops.placeholderScheduleDate')"
             class="w-full"
+            :disabled="props.readOnly"
           />
         </div>
 
@@ -647,6 +649,7 @@ function showLastMaintenanceForDate(dateStr: string): void {
             show-search
             allow-clear
             class="w-full"
+            :disabled="props.readOnly"
           />
         </div>
 
@@ -699,12 +702,23 @@ function showLastMaintenanceForDate(dateStr: string): void {
         <div class="flex justify-between items-center py-2">
           <!-- Chế độ Chỉ xem (ReadOnly - ở màn danh sách) -->
           <template v-if="props.readOnly">
-            <div class="flex gap-2">
-              <Button @click="handleCancelDrawer">
-                {{ $t('page.ops.btnCancel') }}
-              </Button>
-              <Button type="primary" class="bg-[#5c3e35] hover:bg-[#4b332b] border-[#5c3e35]" @click="goToPlan">
-                {{ $t('page.ops.btnGoToPlan') }}
+            <div class="flex justify-between items-center w-full">
+              <div class="flex gap-2">
+                <Button @click="handleCancelDrawer">
+                  {{ $t('page.ops.btnCancel') }}
+                </Button>
+                <Button type="primary" class="bg-[#5c3e35] hover:bg-[#4b332b] border-[#5c3e35]" @click="goToPlan">
+                  {{ $t('page.ops.btnGoToPlan') }}
+                </Button>
+              </div>
+              <Button
+                type="primary"
+                class="bg-[#5c3e35] hover:bg-[#4b332b] border-[#5c3e35] rounded text-white"
+                :loading="logSubmitting"
+                :disabled="!selectedSchedule?.id"
+                @click="handleSaveDrawer"
+              >
+                {{ $t('page.ops.btnSave') }}
               </Button>
             </div>
           </template>

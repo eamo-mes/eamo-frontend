@@ -19,7 +19,7 @@ import axios from 'axios';
 import { useAccessStore } from '@vben/stores';
 import { API_BASE_URL } from '#/api/config';
 import { isSoftDeleted, softDeletedRowClass, sortBySoftDeleted } from '#/utils/soft-delete';
-import ErrorCharts from './error-charts.vue';
+import TopMostFrequentErrors from './top-most-frequent-errors.vue';
 
 interface EquipmentOption {
   id: string;
@@ -308,7 +308,7 @@ onMounted(() => {
 <template>
   <div class="p-6 space-y-4">
     <!-- Chart Panel -->
-    <ErrorCharts
+    <TopMostFrequentErrors
       v-if="showCharts"
       :errors="chartErrors"
       :loading="chartsLoading"
@@ -331,12 +331,12 @@ onMounted(() => {
       </Button>
 
       <div class="ml-auto flex items-center gap-2">
-        <Button type="default" @click="toggleCharts" :class="{ 'border-[#5c3e35] text-[#5c3e35]': showCharts }">
+        <Button type="default" @click="toggleCharts" :class="{ 'border-[#1890ff] text-[#1890ff]': showCharts }">
           {{ showCharts ? $t('page.ops.btnHideCharts') : $t('page.ops.btnShowCharts') }}
         </Button>
         <Button
           type="primary"
-          class="bg-[#5c3e35] hover:bg-[#4b332b] border-[#5c3e35] rounded-md font-medium text-white h-full"
+          class="bg-[#1890ff] hover:bg-[#40a9ff] border-[#1890ff] rounded-md font-medium text-white h-full"
           @click="openAddModal"
         >
           {{ $t('page.equipment.btnAddError') }}

@@ -146,6 +146,23 @@ async function handleCalendarRangeChange(range: { start_date: string; end_date: 
   }
 }
 
+const assignedTasksRef = ref<any>(null);
+
+function handleMaintenanceSchedulesUpdate(newSchedules: any[]): void {
+  allSchedules.value = newSchedules;
+  assignedTasksRef.value?.loadAllData();
+}
+
+function handleChecklistRefresh(): void {
+  assignedTasksRef.value?.loadAllData();
+}
+
+function handleTaskCompletedInDashboard(): void {
+  if (calendarRange.value) {
+    loadAllSchedules(calendarRange.value.start_date, calendarRange.value.end_date);
+  }
+}
+
 onMounted(() => {
   loadEquipments();
   loadCategories();
@@ -157,14 +174,11 @@ onMounted(() => {
 <template>
   <div class="p-6 space-y-6">
     <!-- Calendar Section -->
-    <div class="pt-2">
+    <div>
         <div class="action-bar flex items-center gap-3 rounded-xl border border-border bg-card px-4 py-3 shadow-sm">
           <div class="mr-auto whitespace-nowrap text-sm font-semibold text-foreground">
             {{ $t('page.dashboard.workspace') }}
           </div>
-          <Button class="shrink-0" @click="notificationsOpen = true">
-            {{ $t('page.dashboard.assignedTasksTitle') }}
-          </Button>
           <Select v-model:value="activeCalendar" class="w-[220px] shrink-0">
             <Select.Option value="maintenance">
               {{ $t('page.ops.visualScheduleTitle') }}
@@ -176,14 +190,20 @@ onMounted(() => {
         </div>
 
         <div class="mt-6">
-          <AssignedTasks v-model:notification-open="notificationsOpen" />
+          <AssignedTasks
+            ref="assignedTasksRef"
+            :active-tab="activeCalendar"
+            v-model:notification-open="notificationsOpen"
+            @task-completed="handleTaskCompletedInDashboard"
+          />
         </div>
 
         <div v-if="activeCalendar === 'maintenance'" class="mt-6">
           <div class="rounded-xl bg-white p-6 shadow-sm dark:bg-card">
             <Spin :spinning="loadingSchedules">
               <VisualMaintenanceCalendar
-                v-model:schedules="allSchedules"
+                :schedules="allSchedules"
+                @update:schedules="handleMaintenanceSchedulesUpdate"
                 :maintenance-items="maintenanceItems"
                 :categories="categories"
                 :equipments="equipments"
@@ -195,7 +215,7 @@ onMounted(() => {
           </div>
         </div>
 
-        <ChecklistCalendar v-else class="mt-6" :equipments="equipments" />
+        <ChecklistCalendar v-else class="mt-6" :equipments="equipments" @refresh-list="handleChecklistRefresh" />
     </div>
   </div>
 </template>

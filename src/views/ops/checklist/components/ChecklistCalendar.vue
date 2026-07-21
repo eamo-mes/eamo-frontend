@@ -266,18 +266,20 @@ async function handleJudgeOk(): Promise<void> {
       ?.map(detail => detail.schedule_id)
       .filter((id): id is string => Boolean(id));
 
-    if (scheduleIds && scheduleIds.length > 0) {
-      await axios.put(
-        `${API_BASE_URL}/v1/checklist-sessions/${selectedSession.value.id}`,
-        {
-          schedules: scheduleIds.map(id => ({
-            id,
-            date: selectedExecutionDate.value,
-          })),
-        },
-        { headers: getAuthHeaders() },
-      );
-    }
+    await axios.put(
+      `${API_BASE_URL}/v1/checklist-sessions/${selectedSession.value.id}`,
+      {
+        user_ids: selectedUserIds.value,
+        schedules: (scheduleIds && scheduleIds.length > 0)
+          ? scheduleIds.map(id => ({
+              id,
+              date: selectedExecutionDate.value,
+              user_ids: selectedUserIds.value,
+            }))
+          : undefined,
+      },
+      { headers: getAuthHeaders() },
+    );
 
     const payload = {
       session_id: selectedSession.value.id,
@@ -286,7 +288,7 @@ async function handleJudgeOk(): Promise<void> {
         result: item.result,
         description: item.description,
       })),
-      user_ids: selectedUserIds.value.length > 0 ? selectedUserIds.value : undefined,
+      user_ids: selectedUserIds.value,
       timestamp: selectedExecutionDate.value
         ? `${selectedExecutionDate.value} ${selectedTimestamp.value.slice(11)}`
         : undefined,
