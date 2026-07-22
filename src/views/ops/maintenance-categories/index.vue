@@ -1,14 +1,11 @@
 <script lang="ts" setup>
 import { ref, computed, onMounted } from 'vue';
+import { useRouter } from 'vue-router';
 import { $t } from '#/locales';
 import {
   Button,
   Table,
   Input,
-  Select,
-  Modal,
-  Form,
-  FormItem,
   Popconfirm,
   message,
   Spin,
@@ -16,7 +13,6 @@ import {
 import axios from 'axios';
 import { useAccessStore } from '@vben/stores';
 import { API_BASE_URL } from '#/api/config';
-import { listUsersApi, type UserItem } from '#/api/core/users';
 import { isSoftDeleted, softDeletedRowClass, sortBySoftDeleted } from '#/utils/soft-delete';
 
 interface CategoryItem {
@@ -36,14 +32,6 @@ interface CategoryItem {
   deleted_at?: string | null;
 }
 
-interface MaintenanceItemRow {
-  id?: string;
-  name: string;
-  description: string;
-  user_ids: string[];
-  _key: string;
-}
-
 interface AxiosErrorResponse {
   response?: {
     data?: {
@@ -57,8 +45,9 @@ interface TablePagination {
   pageSize?: number;
 }
 
+const router = useRouter();
+
 const loading = ref(false);
-const submitting = ref(false);
 const categories = ref<CategoryItem[]>([]);
 const searchVal = ref('');
 const activeSearch = ref('');
@@ -147,65 +136,15 @@ const columns = computed(() => [
   },
 ]);
 
-// Modal & Form State
-const showModal = ref(false);
-const isEditing = ref(false);
-const editId = ref<string | null>(null);
-
-const formRef = ref();
-const formState = ref({
-  name: '',
-  description: '',
-  items: [] as MaintenanceItemRow[],
-});
-
-const rules = {
-  name: [{ required: true, message: $t('page.ops.validationCategoryName') }],
-};
-
-function generateKey(): string {
-  return Math.random().toString(36).slice(2) + Date.now().toString(36);
+function goToAdd(): void {
+  router.push({ name: 'OpsMaintenanceCategoryDetail' });
 }
 
-function addItemRow(): void {
-  formState.value.items.push({
-    name: '',
-    description: '',
-    user_ids: [],
-    _key: generateKey(),
+function goToEdit(record: CategoryItem): void {
+  router.push({
+    name: 'OpsMaintenanceCategoryDetail',
+    query: { id: record.id },
   });
-}
-
-function removeItemRow(index: number): void {
-  formState.value.items.splice(index, 1);
-}
-
-function openAddModal(): void {
-  isEditing.value = false;
-  editId.value = null;
-  formState.value = {
-    name: '',
-    description: '',
-    items: [],
-  };
-  showModal.value = true;
-}
-
-function openEditModal(record: CategoryItem): void {
-  isEditing.value = true;
-  editId.value = record.id;
-  formState.value = {
-    name: record.name,
-    description: record.description ?? '',
-    items: (record.maintenance_items ?? []).map(item => ({
-      id: item.id,
-      name: item.name,
-      description: item.description ?? '',
-      user_ids: (item.users ?? []).map(u => u.id),
-      _key: generateKey(),
-    })),
-  };
-  showModal.value = true;
 }
 
 async function handleDelete(id: string): Promise<void> {
@@ -215,7 +154,6 @@ async function handleDelete(id: string): Promise<void> {
     });
     categories.value = categories.value.filter(c => c.id !== id);
     message.success($t('page.ops.deleteSuccess'));
-    // If the last item on the page was deleted, go back one page if possible
     if (categories.value.length === 0 && currentPage.value > 1) {
       currentPage.value -= 1;
     }
@@ -226,70 +164,8 @@ async function handleDelete(id: string): Promise<void> {
   }
 }
 
-async function handleOk(): Promise<void> {
-  try {
-    await formRef.value.validateFields();
-    submitting.value = true;
-
-    const payload = {
-      name: formState.value.name,
-      description: formState.value.description,
-      items: formState.value.items.map(item => ({
-        id: item.id,
-        name: item.name,
-        description: item.description,
-        user_ids: item.user_ids,
-      })),
-    };
-
-    if (isEditing.value && editId.value) {
-      const res = await axios.put(`${API_BASE_URL}/v1/maintenance-categories/${editId.value}`, payload, {
-        headers: getAuthHeaders(),
-      });
-      const updated = res.data as CategoryItem;
-      const idx = categories.value.findIndex(c => c.id === editId.value);
-      if (idx !== -1) categories.value[idx] = updated;
-      message.success($t('page.ops.saveSuccess'));
-    } else {
-      const res = await axios.post(`${API_BASE_URL}/v1/maintenance-categories`, payload, {
-        headers: getAuthHeaders(),
-      });
-      const created = res.data as CategoryItem;
-      categories.value.push(created);
-      message.success($t('page.ops.saveSuccess'));
-      loadCategories(); // Reload to update pagination and sort order
-    }
-    showModal.value = false;
-  } catch (err: unknown) {
-    const apiError = (err as AxiosErrorResponse)?.response?.data?.message;
-    if (apiError || (err as Error).message) {
-      message.error(apiError || $t('page.ops.saveError'));
-    }
-  } finally {
-    submitting.value = false;
-  }
-}
-
-const users = ref<UserItem[]>([]);
-
-const userOptions = computed(() =>
-  users.value.map(u => ({
-    label: u.name,
-    value: u.id,
-  }))
-);
-
-async function loadUsers(): Promise<void> {
-  try {
-    users.value = await listUsersApi({ per_page: 1000 });
-  } catch {
-    // silently fail
-  }
-}
-
 onMounted(() => {
   loadCategories();
-  loadUsers();
 });
 </script>
 
@@ -314,7 +190,7 @@ onMounted(() => {
         <Button
           type="primary"
           class="bg-[#5c3e35] hover:bg-[#4b332b] border-[#5c3e35] rounded-md font-medium text-white h-full"
-          @click="openAddModal"
+          @click="goToAdd"
         >
           {{ $t('page.ops.btnAddCategory') }}
         </Button>
@@ -347,7 +223,7 @@ onMounted(() => {
                   size="small"
                   :disabled="isSoftDeleted(record as CategoryItem)"
                   class="rounded hover:border-primary hover:text-primary"
-                  @click="openEditModal(record as CategoryItem)"
+                  @click="goToEdit(record as CategoryItem)"
                 >
                   {{ $t('page.company.btnEdit') }}
                 </Button>
@@ -372,106 +248,5 @@ onMounted(() => {
         </Table>
       </Spin>
     </div>
-
-    <!-- Add/Edit Modal -->
-    <Modal
-      v-model:open="showModal"
-      :title="isEditing ? $t('page.ops.btnEditCategory') : $t('page.ops.btnAddCategory')"
-      :confirm-loading="submitting"
-      :ok-text="$t('page.ops.btnOk')"
-      :cancel-text="$t('page.ops.btnCancel')"
-      width="1040px"
-      @ok="handleOk"
-      @cancel="showModal = false"
-    >
-      <Form
-        ref="formRef"
-        :model="formState"
-        :rules="rules"
-        layout="vertical"
-        class="mt-4"
-      >
-        <div class="grid grid-cols-2 gap-4">
-          <FormItem :label="$t('page.ops.categoryName')" name="name">
-            <Input v-model:value="formState.name" :placeholder="$t('page.ops.placeholderCategoryName')" />
-          </FormItem>
-          <FormItem :label="$t('page.ops.categoryDescription')" name="description">
-            <Input v-model:value="formState.description" :placeholder="$t('page.ops.placeholderCategoryDesc')" />
-          </FormItem>
-        </div>
-
-        <!-- ── Nested Maintenance Items Section ───────────────────────────── -->
-        <div class="mt-5 pt-2">
-          <div class="mb-3 flex items-end justify-between gap-3">
-            <div>
-              <div class="font-semibold text-foreground">
-                {{ $t('page.ops.nestedItemsTitle') }}
-              </div>
-            </div>
-          </div>
-
-          <!-- Items list -->
-          <div v-if="formState.items.length === 0" class="py-5 text-center text-sm text-muted-foreground">
-            {{ $t('page.ops.noItems') }}
-          </div>
-
-          <div v-else class="max-h-[340px] divide-y divide-border overflow-y-auto pr-1">
-            <div
-              v-for="(item, idx) in formState.items"
-              :key="item._key"
-              class="flex flex-wrap items-end gap-3 py-3 first:pt-0 last:pb-0"
-            >
-              <!-- Tên hạng mục -->
-              <div class="flex-1 min-w-[200px]">
-                <span class="text-xs text-gray-500 block mb-1 font-medium">{{ $t('page.ops.colItemName') }}</span>
-                <Input
-                  v-model:value="item.name"
-                  :placeholder="$t('page.ops.placeholderItemName')"
-                />
-              </div>
-
-              <!-- Mô tả -->
-              <div class="flex-1 min-w-[250px]">
-                <span class="text-xs text-gray-500 block mb-1 font-medium">{{ $t('page.ops.colItemDesc') }}</span>
-                <Input
-                  v-model:value="item.description"
-                  :placeholder="$t('page.ops.placeholderItemDesc')"
-                />
-              </div>
-
-              <!-- Kỹ thuật viên thực hiện -->
-              <div class="flex-1 min-w-[200px]">
-                <span class="text-xs text-gray-500 block mb-1 font-medium">{{ $t('page.ops.assignedTechnicians') }}</span>
-                <Select
-                  v-model:value="item.user_ids"
-                  :options="userOptions"
-                  :placeholder="$t('page.ops.placeholderAssignedUsers')"
-                  mode="multiple"
-                  option-filter-prop="label"
-                  show-search
-                  allow-clear
-                  class="w-full"
-                />
-              </div>
-
-              <!-- Nút Xóa -->
-              <div class="pb-1">
-                <Button
-                  type="text"
-                  danger
-                  @click="removeItemRow(idx)"
-                >
-                  {{ $t('page.company.btnDelete') }}
-                </Button>
-              </div>
-            </div>
-          </div>
-
-          <Button type="dashed" block class="mt-3" @click="addItemRow">
-            + {{ $t('page.ops.btnAddItem') }}
-          </Button>
-        </div>
-      </Form>
-    </Modal>
   </div>
 </template>

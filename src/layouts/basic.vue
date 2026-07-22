@@ -151,7 +151,9 @@ async function handleMakeAll() {
   }
 }
 
-const viewAll = () => {};
+const viewAll = () => {
+  router.push('/notifications');
+};
 
 const handleClick = (item: NotificationItem) => {
   // 如果通知项有链接，点击时跳转

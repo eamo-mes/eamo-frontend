@@ -11,6 +11,7 @@ import {
   Popconfirm,
   message,
   Spin,
+  Tag,
 } from 'ant-design-vue';
 import axios from 'axios';
 import { listUsersApi, type UserItem } from '#/api/core/users';
@@ -204,11 +205,6 @@ const columns = computed(() => [
     title: $t('page.ops.startDate'),
     dataIndex: 'date',
     key: 'date',
-  },
-  {
-    title: $t('page.ops.colCycleType'),
-    dataIndex: 'cycle_type',
-    key: 'cycle_type',
   },
   {
     title: $t('page.company.colActions'),
@@ -418,6 +414,22 @@ async function handleDelete(id: string): Promise<void> {
   }
 }
 
+function getMaintenanceTypeLabel(type: string): string {
+  if (type === 'Preventive') return $t('page.ops.typePreventive') || 'Preventive';
+  if (type === 'Corrective') return $t('page.ops.typeCorrective') || 'Corrective';
+  if (type === 'Predictive') return $t('page.ops.typePredictive') || 'Predictive';
+  if (type === 'Inspection') return $t('page.ops.typeInspection') || 'Inspection';
+  return type || '—';
+}
+
+function getMaintenanceTypeColor(type: string): string {
+  if (type === 'Preventive') return 'processing';
+  if (type === 'Corrective') return 'error';
+  if (type === 'Predictive') return 'warning';
+  if (type === 'Inspection') return 'default';
+  return 'default';
+}
+
 /*
 function openEdit(id: string): void {
   router.push({ name: 'OpsMaintenancePlanDetail', query: { id } });
@@ -556,6 +568,12 @@ onMounted(() => {
 
               <template v-else-if="column.key === 'maintenance_category'">
                 {{ record.maintenance_category?.name || '—' }}
+              </template>
+
+              <template v-else-if="column.key === 'maintenance_type'">
+                <Tag :color="getMaintenanceTypeColor(record.maintenance_type)">
+                  {{ getMaintenanceTypeLabel(record.maintenance_type) }}
+                </Tag>
               </template>
 
               <template v-else-if="column.key === 'actions'">

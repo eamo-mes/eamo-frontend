@@ -24,6 +24,7 @@ import {
 import axios from 'axios';
 import { useAccessStore } from '@vben/stores';
 import { API_BASE_URL } from '#/api/config';
+import ExpandableContainer from '#/components/ExpandableContainer.vue';
 
 // ─── Companies & Departments for dropdown ─────────────────────────────────────
 interface DeptOption { id: string; name: string; company_id?: string }
@@ -58,6 +59,10 @@ async function loadDepartments() {
   } catch {
     // silently fail, dropdown will be empty
   }
+}
+
+function getUserRoles(record: any): string[] {
+  return (record as UserItem).roles || [];
 }
 
 // ─── Role color map ───────────────────────────────────────────────────────────
@@ -471,15 +476,16 @@ onMounted(() => {
               <span>{{ record.department_name || '—' }}</span>
             </template>
             <template v-else-if="column.key === 'roles'">
-              <Tag
-                v-for="role in record.roles"
-                :key="role"
-                :color="roleColor(role)"
-                class="uppercase font-semibold"
-              >
-                {{ role }}
-              </Tag>
-              <span v-if="!record.roles || record.roles.length === 0" class="text-gray-400">—</span>
+              <ExpandableContainer :items="getUserRoles(record)">
+                <Tag
+                  v-for="role in getUserRoles(record)"
+                  :key="role"
+                  :color="roleColor(role)"
+                  class="uppercase font-semibold"
+                >
+                  {{ role }}
+                </Tag>
+              </ExpandableContainer>
             </template>
             <template v-else-if="column.key === 'created_at'">
               <span class="text-sm text-gray-500">{{ formatDate(record.created_at) }}</span>

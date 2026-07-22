@@ -12,7 +12,8 @@ import {
   Modal,
   Select,
   Space,
-  DatePicker
+  DatePicker,
+  Tag
 } from 'ant-design-vue';
 import axios from 'axios';
 import { useAccessStore } from '@vben/stores';
@@ -20,6 +21,7 @@ import { API_BASE_URL } from '#/api/config';
 import { isSoftDeleted, softDeletedRowClass, sortBySoftDeleted } from '#/utils/soft-delete';
 import ChecklistCalendar from './components/ChecklistCalendar.vue';
 import ChecklistCharts from './components/ChecklistCharts.vue';
+import ExpandableContainer from '#/components/ExpandableContainer.vue';
 
 interface EquipmentDetail {
   id: string;
@@ -239,8 +241,9 @@ const columns = computed(() => [
     },
   },
   {
-    title: $t('page.ops.colCreatedBy'),
+    title: $t('page.ops.colExecutor'),
     key: 'created_by',
+    width: 180,
   },
   {
     title: $t('page.ops.colActions'),
@@ -497,7 +500,11 @@ onMounted(() => {
             </template>
 
             <template v-else-if="column.key === 'created_by'">
-              <span>{{ record.users && record.users.length > 0 ? record.users.map((u: any) => u.name).join(', ') : '—' }}</span>
+              <ExpandableContainer :items="(record as ChecklistSession).users">
+                <Tag v-for="user in (record as ChecklistSession).users" :key="user.id" color="blue">
+                  {{ user.name }}
+                </Tag>
+              </ExpandableContainer>
             </template>
 
             <template v-else-if="column.key === 'actions'">

@@ -40,6 +40,15 @@ const routes: RouteRecordRaw[] = [
         },
       },
       {
+        name: 'OpsMaintenanceCategoryDetail',
+        path: 'maintenance-categories/detail',
+        component: () => import('#/views/ops/maintenance-categories/detail.vue'),
+        meta: {
+          hideInMenu: true,
+          title: $t('page.ops.maintenanceCategoryDetail'),
+        },
+      },
+      {
         name: 'OpsMaintenancePlans',
         path: 'maintenance-plans',
         component: () => import('#/views/ops/maintenance-plans/index.vue'),
