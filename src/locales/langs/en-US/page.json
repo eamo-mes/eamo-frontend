@@ -53,6 +53,7 @@
     "noMaintenanceToday": "No maintenance schedules today",
     "todayChecklistList": "Today's Checklist Tasks",
     "noChecklistsToday": "No checklists today",
+    "taskCompletedSuccess": "Task marked as completed successfully",
     "statusCompleted": "Completed",
     "statusPending": "Pending",
     "markAsCompleted": "Mark as Completed"

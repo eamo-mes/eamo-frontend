@@ -53,6 +53,7 @@
     "noMaintenanceToday": "Không có lịch bảo trì nào hôm nay",
     "todayChecklistList": "Danh sách checklist hôm nay",
     "noChecklistsToday": "Không có checklist nào hôm nay",
+    "taskCompletedSuccess": "Đã đánh dấu hoàn thành công việc thành công",
     "statusCompleted": "Xong",
     "statusPending": "Chờ",
     "markAsCompleted": "Đánh dấu hoàn thành"

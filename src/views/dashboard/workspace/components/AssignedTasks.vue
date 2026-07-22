@@ -24,8 +24,29 @@ const emit = defineEmits(['task-completed']);
 const router = useRouter();
 const loading = ref(false);
 
-const checklistTasks = ref<any[]>([]);
-const maintenanceTasks = ref<any[]>([]);
+interface AssignedTaskItem {
+  id: string;
+  is_completed?: boolean;
+  result?: string;
+  checklist_session_id?: string;
+  session_name?: string;
+  equipment?: {
+    name?: string;
+    [key: string]: unknown;
+  };
+  detail?: {
+    description?: string;
+    [key: string]: unknown;
+  };
+  item?: {
+    name?: string;
+    [key: string]: unknown;
+  };
+  [key: string]: unknown;
+}
+
+const checklistTasks = ref<AssignedTaskItem[]>([]);
+const maintenanceTasks = ref<AssignedTaskItem[]>([]);
 
 // Passed vs Total calculations for Checklist
 const passedChecklists = computed(() => checklistTasks.value.filter(t => t.is_completed && t.result === 'pass').length);
@@ -147,7 +168,7 @@ onMounted(() => {
   loadAllData();
 });
 
-function handleTaskAction(type: 'maintenance' | 'checklist', item: any) {
+function handleTaskAction(type: 'maintenance' | 'checklist', item: AssignedTaskItem) {
   if (type === 'checklist') {
     const sessionId = item.checklist_session_id || item.id;
     router.push({ name: 'OpsCheckListDetail', query: { id: sessionId } });
@@ -164,12 +185,12 @@ async function handleQuickComplete(type: 'maintenance' | 'checklist', id: string
     } else {
       await completeMaintenanceScheduleApi(id);
     }
-    message.success($t('page.ops.drawerSaveSuccess'));
+    message.success($t('page.dashboard.taskCompletedSuccess'));
     await loadAllData();
     emit('task-completed');
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error('Failed to quick complete task:', error);
-    const apiError = error?.response?.data?.message;
+    const apiError = (error as { response?: { data?: { message?: string } } })?.response?.data?.message;
     message.error(apiError || 'Không thể đánh dấu hoàn thành');
   } finally {
     loading.value = false;
