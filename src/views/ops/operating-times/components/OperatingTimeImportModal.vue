@@ -199,7 +199,7 @@ function formatCellHours(val: string | number | undefined | null) {
     :ok-text="$t('page.ops.importConfirm')"
     :cancel-text="$t('page.ops.btnCancel')"
     :ok-button-props="{ disabled: importErrors.length > 0 || previewData.length === 0 }"
-    width="1100px"
+    width="1200px"
     @ok="handleImportUpload"
     @cancel="resetImport"
   >

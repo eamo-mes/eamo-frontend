@@ -11,11 +11,13 @@ import {
   Popconfirm,
   message,
   Spin,
+  Tag,
 } from 'ant-design-vue';
 import axios from 'axios';
 import { listUsersApi, type UserItem } from '#/api/core/users';
 import { useAccessStore } from '@vben/stores';
 import { API_BASE_URL } from '#/api/config';
+import { isSoftDeleted, softDeletedRowClass, sortBySoftDeleted } from '#/utils/soft-delete';
 import VisualMaintenanceCalendar from './components/VisualMaintenanceCalendar.vue';
 
 interface EquipmentInfo {
@@ -43,6 +45,7 @@ interface MaintenancePlanItem {
   cycle_type: string | null;
   cycle_interval: number | null;
   notes: string | null;
+  deleted_at?: string | null;
 }
 
 interface EquipmentOption {
@@ -131,7 +134,7 @@ async function loadCategories(): Promise<void> {
 async function loadPlans(page = currentPage.value, size = pageSize.value): Promise<void> {
   loading.value = true;
   try {
-    const params: Record<string, string | number> = { page, per_page: size };
+    const params: Record<string, boolean | number | string> = { page, per_page: size, with_trashed: true };
     if (activeSearch.value) params.q = activeSearch.value;
     if (selectedEquipmentId.value) params.equipment_id = selectedEquipmentId.value;
     if (selectedCategoryId.value) params.maintenance_category_id = selectedCategoryId.value;
@@ -204,11 +207,6 @@ const columns = computed(() => [
     key: 'date',
   },
   {
-    title: $t('page.ops.colCycleType'),
-    dataIndex: 'cycle_type',
-    key: 'cycle_type',
-  },
-  {
     title: $t('page.company.colActions'),
     key: 'actions',
     width: 180,
@@ -216,6 +214,8 @@ const columns = computed(() => [
     fixed: 'right' as const,
   },
 ]);
+
+const sortedPlans = computed(() => sortBySoftDeleted(plans.value));
 
 function handleTableChange(pagination: TablePagination): void {
   const current = pagination.current ?? 1;
@@ -414,6 +414,22 @@ async function handleDelete(id: string): Promise<void> {
   }
 }
 
+function getMaintenanceTypeLabel(type: string): string {
+  if (type === 'Preventive') return $t('page.ops.typePreventive') || 'Preventive';
+  if (type === 'Corrective') return $t('page.ops.typeCorrective') || 'Corrective';
+  if (type === 'Predictive') return $t('page.ops.typePredictive') || 'Predictive';
+  if (type === 'Inspection') return $t('page.ops.typeInspection') || 'Inspection';
+  return type || '—';
+}
+
+function getMaintenanceTypeColor(type: string): string {
+  if (type === 'Preventive') return 'processing';
+  if (type === 'Corrective') return 'error';
+  if (type === 'Predictive') return 'warning';
+  if (type === 'Inspection') return 'default';
+  return 'default';
+}
+
 /*
 function openEdit(id: string): void {
   router.push({ name: 'OpsMaintenancePlanDetail', query: { id } });
@@ -532,8 +548,9 @@ onMounted(() => {
         <Spin :spinning="loading">
           <Table
             :columns="columns"
-            :data-source="plans"
+            :data-source="sortedPlans"
             row-key="id"
+            :row-class-name="softDeletedRowClass"
             :scroll="{ x: 'max-content' }"
             :pagination="{
               current: currentPage,
@@ -553,9 +570,15 @@ onMounted(() => {
                 {{ record.maintenance_category?.name || '—' }}
               </template>
 
+              <template v-else-if="column.key === 'maintenance_type'">
+                <Tag :color="getMaintenanceTypeColor(record.maintenance_type)">
+                  {{ getMaintenanceTypeLabel(record.maintenance_type) }}
+                </Tag>
+              </template>
+
               <template v-else-if="column.key === 'actions'">
                 <div class="flex items-center justify-center gap-2">
-                  <Button size="small" class="rounded hover:border-primary hover:text-primary" @click="openEdit(record.id)">
+                  <Button size="small" class="rounded hover:border-primary hover:text-primary" :disabled="isSoftDeleted(record as MaintenancePlanItem)" @click="openEdit(record.id)">
                     {{ $t('page.company.btnEdit') }}
                   </Button>
                   <Popconfirm
@@ -564,7 +587,7 @@ onMounted(() => {
                     :cancel-text="$t('page.ops.btnCancel')"
                     @confirm="handleDelete(record.id)"
                   >
-                    <Button size="small" danger class="rounded bg-red-50/50 border-red-200 hover:bg-red-500 hover:text-white">
+                    <Button size="small" danger class="rounded bg-red-50/50 border-red-200 hover:bg-red-500 hover:text-white" :disabled="isSoftDeleted(record as MaintenancePlanItem)">
                       {{ $t('page.company.btnDelete') }}
                     </Button>
                   </Popconfirm>

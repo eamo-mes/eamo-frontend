@@ -43,6 +43,16 @@ const routes: RouteRecordRaw[] = [
       title: $t('page.auth.profile'),
     },
   },
+  {
+    name: 'Notifications',
+    path: '/notifications',
+    component: () => import('#/views/notifications/index.vue'),
+    meta: {
+      icon: 'lucide:bell',
+      hideInMenu: true,
+      title: $t('ui.widgets.notifications') || 'Thông báo',
+    },
+  },
 ];
 
 export default routes;

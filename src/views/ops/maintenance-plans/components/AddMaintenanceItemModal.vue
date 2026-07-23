@@ -2,27 +2,20 @@
 import { ref, watch } from 'vue';
 import { Modal, Form, FormItem, Input, Select, message } from 'ant-design-vue';
 import { $t } from '#/locales';
-import axios from 'axios';
+import {
+  createMaintenanceItemApi,
+  type MaintenanceItemOption,
+} from '#/api/ops/maintenance-plans';
 
 interface UserOption {
   label: string;
   value: string;
 }
 
-interface MaintenanceItemOption {
-  id: string;
-  name: string;
-  description: string | null;
-  maintenance_category_id: string;
-  user_ids: string[];
-}
-
 const props = defineProps<{
   open: boolean;
   categoryId: string | undefined;
   userOptions: UserOption[];
-  apiBaseUrl: string;
-  authHeaders: Record<string, string>;
 }>();
 
 const emit = defineEmits<{
@@ -58,25 +51,13 @@ async function handleSubmit(): Promise<void> {
   }
   addingItem.value = true;
   try {
-    const res = await axios.post(
-      `${props.apiBaseUrl}/v1/maintenance-items`,
-      {
-        name,
-        description: newItemDescription.value.trim() || null,
-        maintenance_category_id: props.categoryId,
-        user_ids: newItemUserIds.value,
-      },
-      { headers: props.authHeaders },
-    );
-    const created = res.data as any;
-    const mapped: MaintenanceItemOption = {
-      id: created.id,
-      name: created.name,
-      description: created.description,
-      maintenance_category_id: created.maintenance_category_id,
-      user_ids: (created.users ?? []).map((u: any) => u.id),
-    };
-    emit('success', mapped, newItemUserIds.value);
+    const item = await createMaintenanceItemApi({
+      name,
+      description: newItemDescription.value.trim() || null,
+      maintenance_category_id: props.categoryId,
+      user_ids: newItemUserIds.value,
+    });
+    emit('success', item, newItemUserIds.value);
     emit('update:open', false);
     message.success($t('page.ops.addItemSuccess'));
   } catch (err: unknown) {
@@ -97,6 +78,7 @@ async function handleSubmit(): Promise<void> {
     @cancel="handleCancel"
     :ok-text="$t('page.ops.btnSave')"
     :cancel-text="$t('page.ops.btnCancel')"
+    width="600px"
   >
     <Form layout="vertical" class="mt-4">
       <!-- Tên hạng mục -->

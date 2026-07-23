@@ -98,3 +98,54 @@ export async function markAllNotificationsReadApi(): Promise<{ message: string }
 
   return response.data;
 }
+
+/**
+ * Fetch today's schedules (Checklists & Maintenance) for the authenticated user
+ */
+export async function getUserTodaySchedulesApi(): Promise<any> {
+  const accessStore = useAccessStore();
+  const token = accessStore.accessToken;
+
+  const response = await axios.get(`${API_BASE_URL}/user/schedules/today`, {
+    headers: {
+      Authorization: token ? `Bearer ${token}` : '',
+      Accept: 'application/json',
+    },
+  });
+
+  return response.data;
+}
+
+/**
+ * Mark a checklist schedule as completed
+ */
+export async function completeChecklistScheduleApi(id: string): Promise<any> {
+  const accessStore = useAccessStore();
+  const token = accessStore.accessToken;
+
+  const response = await axios.post(`${API_BASE_URL}/v1/checklist-schedules/${id}/complete`, {}, {
+    headers: {
+      Authorization: token ? `Bearer ${token}` : '',
+      Accept: 'application/json',
+    },
+  });
+
+  return response.data;
+}
+
+/**
+ * Mark a maintenance schedule as completed
+ */
+export async function completeMaintenanceScheduleApi(id: string): Promise<any> {
+  const accessStore = useAccessStore();
+  const token = accessStore.accessToken;
+
+  const response = await axios.post(`${API_BASE_URL}/v1/maintenance-schedules/${id}/complete`, {}, {
+    headers: {
+      Authorization: token ? `Bearer ${token}` : '',
+      Accept: 'application/json',
+    },
+  });
+
+  return response.data;
+}

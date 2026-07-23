@@ -1,7 +1,7 @@
 <script lang="ts" setup>
 import type { EchartsUIType } from '@vben/plugins/echarts';
 
-import { nextTick, ref, watch } from 'vue';
+import { nextTick, ref, watch, computed } from 'vue';
 
 import { $t } from '#/locales';
 import { EchartsUI, useEcharts } from '@vben/plugins/echarts';
@@ -37,6 +37,28 @@ const pieChartRef = ref<EchartsUIType>();
 const { renderEcharts: renderBarChart } = useEcharts(barChartRef);
 const { renderEcharts: renderPieChart } = useEcharts(pieChartRef);
 
+const affectedEquipmentsCount = computed(() => {
+  const ids = new Set<string>();
+  props.errors.forEach((err) => {
+    err.equipment?.forEach((eq) => ids.add(eq.id));
+  });
+  return ids.size;
+});
+
+const topCriticalError = computed(() => {
+  if (!props.errors || props.errors.length === 0) return null;
+  let maxCount = -1;
+  let topErr: ErrorItem | null = null;
+  for (const err of props.errors) {
+    const count = err.equipment ? err.equipment.length : 0;
+    if (count > maxCount) {
+      maxCount = count;
+      topErr = err;
+    }
+  }
+  return topErr ? { name: topErr.name, count: maxCount } : null;
+});
+
 async function updateCharts() {
   await nextTick();
   if (!barChartRef.value || !pieChartRef.value) {
@@ -45,88 +67,107 @@ async function updateCharts() {
 
   const data = props.errors;
 
-  // Count associated equipments
   const mapped: MappedItem[] = data.map((d: ErrorItem) => ({
     count: d.equipment ? d.equipment.length : 0,
     name: d.name,
   }));
 
-  // Sort ascending for chart (horizontal bar chart places first item at the bottom)
   mapped.sort((a: MappedItem, b: MappedItem) => a.count - b.count);
+  const chartData = mapped.slice(-8);
 
-  const names = mapped.map((d: MappedItem) => d.name);
-  const counts = mapped.map((d: MappedItem) => d.count);
-  const totalErrors = counts.reduce((sum: number, val: number) => sum + val, 0);
+  const names = chartData.map((d: MappedItem) => d.name);
+  const counts = chartData.map((d: MappedItem) => d.count);
+  const totalLinked = counts.reduce((sum: number, val: number) => sum + val, 0);
 
-  // Existing Top Most Frequent Errors palette.
-  const chartColors = [
-    '#5ab1ef',
-    '#b6a2de',
-    '#67e0e3',
-    '#2ec7c9',
-    '#38bdf8',
-    '#818cf8',
-    '#c084fc',
-    '#34d399',
-  ];
-  const chartGradients = [
-    { end: '#1890ff', start: '#40a9ff' },
-    { end: '#14b8a6', start: '#2dd4bf' },
-    { end: '#9333ea', start: '#c084fc' },
-    { end: '#2ec7c9', start: '#67e0e3' },
-    { end: '#0284c7', start: '#38bdf8' },
-    { end: '#4f46e5', start: '#818cf8' },
+  // Signature color palette for pie chart slices, matching the operating times charts theme
+  const signatureColors = [
+    '#1890ff', // Primary Blue
+    '#5ab1ef', // Light Blue
+    '#3aa0ff', // Medium Light Blue
+    '#94a3b8', // Slate Grey
+    '#cbd5e1', // Light Grey/Slate
+    '#0076e4', // Deep Blue
+    '#7ec2f4', // Very Light Blue
+    '#64748b', // Dark Slate Grey
   ];
 
   renderBarChart({
     grid: {
-      bottom: '3%',
+      bottom: '5%',
       containLabel: true,
       left: '3%',
       right: '4%',
+      top: '5%',
+    },
+    legend: {
+      data: [{ name: 'Equipment Links', icon: 'roundRect' }],
+      bottom: 0,
+      textStyle: { color: '#4b5563', fontSize: 11 },
     },
     series: [
       {
-        data: counts,
+        data: counts.map((v) => ({
+          value: v,
+          label: {
+            show: true,
+            position: 'right',
+            formatter: `{c}`,
+            color: '#4b5563',
+            fontSize: 11,
+          },
+          itemStyle: {
+            color: {
+              type: 'linear',
+              x: 0, y: 0, x2: 1, y2: 0,
+              colorStops: [
+                { offset: 0, color: '#5ab1ef' },
+                { offset: 1, color: '#1890ff' },
+              ],
+            },
+          },
+        })),
         itemStyle: {
           borderRadius: [0, 4, 4, 0],
-          color: (params: { dataIndex: number }) => {
-            const g =
-              chartGradients[params.dataIndex % chartGradients.length] ??
-              chartGradients[0];
-            return {
-              colorStops: [
-                { color: g!.start, offset: 0 },
-                { color: g!.end, offset: 1 },
-              ],
-              type: 'linear',
-              x: 0,
-              x2: 1,
-              y: 0,
-              y2: 0,
-            };
-          },
         },
-        name: $t('page.equipment.chartErrorCount'),
+        name: 'Equipment Links',
         type: 'bar',
+        barWidth: '52%',
       },
     ],
     textStyle: {
       fontFamily: 'system-ui, -apple-system, sans-serif',
+      color: '#4b5563',
     },
     tooltip: {
       axisPointer: { type: 'shadow' },
       trigger: 'axis',
+      formatter: (params: unknown) => {
+        const list = params as {
+          name: string;
+          value: number;
+        }[];
+        if (!Array.isArray(list) || list.length === 0) {
+          return '';
+        }
+        const p = list[0];
+        if (!p) return '';
+        return `<strong>${p.name}</strong><br/>Equipment links: <strong>${p.value}</strong>`;
+      },
     },
     xAxis: {
       minInterval: 1,
       type: 'value',
+      axisLabel: { color: '#9ca3af', fontSize: 11 },
+      splitLine: {
+        lineStyle: { type: 'dashed', color: '#e5e7eb', opacity: 0.6 },
+      },
     },
     yAxis: {
       axisLabel: {
         fontSize: 11,
+        color: '#4b5563',
         overflow: 'truncate',
-        width: 150,
+        width: 140,
       },
       data: names,
       type: 'category',
@@ -134,21 +175,30 @@ async function updateCharts() {
   });
 
   renderPieChart({
-    color: chartColors,
+    color: signatureColors,
+    legend: {
+      orient: 'vertical',
+      right: '2%',
+      top: 'middle',
+      textStyle: { color: '#4b5563', fontSize: 11 },
+      formatter: (name: string) => {
+        const item = chartData.find((d) => d.name === name);
+        const pct = totalLinked > 0 ? Math.round(((item?.count ?? 0) / totalLinked) * 100) : 0;
+        const shortName = name.length > 22 ? name.slice(0, 20) + '…' : name;
+        return `${shortName}  (${pct}%)`;
+      },
+    },
     series: [
       {
-        avoidLabelOverlap: false,
-        center: ['50%', '50%'],
-        data: mapped.map((d: MappedItem) => ({
+        avoidLabelOverlap: true,
+        center: ['30%', '50%'],
+        data: chartData.map((d: MappedItem) => ({
           name: d.name,
           value: d.count,
         })),
         emphasis: {
-          label: {
-            fontSize: 18,
-            fontWeight: 'bold',
-            show: true,
-          },
+          itemStyle: { shadowBlur: 10, shadowColor: 'rgba(0,0,0,0.15)' },
+          label: { fontSize: 14, fontWeight: 'bold', show: true },
         },
         itemStyle: {
           borderColor: '#fff',
@@ -156,23 +206,25 @@ async function updateCharts() {
           borderWidth: 2,
         },
         label: {
-          color: '#1e293b',
-          fontSize: 18,
-          fontWeight: 'bold',
-          formatter: `${totalErrors}\nErrors`,
-          position: 'center',
           show: true,
+          position: 'center',
+          color: '#1e293b',
+          fontSize: 14,
+          fontWeight: 'bold',
+          formatter: `${totalLinked}\nLinks`,
         },
+        labelLine: { show: false },
         name: $t('page.equipment.chartErrorCount'),
-        radius: ['55%', '75%'],
+        radius: ['55%', '78%'],
         type: 'pie',
       },
     ],
     textStyle: {
       fontFamily: 'system-ui, -apple-system, sans-serif',
+      color: '#4b5563',
     },
     tooltip: {
-      formatter: '{a} <br/>{b} : {c} ({d}%)',
+      formatter: '{b}<br/>Equipment links: <strong>{c}</strong> ({d}%)',
       trigger: 'item',
     },
   });
@@ -188,17 +240,49 @@ watch(
 </script>
 
 <template>
-  <div
-    class="bg-card border-border rounded-xl border p-4 shadow-sm relative min-h-[350px]"
-  >
-    <div class="font-semibold text-base mb-4 flex items-center gap-2">
-      <span class="w-1.5 h-4 rounded-full"></span>
-      {{ $t('page.equipment.chartErrorTitle') }}
+  <div class="bg-card border border-border rounded-xl p-5 shadow-sm space-y-5">
+    <!-- Header -->
+    <div class="flex items-center gap-2 border-b border-border pb-3">
+      <h3 class="text-base font-semibold text-gray-900 dark:text-gray-100 m-0">
+        {{ $t('page.equipment.chartErrorTitle') }}
+      </h3>
     </div>
-    <Spin :spinning="loading">
-      <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
-        <EchartsUI ref="barChartRef" height="300px" />
-        <EchartsUI ref="pieChartRef" height="300px" />
+
+    <Spin :spinning="props.loading">
+      <div class="space-y-5">
+        <!-- ECharts Section -->
+        <div v-if="props.errors.length > 0" class="grid grid-cols-1 md:grid-cols-2 gap-5">
+          <!-- Bar Chart Card -->
+          <div class="border border-[#1890ff]/15 dark:border-[#1890ff]/30 rounded-xl p-4">
+            <div class="mb-1">
+              <h5 class="text-xs font-bold uppercase tracking-wider m-0">
+                Frequency by Equipment Count
+              </h5>
+              <p class="text-[11px] mt-0.5 m-0">
+                Number of equipments linked to each error definition
+              </p>
+            </div>
+            <EchartsUI ref="barChartRef" height="300px" />
+          </div>
+
+          <!-- Pie Chart Card -->
+          <div class="border border-[#1890ff]/15 dark:border-[#1890ff]/30 rounded-xl p-4">
+            <div class="mb-1">
+              <h5 class="text-xs font-bold uppercase tracking-wider m-0">
+                Contribution Ratio
+              </h5>
+              <p class="text-[11px] mt-0.5 m-0">
+                Proportion of each error relative to total equipment linkages
+              </p>
+            </div>
+            <EchartsUI ref="pieChartRef" height="300px" />
+          </div>
+        </div>
+
+        <!-- Empty State -->
+        <div v-else class="py-12 flex justify-center">
+          <Empty description="No error charts data available" />
+        </div>
       </div>
     </Spin>
   </div>

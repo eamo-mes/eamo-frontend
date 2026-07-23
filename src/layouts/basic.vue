@@ -35,7 +35,7 @@ const unreadCount = ref(0);
 let pollInterval: any = null;
 
 function mapNotification(item: any): NotificationItem {
-  let avatar = 'https://avatar.vercel.sh/default';
+  let avatar = '/avatar.png';
   const entityType = item.data?.entity_type;
   
   if (entityType === 'checklist_session') {
@@ -151,7 +151,9 @@ async function handleMakeAll() {
   }
 }
 
-const viewAll = () => {};
+const viewAll = () => {
+  router.push('/notifications');
+};
 
 const handleClick = (item: NotificationItem) => {
   // 如果通知项有链接，点击时跳转

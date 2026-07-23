@@ -1,6 +1,7 @@
 <script lang="ts" setup>
 import { onMounted, ref } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
+import { Button, Result, Spin, notification } from 'ant-design-vue';
 import { handleCallback } from '#/api/core/pkce';
 import { useAccessStore, useUserStore } from '@vben/stores';
 import { useAuthStore } from '#/store/auth';
@@ -11,28 +12,44 @@ import { $t } from '#/locales';
 
 defineOptions({ name: 'AuthCallback' });
 
+interface ApiErrorResponse {
+  message?: string;
+  response?: {
+    status?: number;
+    data?: {
+      message?: string;
+      error?: string;
+      errors?: Record<string, unknown>;
+    };
+  };
+}
+
 const route = useRoute();
 const router = useRouter();
 const accessStore = useAccessStore();
 const userStore = useUserStore();
 const authStore = useAuthStore();
 
-const statusText = ref($t('page.auth.callbackProcessing'));
+const statusText = ref($t('page.auth.callback.processing'));
 const errorText = ref<string | null>(null);
 
 onMounted(async () => {
   const code = route.query.code as string;
   if (!code) {
-    errorText.value = $t('page.auth.callbackMissingCode');
+    errorText.value = $t('page.auth.callback.codeParamNotFound');
     return;
   }
 
   try {
-    statusText.value = $t('page.auth.callbackAuthenticating');
-    const token = await handleCallback(code);
+    statusText.value = $t('page.auth.callback.verifying');
+    const { accessToken, refreshToken } = await handleCallback(code);
 
-    statusText.value = $t('page.auth.callbackPreparingSession');
-    accessStore.setAccessToken(token);
+    statusText.value = $t('page.auth.callback.preparing');
+
+    accessStore.setAccessToken(accessToken);
+    if (refreshToken) {
+      accessStore.setRefreshToken(refreshToken);
+    }
 
     // Lấy thông tin user và phân quyền song song
     const [userInfo, accessCodes] = await Promise.all([
@@ -43,9 +60,10 @@ onMounted(async () => {
     userStore.setUserInfo(userInfo);
     accessStore.setAccessCodes(accessCodes);
 
+    const userName = userInfo.realName || userInfo.username;
     notification.success({
-      message: $t('page.auth.callbackLoginSuccess'),
-      description: $t('page.auth.callbackWelcomeBack', { name: userInfo.realName || userInfo.username }),
+      message: $t('page.auth.callback.loginSuccess'),
+      description: $t('page.auth.callback.welcomeBack', { name: userName }),
       duration: 3,
     });
 
@@ -56,19 +74,19 @@ onMounted(async () => {
       : (userInfo.homePath || preferences.app.defaultHomePath);
 
     await router.replace(redirectPath);
-  } catch (err: any) {
+  } catch (err: unknown) {
     console.error('[AuthCallback] Error:', err);
 
-    // Hiển thị thông báo lỗi chi tiết để debug
-    const status = err.response?.status;
-    const responseMsg = err.response?.data?.message || err.response?.data?.error;
+    const errorObj = err as ApiErrorResponse;
+    const status = errorObj.response?.status;
+    const responseMsg = errorObj.response?.data?.message || errorObj.response?.data?.error;
 
     if (status === 401 || status === 400) {
-      errorText.value = $t('page.auth.callbackAuthFailed', { message: responseMsg || '' });
+      errorText.value = `${$t('page.auth.callback.authFailed')}: ${responseMsg || $t('page.auth.callback.invalidOrExpiredCode')}`;
     } else if (status === 422) {
-      errorText.value = $t('page.auth.callbackInvalidData', { message: responseMsg || JSON.stringify(err.response?.data?.errors) });
+      errorText.value = `${$t('page.auth.callback.invalidData')}: ${responseMsg || JSON.stringify(errorObj.response?.data?.errors)}`;
     } else {
-      errorText.value = responseMsg || err.message || $t('page.auth.callbackGenericError');
+      errorText.value = responseMsg || errorObj.message || $t('page.auth.callback.authFailedTryAgain');
     }
   }
 });
@@ -76,21 +94,24 @@ onMounted(async () => {
 
 <template>
   <div class="flex items-center justify-center min-h-screen bg-slate-50 dark:bg-[#070709]">
-    <div class="text-center space-y-4 max-w-sm px-6">
+    <div class="text-center space-y-4 max-w-md px-6">
       <template v-if="errorText">
-        <div class="text-rose-500 font-semibold text-lg">{{ $t('page.auth.callbackLoginError') }}</div>
-        <p class="text-slate-500 text-sm bg-rose-50 dark:bg-rose-950/20 rounded-lg p-3 border border-rose-200 dark:border-rose-900/50">{{ errorText }}</p>
-        <router-link
-          to="/auth/login"
-          class="inline-block px-4 py-2 bg-blue-600 text-white rounded-lg text-sm font-semibold shadow hover:bg-blue-700 transition"
+        <Result
+          status="error"
+          :title="$t('page.auth.callback.loginErrorTitle')"
+          :sub-title="errorText"
         >
-          {{ $t('page.auth.callbackBackToLogin') }}
-        </router-link>
+          <template #extra>
+            <Button type="primary" @click="router.push('/auth/login')">
+              {{ $t('page.auth.callback.backToLogin') }}
+            </Button>
+          </template>
+        </Result>
       </template>
       <template v-else>
-        <div class="h-8 w-8 border-4 border-blue-600 border-t-transparent rounded-full animate-spin mx-auto"></div>
-        <p class="text-slate-500 text-sm font-medium">{{ statusText }}</p>
+        <Spin size="large" :tip="statusText" />
       </template>
     </div>
   </div>
 </template>
+

@@ -1,12 +1,21 @@
 <script setup lang="ts">
 import { ref, computed, onMounted } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
-import { Calendar, Drawer, DatePicker, Select, Popconfirm, Button, Tag, message, Input } from 'ant-design-vue';
+import { Calendar, Drawer, DatePicker, Select, Popconfirm, Button, Tag, message, Input, Spin } from 'ant-design-vue';
 import { $t } from '#/locales';
 import dayjs, { type Dayjs } from 'dayjs';
-import axios from 'axios';
-import { useAccessStore, useUserStore } from '@vben/stores';
-import { API_BASE_URL } from '#/api/config';
+import { useUserStore } from '@vben/stores';
+import { requestClient } from '#/api/request';
+import {
+  listEquipmentsApi,
+  createMaintenanceLogApi,
+  deleteMaintenanceLogApi,
+  type EquipmentOption,
+  type MaintenanceCategoryOption,
+  type MaintenanceItemOption,
+  type ScheduleRow,
+  type MaintenanceLog,
+} from '#/api/ops/maintenance-plans';
 
 const router = useRouter();
 const route = useRoute();
@@ -18,10 +27,7 @@ interface LastMaintenanceInfo {
   user_id: string;
 }
 
-interface Equipment {
-  id: string;
-  code: string;
-  name: string | null;
+interface Equipment extends EquipmentOption {
   last_maintenance?: LastMaintenanceInfo | null;
 }
 
@@ -36,41 +42,6 @@ interface LastMaintenanceNode {
 interface UserOption {
   label: string;
   value: string;
-}
-
-interface MaintenanceItemOption {
-  id: string;
-  name: string;
-  description: string | null;
-  maintenance_category_id: string;
-}
-
-interface ScheduleRow {
-  id?: string;
-  maintenance_item_id: string;
-  maintenance_plan_id?: string;
-  date: string;
-  user_ids: string[];
-  _key: string;
-  plan_code?: string;
-  equipment_id?: string;
-  maintenance_type?: string;
-  item_name?: string;
-  category_name?: string;
-  equipment_name?: string;
-  item_description?: string;
-  result?: string | null;
-}
-
-interface MaintenanceCategoryOption {
-  id: string;
-  name: string;
-}
-
-interface EquipmentOption {
-  id: string;
-  code: string;
-  name: string | null;
 }
 
 const props = withDefaults(
@@ -122,6 +93,7 @@ function onSelect(date: any): void {
     emitRange(date);
   }
 }
+
 const schedulesWithNames = computed(() => {
   return props.schedules
     .map(s => {
@@ -192,38 +164,27 @@ async function handleSaveDrawer(): Promise<void> {
       try {
         if (!logResult.value || logResult.value === '') {
           if (existingLog.value) {
-            await axios.delete(
-              `${API_BASE_URL}/v1/maintenance-logs/${existingLog.value.id}`,
-              { headers: getAuthHeaders() }
-            );
+            await deleteMaintenanceLogApi(existingLog.value.id);
             existingLog.value = null;
           }
         } else {
           if (existingLog.value) {
-            const res = await axios.put(
-              `${API_BASE_URL}/v1/maintenance-logs/${existingLog.value.id}`,
-              {
-                result: logResult.value,
-                note: logNote.value || null,
-              },
-              { headers: getAuthHeaders() }
-            );
-            existingLog.value = res.data?.data ?? res.data;
+            const res = await requestClient.put<MaintenanceLog>(`/v1/maintenance-logs/${existingLog.value.id}`, {
+              result: logResult.value,
+              notes: logNote.value || null,
+            });
+            existingLog.value = res;
           } else {
-            const res = await axios.post(
-              `${API_BASE_URL}/v1/maintenance-logs`,
-              {
-                maintenance_schedule_id: selectedSchedule.value.id,
-                result: logResult.value,
-                note: logNote.value || null,
-              },
-              { headers: getAuthHeaders() }
-            );
-            existingLog.value = res.data?.data ?? res.data;
+            const res = await createMaintenanceLogApi({
+              maintenance_schedule_id: selectedSchedule.value.id,
+              result: logResult.value,
+              notes: logNote.value || null,
+            });
+            existingLog.value = res;
           }
         }
       } catch (err: unknown) {
-        const apiError = (err as any)?.response?.data?.message;
+        const apiError = (err as { response?: { data?: { message?: string } } })?.response?.data?.message;
         message.error(apiError || $t('page.ops.logSaveError'));
         return;
       } finally {
@@ -237,6 +198,7 @@ async function handleSaveDrawer(): Promise<void> {
           ...s,
           date: drawerSchedule.value!.date,
           user_ids: [...drawerSchedule.value!.user_ids],
+          result: logResult.value || null,
         };
       }
       return s;
@@ -270,7 +232,7 @@ function goToPlan(): void {
 const logResult = ref<string | undefined>('');
 const logNote = ref('');
 const logSubmitting = ref(false);
-const existingLog = ref<any | null>(null);
+const existingLog = ref<MaintenanceLog | null>(null);
 const loadingLog = ref(false);
 
 const resultOptions = computed(() => [
@@ -280,28 +242,19 @@ const resultOptions = computed(() => [
   { label: $t('page.ops.logResultFailed'), value: 'Failed' },
 ]);
 
-function getAuthHeaders(): Record<string, string> {
-  const accessStore = useAccessStore();
-  return {
-    Authorization: `Bearer ${accessStore.accessToken}`,
-    Accept: 'application/json',
-    'Content-Type': 'application/json',
-  };
-}
-
 async function fetchLogForSchedule(scheduleId: string): Promise<void> {
   loadingLog.value = true;
   existingLog.value = null;
   try {
-    const res = await axios.get(`${API_BASE_URL}/v1/maintenance-logs`, {
-      headers: getAuthHeaders(),
+    const res = await requestClient.get<MaintenanceLog[]>('/v1/maintenance-logs', {
       params: { maintenance_schedule_id: scheduleId },
     });
-    const logs = res.data ?? [];
-    if (logs.length > 0) {
-      existingLog.value = logs[0];
-      logResult.value = logs[0].result;
-      logNote.value = logs[0].note || '';
+    const logs = Array.isArray(res) ? res : [];
+    const firstLog = logs[0];
+    if (firstLog) {
+      existingLog.value = firstLog;
+      logResult.value = firstLog.result;
+      logNote.value = firstLog.notes || '';
     } else {
       logResult.value = '';
     }
@@ -345,12 +298,8 @@ const markingLastMaintenance = ref(false);
 
 async function fetchLocalEquipments(): Promise<void> {
   try {
-    const res = await axios.get(`${API_BASE_URL}/v1/equipment`, {
-      headers: getAuthHeaders(),
-      params: { per_page: 1000 },
-    });
-    const raw = res.data?.data ?? res.data ?? [];
-    localEquipments.value = Array.isArray(raw) ? raw : [];
+    const raw = await listEquipmentsApi();
+    localEquipments.value = Array.isArray(raw) ? (raw as Equipment[]) : [];
   } catch {
     localEquipments.value = [...props.equipments];
   }
@@ -358,7 +307,7 @@ async function fetchLocalEquipments(): Promise<void> {
 
 async function markCurrentAsLastMaintenance(): Promise<void> {
   const equipmentId = props.equipmentId || props.schedules[0]?.equipment_id;
-  const planId = props.schedules[0]?.maintenance_plan_id || route.query.id as string;
+  const planId = props.schedules[0]?.maintenance_plan_id || (route.query.id as string);
 
   if (!equipmentId || !planId) {
     message.error('Không tìm thấy thông tin thiết bị hoặc kế hoạch');
@@ -384,14 +333,11 @@ async function markCurrentAsLastMaintenance(): Promise<void> {
       },
     };
 
-    await axios.put(`${API_BASE_URL}/v1/equipment/${equipmentId}`, payload, {
-      headers: getAuthHeaders(),
-    });
-
+    await requestClient.put(`/v1/equipment/${equipmentId}`, payload);
     message.success($t('page.ops.lastMaintenanceSetSuccess'));
     await fetchLocalEquipments();
-  } catch (err: any) {
-    const errMsg = err?.response?.data?.message || $t('page.ops.markError');
+  } catch (err: unknown) {
+    const errMsg = (err as { response?: { data?: { message?: string } } })?.response?.data?.message || $t('page.ops.markError');
     message.error(errMsg);
   } finally {
     markingLastMaintenance.value = false;
@@ -409,7 +355,6 @@ function getLastMaintenanceForDate(date: Dayjs): LastMaintenanceNode[] {
     const eq = localEquipments.value.find((e) => e.id === eqId);
     if (!eq || !eq.last_maintenance || !eq.last_maintenance.datetime) return [];
 
-    // Verify plan ID matches
     const planId = route.query.id as string;
     if (eq.last_maintenance.maintenance_plan_id !== planId) return [];
 
@@ -426,7 +371,6 @@ function getLastMaintenanceForDate(date: Dayjs): LastMaintenanceNode[] {
     return [];
   }
 
-  // On index view (readOnly = true), show for any equipment whose last maintenance matches this date
   const list: LastMaintenanceNode[] = [];
   localEquipments.value.forEach((eq) => {
     if (!eq.last_maintenance || !eq.last_maintenance.datetime) return;
@@ -481,7 +425,7 @@ function showLastMaintenanceForDate(dateStr: string): void {
 
 <template>
   <div>
-    <!-- ── Calendar View Section (Inside Card) ────────────────────────── -->
+    <!-- ── Calendar View Section ────────────────────────── -->
     <div>
       <div class="flex justify-between items-center mb-3">
         <div class="font-semibold text-gray-700 dark:text-gray-300">{{ $t('page.ops.visualScheduleTitle') }}</div>
@@ -523,7 +467,6 @@ function showLastMaintenanceForDate(dateStr: string): void {
       >
         <template #dateCellRender="{ current }">
           <ul class="relative z-10 list-none p-0 m-0 overflow-y-auto max-h-[85px]">
-            <!-- Latest Maintenance Node(s) -->
             <li
               v-for="node in getLastMaintenanceForDate(current)"
               :key="node.equipmentId"
@@ -536,7 +479,6 @@ function showLastMaintenanceForDate(dateStr: string): void {
               </svg>
               <span>{{ node.label }}</span>
             </li>
-            <!-- Regular Maintenance Schedule Items -->
             <li
               v-for="s in getSchedulesForDate(current)"
               :key="s._key"
@@ -560,7 +502,6 @@ function showLastMaintenanceForDate(dateStr: string): void {
       :width="460"
     >
       <div v-if="drawerSchedule" class="space-y-6 px-2">
-        <!-- Hạng mục bảo trì & Danh mục -->
         <div class="space-y-1 pb-1">
           <Tag color="blue" class="px-2.5 py-0.5 rounded-full text-xs font-semibold uppercase tracking-wider border-blue-200 text-blue-700 bg-blue-50/60 dark:bg-blue-950/20 dark:text-blue-300 dark:border-blue-850">
             {{ getCategoryName(selectedSchedule!) }}
@@ -572,7 +513,6 @@ function showLastMaintenanceForDate(dateStr: string): void {
           </div>
         </div>
 
-        <!-- Thông tin kế hoạch (chỉ hiển thị ở chế độ xem lịch chung) -->
         <div v-if="props.readOnly" class="space-y-4">
           <div>
             <span class="text-xs text-gray-400 font-semibold uppercase tracking-wider block mb-1">
@@ -606,7 +546,6 @@ function showLastMaintenanceForDate(dateStr: string): void {
           </div>
         </div>
 
-        <!-- Mô tả chi tiết -->
         <div class="space-y-2 border-t border-border pt-4">
           <span class="text-xs text-gray-400 font-semibold uppercase tracking-wider block">
             {{ $t('page.ops.itemDetailDescriptionLabel') }}
@@ -619,7 +558,6 @@ function showLastMaintenanceForDate(dateStr: string): void {
           </div>
         </div>
 
-        <!-- Ngày thực hiện dự kiến -->
         <div class="space-y-2 border-t border-border pt-4">
           <span class="text-xs text-gray-500 font-semibold uppercase tracking-wider block mb-1">
             {{ $t('page.ops.expectedExecutionDate') }}
@@ -630,10 +568,10 @@ function showLastMaintenanceForDate(dateStr: string): void {
             format="YYYY-MM-DD"
             :placeholder="$t('page.ops.placeholderScheduleDate')"
             class="w-full"
+            :disabled="props.readOnly"
           />
         </div>
 
-        <!-- Kỹ thuật viên thực hiện -->
         <div class="space-y-2 border-t border-border pt-4">
           <span class="text-xs text-gray-500 font-semibold uppercase tracking-wider block mb-1">
             {{ $t('page.ops.assignedTechnicians') }}
@@ -647,23 +585,21 @@ function showLastMaintenanceForDate(dateStr: string): void {
             show-search
             allow-clear
             class="w-full"
+            :disabled="props.readOnly"
           />
         </div>
 
-        <!-- Ghi nhận nhật ký bảo trì -->
         <div class="space-y-4 border-t border-border pt-4">
           <span class="text-xs text-gray-400 font-semibold uppercase tracking-wider block">
             {{ $t('page.ops.logTitle') }}
           </span>
 
-          <!-- Nếu lịch trình chưa lưu vào DB (chưa có id), bắt buộc lưu kế hoạch trước -->
           <div v-if="!selectedSchedule?.id" class="text-sm text-yellow-600 bg-yellow-50 dark:bg-yellow-950/20 dark:text-yellow-400 p-3 rounded-lg border border-yellow-200 dark:border-yellow-900/40">
             {{ $t('page.ops.logRequiredToSavePlan') }}
           </div>
 
           <Spin v-else :spinning="loadingLog">
             <div class="space-y-4">
-              <!-- Kết quả -->
               <div class="space-y-1">
                 <label class="text-xs text-gray-500 font-medium block">
                   {{ $t('page.ops.logResultLabel') }} <span class="text-red-500">*</span>
@@ -676,7 +612,6 @@ function showLastMaintenanceForDate(dateStr: string): void {
                 />
               </div>
 
-              <!-- Ghi chú -->
               <div class="space-y-1">
                 <label class="text-xs text-gray-500 font-medium block">
                   {{ $t('page.ops.logNoteLabel') }}
@@ -694,25 +629,32 @@ function showLastMaintenanceForDate(dateStr: string): void {
 
       </div>
 
-      <!-- Drawer Footer with Save and Cancel buttons -->
       <template #footer>
         <div class="flex justify-between items-center py-2">
-          <!-- Chế độ Chỉ xem (ReadOnly - ở màn danh sách) -->
           <template v-if="props.readOnly">
-            <div class="flex gap-2">
-              <Button @click="handleCancelDrawer">
-                {{ $t('page.ops.btnCancel') }}
-              </Button>
-              <Button type="primary" class="bg-[#5c3e35] hover:bg-[#4b332b] border-[#5c3e35]" @click="goToPlan">
-                {{ $t('page.ops.btnGoToPlan') }}
+            <div class="flex justify-between items-center w-full">
+              <div class="flex gap-2">
+                <Button @click="handleCancelDrawer">
+                  {{ $t('page.ops.btnCancel') }}
+                </Button>
+                <Button type="primary" class="bg-[#5c3e35] hover:bg-[#4b332b] border-[#5c3e35]" @click="goToPlan">
+                  {{ $t('page.ops.btnGoToPlan') }}
+                </Button>
+              </div>
+              <Button
+                type="primary"
+                class="bg-[#5c3e35] hover:bg-[#4b332b] border-[#5c3e35] rounded text-white"
+                :loading="logSubmitting"
+                :disabled="!selectedSchedule?.id"
+                @click="handleSaveDrawer"
+              >
+                {{ $t('page.ops.btnSave') }}
               </Button>
             </div>
           </template>
 
-          <!-- Chế độ Chỉnh sửa (ở màn chi tiết) -->
           <template v-else>
             <div class="flex gap-2">
-              <!-- Xóa lịch trình khỏi kế hoạch -->
               <Popconfirm
                 :title="$t('page.ops.deleteMaintenanceItemConfirm')"
                 :ok-text="$t('page.ops.btnDelete')"
@@ -729,7 +671,6 @@ function showLastMaintenanceForDate(dateStr: string): void {
               <Button @click="handleCancelDrawer">
                 {{ $t('page.ops.btnCancel') }}
               </Button>
-              <!-- Lưu thay đổi của lịch trình và nhật ký bảo trì -->
               <Button
                 type="primary"
                 class="bg-[#5c3e35] hover:bg-[#4b332b] border-[#5c3e35] rounded text-white"
@@ -757,10 +698,8 @@ function showLastMaintenanceForDate(dateStr: string): void {
           :key="eq.id"
           class="space-y-4"
         >
-          <!-- Divider line between items -->
           <div v-if="index > 0" class="border-t border-border pt-4 mt-4"></div>
 
-          <!-- Header or label with Tag -->
           <div class="flex justify-between items-center pb-2 border-b border-border">
             <span class="font-bold text-gray-800 dark:text-gray-200 text-sm">
               {{ $t('page.ops.placeholderEquipment') }} {{ eq.code }}
@@ -768,7 +707,6 @@ function showLastMaintenanceForDate(dateStr: string): void {
             <Tag color="green">{{ $t('page.ops.maintainedLabel') }}</Tag>
           </div>
 
-          <!-- Fields -->
           <div class="space-y-3">
             <div>
               <span class="text-xs text-gray-400 font-semibold uppercase tracking-wider block mb-1">

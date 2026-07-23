@@ -85,7 +85,12 @@ const planned_operating_time = computed(() => {
 });
 
 const actual_operating_time = computed(() => {
-  return Math.max(0, planned_operating_time.value - (formState.value.unplanned_stop_time || 0));
+  return Number(
+  Math.max(
+    0,
+    planned_operating_time.value - (formState.value.unplanned_stop_time || 0)
+  ).toFixed(2)
+);
 });
 
 const availability_factor = computed(() => {

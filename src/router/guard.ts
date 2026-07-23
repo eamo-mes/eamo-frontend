@@ -1,3 +1,4 @@
+import type { GenerateMenuAndRoutesOptions, UserInfo } from '@vben/types';
 import type { Router } from 'vue-router';
 
 import { LOGIN_PATH } from '@vben/constants';
@@ -64,22 +65,41 @@ function setupAccessGuard(router: Router) {
 
     // accessToken 检查
     if (!accessStore.accessToken) {
-      // 明确声明忽略权限访问权限，则可以访问
+      //明确声明忽略权限访问权限，则可以访问
       if (to.meta.ignoreAccess) {
         return true;
       }
 
-      // Không có token → trigger PKCE flow thẳng về backend,
-      // bỏ qua hoàn toàn màn login template của frontend
-      const { redirectToLogin } = await import('#/api/core/pkce');
-      const destination =
-        to.fullPath === preferences.app.defaultHomePath
-          ? preferences.app.defaultHomePath
-          : to.fullPath;
-      await redirectToLogin(destination);
-      // Trả về false để dừng navigation hiện tại (browser sẽ redirect sang backend)
-      return false;
+      // accessToken is null (e.g. after F5/reload — it's in-memory only).
+      // If a refreshToken is available (encrypted localStorage), attempt silent refresh first.
+      if (accessStore.refreshToken) {
+        try {
+          const { refreshAccessToken } = await import('#/api/core/pkce');
+          const result = await refreshAccessToken(accessStore.refreshToken);
+          accessStore.setAccessToken(result.accessToken);
+          if (result.refreshToken) {
+            accessStore.setRefreshToken(result.refreshToken);
+          }
+          // Silent refresh succeeded — proceed to load user info and dynamic routes below
+        } catch {
+          // Refresh token is expired or revoked — clear it and force re-login
+          accessStore.setRefreshToken(null);
+        }
+      }
+
+      // Re-check accessToken after silent refresh attempt
+      if (!accessStore.accessToken) {
+        const { redirectToLogin } = await import('#/api/core/pkce');
+        const destination =
+          to.fullPath === preferences.app.defaultHomePath
+            ? preferences.app.defaultHomePath
+            : to.fullPath;
+        await redirectToLogin(destination);
+        // Trả về false để dừng navigation hiện tại (browser sẽ redirect sang backend)
+        return false;
+      }
     }
+
 
     // 是否已经生成过动态路由
     if (accessStore.isAccessChecked) {
@@ -88,9 +108,11 @@ function setupAccessGuard(router: Router) {
 
     // 生成路由表
     // 当前登录用户拥有的角色标识列表
-    let userInfo: Awaited<ReturnType<typeof authStore.fetchUserInfo>>;
+    let userInfo: UserInfo;
     try {
-      userInfo = userStore.userInfo || (await authStore.fetchUserInfo());
+      userInfo =
+        (userStore.userInfo as UserInfo | null) ||
+        (await authStore.fetchUserInfo());
     } catch {
       // fetchUserInfo already cleared the token and triggered PKCE redirect.
       // Return false to abort the current navigation cleanly.
@@ -101,9 +123,10 @@ function setupAccessGuard(router: Router) {
     // 生成菜单和路由
     const { accessibleMenus, accessibleRoutes } = await generateAccess({
       roles: userRoles,
-      router,
+      router: router as unknown as GenerateMenuAndRoutesOptions['router'],
       // 则会在菜单中显示，但是访问会被重定向到403
-      routes: accessRoutes,
+      routes:
+        accessRoutes as unknown as GenerateMenuAndRoutesOptions['routes'],
     });
 
     // 保存菜单信息和路由信息

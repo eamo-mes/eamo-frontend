@@ -10,6 +10,12 @@ if (!CLIENT_ID) {
   console.error('[pkce] VITE_AUTH_CLIENT_ID is not defined. Please set it in your .env file.');
 }
 
+export interface TokenResponse {
+  accessToken: string;
+  refreshToken: string | null;
+  expiresIn?: number;
+}
+
 function dec2hex(dec: number): string {
   return dec.toString(16).padStart(2, '0');
 }
@@ -59,7 +65,11 @@ export async function redirectToLogin(redirectAfterLogin?: string) {
   window.location.href = url;
 }
 
-export async function handleCallback(code: string): Promise<string> {
+/**
+ * Exchange authorization code for tokens (PKCE flow).
+ * Returns both accessToken (short-lived, stored in RAM) and refreshToken (long-lived, stored encrypted).
+ */
+export async function handleCallback(code: string): Promise<TokenResponse> {
   const verifier = localStorage.getItem('code_verifier');
   if (!verifier) {
     throw new Error('No code_verifier found in storage.');
@@ -78,8 +88,39 @@ export async function handleCallback(code: string): Promise<string> {
     }
   });
 
-  const { access_token } = response.data;
-  return access_token;
+  // Clean up the verifier after use — it is single-use
+  localStorage.removeItem('code_verifier');
+
+  const { access_token, refresh_token, expires_in } = response.data;
+  return {
+    accessToken: access_token,
+    refreshToken: refresh_token ?? null,
+    expiresIn: expires_in,
+  };
+}
+
+/**
+ * Obtain a new accessToken using an existing refreshToken (silent refresh).
+ * Called by the router guard when accessToken is null (e.g. after F5) but refreshToken is still valid.
+ */
+export async function refreshAccessToken(refreshToken: string): Promise<TokenResponse> {
+  const response = await axios.post(TOKEN_URL, {
+    grant_type: 'refresh_token',
+    client_id: CLIENT_ID,
+    refresh_token: refreshToken,
+  }, {
+    headers: {
+      'Content-Type': 'application/json',
+      'Accept': 'application/json',
+    }
+  });
+
+  const { access_token, refresh_token: new_refresh_token, expires_in } = response.data;
+  return {
+    accessToken: access_token,
+    refreshToken: new_refresh_token ?? refreshToken, // fallback to old if server doesn't rotate
+    expiresIn: expires_in,
+  };
 }
 
 export async function revokeTokenBackend(token: string) {

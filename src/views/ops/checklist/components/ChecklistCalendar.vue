@@ -266,18 +266,20 @@ async function handleJudgeOk(): Promise<void> {
       ?.map(detail => detail.schedule_id)
       .filter((id): id is string => Boolean(id));
 
-    if (scheduleIds && scheduleIds.length > 0) {
-      await axios.put(
-        `${API_BASE_URL}/v1/checklist-sessions/${selectedSession.value.id}`,
-        {
-          schedules: scheduleIds.map(id => ({
-            id,
-            date: selectedExecutionDate.value,
-          })),
-        },
-        { headers: getAuthHeaders() },
-      );
-    }
+    await axios.put(
+      `${API_BASE_URL}/v1/checklist-sessions/${selectedSession.value.id}`,
+      {
+        user_ids: selectedUserIds.value,
+        schedules: (scheduleIds && scheduleIds.length > 0)
+          ? scheduleIds.map(id => ({
+              id,
+              date: selectedExecutionDate.value,
+              user_ids: selectedUserIds.value,
+            }))
+          : undefined,
+      },
+      { headers: getAuthHeaders() },
+    );
 
     const payload = {
       session_id: selectedSession.value.id,
@@ -286,7 +288,7 @@ async function handleJudgeOk(): Promise<void> {
         result: item.result,
         description: item.description,
       })),
-      user_ids: selectedUserIds.value.length > 0 ? selectedUserIds.value : undefined,
+      user_ids: selectedUserIds.value,
       timestamp: selectedExecutionDate.value
         ? `${selectedExecutionDate.value} ${selectedTimestamp.value.slice(11)}`
         : undefined,
@@ -412,20 +414,6 @@ onMounted(() => {
             </h3>
           </div>
         </div>
-
-        <div class="space-y-2 border-t border-border pt-4">
-          <span class="text-xs text-gray-500 font-semibold uppercase tracking-wider block mb-1">
-            {{ $t('page.ops.colDate') }}
-          </span>
-          <DatePicker
-            v-model:value="selectedExecutionDate"
-            value-format="YYYY-MM-DD"
-            format="YYYY-MM-DD"
-            class="w-full"
-            :placeholder="$t('page.ops.placeholderDate')"
-          />
-        </div>
-
         <div class="space-y-4 border-t border-border pt-4">
           <span class="text-xs text-gray-400 font-semibold uppercase tracking-wider block">
             {{ $t('page.ops.detailItemsHeader') }}

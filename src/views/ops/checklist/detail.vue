@@ -30,6 +30,12 @@ interface EquipmentOption {
   name: string;
 }
 
+interface UserOption {
+  id: string;
+  name: string;
+  email: string;
+}
+
 interface ChecklistDetailItem {
   id?: string;
   checklist_id: string;
@@ -47,7 +53,7 @@ const editId = ref<string | null>(null);
 const showCalendar = ref(false);
 
 const equipments = ref<EquipmentOption[]>([]);
-const users = ref<any[]>([]);
+const users = ref<UserOption[]>([]);
 
 const formState = ref({
   id: '',
@@ -100,19 +106,18 @@ async function loadEquipments() {
 
 async function loadUsers() {
   try {
-    users.value = await listUsersApi({ per_page: 1000 });
-  } catch (err: any) {
+    const res = await listUsersApi({ per_page: 1000 });
+    users.value = Array.isArray(res) ? res : [];
+  } catch (err: unknown) {
+    const error = err as { response?: { data?: { message?: string } }; message?: string };
     console.error('loadUsers error:', err);
-    message.error('Không thể tải danh sách người dùng: ' + (err?.response?.data?.message || err.message));
+    message.error('Không thể tải danh sách người dùng: ' + (error?.response?.data?.message || error?.message || ''));
   }
 }
 
 async function loadChecklistDetail(id: string) {
   loading.value = true;
   try {
-    // Editing should load the session template by id.
-    // The daily endpoint depends on generated schedules for a specific date and can 404
-    // even when the session itself exists.
     let url = `${API_BASE_URL}/v1/checklist-sessions/${id}?include_details=true`;
     const res = await axios.get(url, {
       headers: getAuthHeaders(),
@@ -123,7 +128,7 @@ async function loadChecklistDetail(id: string) {
         id: record.id,
         name: record.name || '',
         equipment_id: record.equipment_id || undefined,
-        user_ids: record.users?.map((u: any) => u.id) || [],
+        user_ids: record.users?.map((u: { id: string }) => u.id) || [],
         session_date: normalizeDateTime(record.session_date),
         cycle_type: record.cycle_type || 'daily',
         cycle_interval: record.cycle_interval || 1,
@@ -238,8 +243,9 @@ async function handleSubmit() {
         });
       }
     }
-  } catch (err: any) {
-    if (err?.errorFields) {
+  } catch (err: unknown) {
+    const error = err as { errorFields?: unknown; response?: { data?: { message?: string } } };
+    if (error?.errorFields) {
       // Form validation failed
     } else {
       const msg = err?.response?.data?.message || $t('page.ops.saveChecklistError');
@@ -321,89 +327,86 @@ onMounted(() => {
     </div>
 
     <!-- Checklist Form and Calendar -->
-    <div class="space-y-4">
-      <Card v-if="!showCalendar" class="shadow-sm border-border rounded-xl">
+    <div>
+      <div v-if="!showCalendar">
         <Spin :spinning="loading || submitting">
-        <Form
-          ref="formRef"
-          :model="formState"
-          :rules="rules"
-          layout="vertical"
-        >
-          <div class="grid grid-cols-2 gap-x-4">
-            <FormItem :label="$t('page.ops.colName')" name="name" class="col-span-2">
-              <Input v-model:value="formState.name" :placeholder="$t('page.ops.placeholderName')" />
-            </FormItem>
+          <Form
+            ref="formRef"
+            :model="formState"
+            :rules="rules"
+            layout="vertical"
+            class="space-y-6"
+          >
+            <!-- Main Information Card -->
+            <Card class="shadow-sm border-border rounded-xl">
+              <div class="grid grid-cols-2 gap-x-4">
+                <FormItem :label="$t('page.ops.colName')" name="name" class="col-span-2">
+                  <Input v-model:value="formState.name" :placeholder="$t('page.ops.placeholderName')" />
+                </FormItem>
 
-            <FormItem :label="$t('page.ops.colEquipment')" name="equipment_id" class="col-span-1">
-              <Select
-                v-model:value="formState.equipment_id"
-                :placeholder="$t('page.ops.placeholderEquipment')"
-                allow-clear
-              >
-                <Select.Option v-for="eq in equipments" :key="eq.id" :value="eq.id">
-                  {{ eq.name }} ({{ eq.code }})
-                </Select.Option>
-              </Select>
-            </FormItem>
+                <FormItem :label="$t('page.ops.colEquipment')" name="equipment_id" class="col-span-1">
+                  <Select
+                    v-model:value="formState.equipment_id"
+                    :placeholder="$t('page.ops.placeholderEquipment')"
+                    allow-clear
+                  >
+                    <Select.Option v-for="eq in equipments" :key="eq.id" :value="eq.id">
+                      {{ eq.name }} ({{ eq.code }})
+                    </Select.Option>
+                  </Select>
+                </FormItem>
 
-            <FormItem :label="$t('page.ops.colDate')" name="session_date" class="col-span-1">
-              <DatePicker
-                v-model:value="formState.session_date"
-                show-time
-                value-format="YYYY-MM-DD HH:mm"
-                format="YYYY-MM-DD HH:mm"
-                class="w-full"
-                :placeholder="$t('page.ops.placeholderDate')"
-              />
-            </FormItem>
+                <FormItem :label="$t('page.ops.colDate')" name="session_date" class="col-span-1">
+                  <DatePicker
+                    v-model:value="formState.session_date"
+                    show-time
+                    value-format="YYYY-MM-DD HH:mm"
+                    format="YYYY-MM-DD HH:mm"
+                    class="w-full"
+                    :placeholder="$t('page.ops.placeholderDate')"
+                  />
+                </FormItem>
 
-            <FormItem :label="$t('page.ops.colCycleType')" name="cycle_type" class="col-span-1">
-              <Select v-model:value="formState.cycle_type" :placeholder="$t('page.ops.placeholderCycleType')">
-                <Select.Option value="daily">{{ $t('page.ops.cycleDaily') }}</Select.Option>
-                <Select.Option value="weekly">{{ $t('page.ops.cycleWeekly') }}</Select.Option>
-                <Select.Option value="monthly">{{ $t('page.ops.cycleMonthly') }}</Select.Option>
-                <Select.Option value="yearly">{{ $t('page.ops.cycleYearly') }}</Select.Option>
-              </Select>
-            </FormItem>
+                <FormItem :label="$t('page.ops.colCycleType')" name="cycle_type" class="col-span-1">
+                  <Select v-model:value="formState.cycle_type" :placeholder="$t('page.ops.placeholderCycleType')">
+                    <Select.Option value="daily">{{ $t('page.ops.cycleDaily') }}</Select.Option>
+                    <Select.Option value="weekly">{{ $t('page.ops.cycleWeekly') }}</Select.Option>
+                    <Select.Option value="monthly">{{ $t('page.ops.cycleMonthly') }}</Select.Option>
+                    <Select.Option value="yearly">{{ $t('page.ops.cycleYearly') }}</Select.Option>
+                  </Select>
+                </FormItem>
 
-            <FormItem :label="$t('page.ops.colCycleInterval')" name="cycle_interval" class="col-span-1">
-              <InputNumber
-                v-model:value="formState.cycle_interval"
-                :min="1"
-                class="w-full"
-                :placeholder="$t('page.ops.placeholderCycleInterval')"
-              />
-            </FormItem>
+                <FormItem :label="$t('page.ops.colCycleInterval')" name="cycle_interval" class="col-span-1">
+                  <InputNumber
+                    v-model:value="formState.cycle_interval"
+                    :min="1"
+                    class="w-full"
+                    :placeholder="$t('page.ops.placeholderCycleInterval')"
+                  />
+                </FormItem>
 
+                <FormItem :label="$t('page.ops.colExecutor')" name="user_ids" class="col-span-2">
+                  <Select
+                    v-model:value="formState.user_ids"
+                    mode="multiple"
+                    :placeholder="$t('page.ops.placeholderExecutor')"
+                    allow-clear
+                    option-filter-prop="label"
+                  >
+                    <Select.Option v-for="u in users" :key="u.id" :value="u.id" :label="u.name">
+                      {{ u.name }} ({{ u.email }})
+                    </Select.Option>
+                  </Select>
+                </FormItem>
+              </div>
+            </Card>
 
-
-            <FormItem :label="$t('page.ops.colExecutor')" name="user_ids" class="col-span-2">
-              <Select
-                v-model:value="formState.user_ids"
-                mode="multiple"
-                :placeholder="$t('page.ops.placeholderExecutor')"
-                allow-clear
-                option-filter-prop="label"
-              >
-                <Select.Option v-for="u in users" :key="u.id" :value="u.id" :label="u.name">
-                  {{ u.name }} ({{ u.email }})
-                </Select.Option>
-              </Select>
-            </FormItem>
-
-
-
-
-            <!-- Checklist Details Dynamic Rows -->
-            <div class="col-span-2 mt-2 pt-2">
+            <!-- Independent Checklist Details Dynamic Card -->
+            <Card class="shadow-sm border-border rounded-xl mt-6">
               <div class="mb-3 flex items-end justify-between gap-3">
                 <div>
-                  <div class="font-semibold text-foreground">
+                  <div class="font-semibold text-gray-800 text-base">
                     {{ $t('page.ops.detailItemsHeader') }}
-                  </div>
-                  <div class="mt-0.5 text-xs text-muted-foreground">
-                    {{ $t('page.ops.itemName') }}
                   </div>
                 </div>
               </div>
@@ -413,7 +416,7 @@ onMounted(() => {
                   {{ $t('page.ops.noDetailItems') }}
                 </div>
 
-                <div v-else class="max-h-[320px] divide-y divide-border overflow-y-auto">
+                <div v-else class="max-h-[300px] overflow-y-auto divide-y divide-border pr-2 scrollbar-thin">
                   <div
                     v-for="(item, index) in formState.checklist_details"
                     :key="item.checklist_id"
@@ -441,11 +444,10 @@ onMounted(() => {
               <Button type="dashed" block class="mt-3" @click="addDetailRow">
                 {{ $t('page.ops.btnAddCheck') }}
               </Button>
-            </div>
-          </div>
+            </Card>
           </Form>
         </Spin>
-      </Card>
+      </div>
 
       <ChecklistCalendar
         v-else-if="formState.equipment_id"
@@ -456,3 +458,10 @@ onMounted(() => {
     </div>
   </div>
 </template>
+
+<style scoped>
+/* Card gap spacing between cards */
+:deep(.ant-card + .ant-card) {
+  margin-top: 24px !important;
+}
+</style>

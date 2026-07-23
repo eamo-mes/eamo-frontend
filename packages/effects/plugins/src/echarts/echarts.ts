@@ -3,6 +3,8 @@ import {
   DatasetComponent,
   GridComponent,
   LegendComponent,
+  MarkLineComponent,
+  MarkPointComponent,
   TitleComponent,
   ToolboxComponent,
   TooltipComponent,
@@ -32,6 +34,8 @@ echarts.use([
   CanvasRenderer,
   LegendComponent,
   ToolboxComponent,
+  MarkLineComponent,
+  MarkPointComponent,
 ]);
 export type { ECOption } from './types';
 

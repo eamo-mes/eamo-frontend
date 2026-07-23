@@ -27,4 +27,5 @@ export interface OperatingTimeItem {
   start_time: string;
   end_time: string;
   date?: string;
+  deleted_at?: string | null;
 }

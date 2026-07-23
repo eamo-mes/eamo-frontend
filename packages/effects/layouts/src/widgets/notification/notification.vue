@@ -85,7 +85,7 @@ const handleClear = () => {
         <ul class="flex! max-h-90 w-full flex-col">
           <template v-for="item in notifications" :key="item.id ?? item.title">
             <li
-              class="relative flex w-full cursor-pointer items-start gap-5 border-t border-border p-3 hover:bg-accent"
+              class="relative flex w-full cursor-pointer items-center justify-between gap-3 border-t border-border p-3 hover:bg-accent"
               @click="emit('onClick', item)"
             >
               <slot name="content" :item="item">
@@ -94,17 +94,17 @@ const handleClear = () => {
                   class="absolute top-2 right-2 size-2 rounded-sm bg-primary"
                 ></span>
 
-                <div class="flex flex-col gap-1 leading-none">
-                  <p class="font-semibold">{{ item.title }}</p>
-                  <p class="my-1 line-clamp-2 text-xs text-muted-foreground">
+                <div class="flex flex-1 flex-col gap-1 leading-normal pr-6">
+                  <p class="text-xs font-semibold text-foreground line-clamp-2">{{ item.title }}</p>
+                  <p class="my-0.5 line-clamp-2 text-[11px] text-muted-foreground leading-snug">
                     {{ item.message }}
                   </p>
-                  <p class="line-clamp-2 text-xs text-muted-foreground">
+                  <p class="text-[10px] text-muted-foreground">
                     {{ item.date }}
                   </p>
                 </div>
                 <div
-                  class="absolute top-1/2 right-3 flex -translate-y-1/2 flex-row gap-1"
+                  class="flex flex-shrink-0 flex-row items-center gap-1 self-center"
                 >
                   <slot name="action" :item="item">
                     <slot name="action-prepend" :item="item"></slot>
@@ -112,11 +112,11 @@ const handleClear = () => {
                       v-if="!item.isRead"
                       size="xs"
                       variant="ghost"
-                      class="h-6 px-2"
+                      class="h-6 px-1.5"
                       :tooltip="$t('common.confirm')"
                       @click.stop="emit('read', item)"
                     >
-                      <CircleCheckBig class="size-4" />
+                      <CircleCheckBig class="size-3.5" />
                     </VbenIconButton>
                     <slot name="action-append" :item="item"></slot>
                   </slot>

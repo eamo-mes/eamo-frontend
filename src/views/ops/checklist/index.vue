@@ -12,13 +12,15 @@ import {
   Modal,
   Select,
   Space,
-  DatePicker
+  DatePicker,
+  Tag
 } from 'ant-design-vue';
 import axios from 'axios';
 import { useAccessStore } from '@vben/stores';
 import { API_BASE_URL } from '#/api/config';
+import { isSoftDeleted, softDeletedRowClass, sortBySoftDeleted } from '#/utils/soft-delete';
 import ChecklistCalendar from './components/ChecklistCalendar.vue';
-import ChecklistCharts from './components/ChecklistCharts.vue';
+import ExpandableContainer from '#/components/ExpandableContainer.vue';
 
 interface EquipmentDetail {
   id: string;
@@ -54,6 +56,7 @@ interface ChecklistSession {
   session_date: string | null;
   details?: ChecklistDetailItem[];
   users?: UserDetail[];
+  deleted_at?: string | null;
 }
 
 const router = useRouter();
@@ -114,13 +117,6 @@ async function loadChartData() {
   }
 }
 
-async function toggleCharts() {
-  showCharts.value = !showCharts.value;
-  if (showCharts.value) {
-    await loadChartData();
-  }
-}
-
 function getAuthHeaders() {
   const accessStore = useAccessStore();
   return {
@@ -149,6 +145,7 @@ async function loadSessions(page = currentPage.value, size = pageSize.value) {
       include_details: true,
       page,
       per_page: size,
+      with_trashed: true,
     };
     if (activeSearch.value) {
       params['search'] = activeSearch.value;
@@ -217,7 +214,7 @@ function handleTableChange(pagination: any) {
 }
 
 // With server-side search, just use sessions directly
-const filteredSessions = computed(() => sessions.value);
+const filteredSessions = computed(() => sortBySoftDeleted(sessions.value));
 
 const columns = computed(() => [
   {
@@ -236,8 +233,9 @@ const columns = computed(() => [
     },
   },
   {
-    title: $t('page.ops.colCreatedBy'),
+    title: $t('page.ops.colExecutor'),
     key: 'created_by',
+    width: 180,
   },
   {
     title: $t('page.ops.colActions'),
@@ -368,13 +366,6 @@ onMounted(() => {
 
 <template>
   <div class="p-6 space-y-4">
-    <!-- Chart Panel -->
-    <ChecklistCharts
-      v-if="showCharts"
-      :stats="chartStats"
-      :loading="chartsLoading"
-    />
-
     <!-- Action Bar -->
     <div class="action-bar bg-card border border-border rounded-xl p-4 shadow-sm flex flex-nowrap items-center gap-3 overflow-x-auto">
       <Input
@@ -429,14 +420,6 @@ onMounted(() => {
         <Button
           type="default"
           class="rounded-md font-medium h-full"
-          :class="{ 'border-[#5c3e35] text-[#5c3e35]': showCharts }"
-          @click="toggleCharts"
-        >
-          {{ showCharts ? $t('page.ops.btnHideCharts') : $t('page.ops.btnShowCharts') }}
-        </Button>
-        <Button
-          type="default"
-          class="rounded-md font-medium h-full"
           @click="showCalendar = !showCalendar"
         >
           {{ showCalendar ? $t('page.ops.btnListView') : $t('page.ops.btnCalendarView') }}
@@ -466,6 +449,7 @@ onMounted(() => {
           :columns="columns"
           :data-source="filteredSessions"
           row-key="id"
+          :row-class-name="softDeletedRowClass"
           :scroll="{ x: 'max-content' }"
           :pagination="{
             current: currentPage,
@@ -493,7 +477,11 @@ onMounted(() => {
             </template>
 
             <template v-else-if="column.key === 'created_by'">
-              <span>{{ record.users && record.users.length > 0 ? record.users.map((u: any) => u.name).join(', ') : '—' }}</span>
+              <ExpandableContainer :items="(record as ChecklistSession).users">
+                <Tag v-for="user in (record as ChecklistSession).users" :key="user.id" color="blue">
+                  {{ user.name }}
+                </Tag>
+              </ExpandableContainer>
             </template>
 
             <template v-else-if="column.key === 'actions'">
@@ -501,6 +489,7 @@ onMounted(() => {
                 <Button
                   v-if="getSessionStatusText(record as ChecklistSession) === 'Pending'"
                   size="small"
+                  :disabled="isSoftDeleted(record as ChecklistSession)"
                   class="rounded border-green-500 text-green-600 hover:border-green-600 hover:text-green-700"
                   @click="openJudgeModal(record as ChecklistSession)"
                 >
@@ -508,6 +497,7 @@ onMounted(() => {
                 </Button>
                 <Button
                   size="small"
+                  :disabled="isSoftDeleted(record as ChecklistSession)"
                   class="rounded hover:border-primary hover:text-primary"
                   @click="openEditPage(record)"
                 >
@@ -522,6 +512,7 @@ onMounted(() => {
                   <Button
                     size="small"
                     danger
+                    :disabled="isSoftDeleted(record as ChecklistSession)"
                     class="rounded bg-red-50/50 hover:bg-red-500 hover:text-white border-red-200"
                   >
                     {{ $t('page.company.btnDelete') }}
@@ -541,6 +532,7 @@ onMounted(() => {
       :confirm-loading="submittingJudge"
       :ok-text="$t('page.ops.btnConfirm')"
       :cancel-text="$t('page.ops.btnCancel')"
+      width="600px"
       @ok="handleJudgeOk"
     >
       <div v-if="judgeDetails.length === 0" class="py-4 text-center text-gray-400">

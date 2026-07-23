@@ -75,7 +75,7 @@ watch(
   <Modal
     :footer="null"
     :open="open"
-    width="750px"
+    width="800px"
     @cancel="emit('update:open', false)"
     :title="
       selectedEquipment

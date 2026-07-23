@@ -100,9 +100,9 @@ export const useAccessStore = defineStore('core-access', {
     },
   },
   persist: {
-    // 持久化
+    // accessToken is intentionally excluded — it lives in RAM only (in-memory)
+    // refreshToken is persisted encrypted so silent refresh works after F5/reload
     pick: [
-      'accessToken',
       'refreshToken',
       'accessCodes',
       'isLockScreen',

@@ -16,8 +16,10 @@ import {
 import axios from 'axios';
 import { useAccessStore } from '@vben/stores';
 import { API_BASE_URL } from '#/api/config';
+import { isSoftDeleted, softDeletedRowClass, sortBySoftDeleted } from '#/utils/soft-delete';
 import EquipmentSummaryWidgets from './components/EquipmentSummaryWidgets.vue';
-import EquipmentRelationModal from './components/EquipmentRelationModal.vue';
+import ExpandableContainer from '#/components/ExpandableContainer.vue';
+import EquipmentChecklistSessionsModal from './components/EquipmentChecklistSessionsModal.vue';
 
 interface CategoryOption {
   id: string;
@@ -62,6 +64,7 @@ interface EquipmentItem {
   parent_id?: string | null;
   children?: EquipmentItem[];
   parent?: EquipmentItem | null;
+  deleted_at?: string | null;
 }
 
 const router = useRouter();
@@ -71,11 +74,11 @@ const equipments = ref<EquipmentItem[]>([]);
 const searchVal = ref('');
 const activeSearch = ref('');
 
-const expandedErrors = ref<Record<string, boolean>>({});
-const expandedParameters = ref<Record<string, boolean>>({});
 
-const showChildrenModal = ref(false);
-const activeEquipmentId = ref<string | null>(null);
+
+const checklistModalOpen = ref(false);
+const checklistModalEquipmentId = ref<string | null>(null);
+const checklistModalEquipmentName = ref<string | null>(null);
 
 // Summary Widgets State
 interface SummaryItem {
@@ -127,13 +130,6 @@ async function loadDashboardSummary() {
 }
 
 
-function toggleExpandErrors(id: string) {
-  expandedErrors.value[id] = !expandedErrors.value[id];
-}
-
-function toggleExpandParameters(id: string) {
-  expandedParameters.value[id] = !expandedParameters.value[id];
-}
 
 function goToErrorsPage() {
   router.push({ name: 'EquipmentErrors' });
@@ -176,6 +172,7 @@ async function loadEquipments(page = currentPage.value, size = pageSize.value) {
     const params: Record<string, any> = {
       page,
       per_page: size,
+      with_trashed: true,
     };
     if (filterCategoryId.value) {
       params.equipment_category_id = filterCategoryId.value;
@@ -227,7 +224,7 @@ function handleTableChange(pagination: any) {
   loadEquipments(pagination.current, pagination.pageSize);
 }
 
-const filteredEquipments = computed(() => equipments.value);
+const filteredEquipments = computed(() => sortBySoftDeleted(equipments.value));
 
 const columns = computed(() => [
   {
@@ -262,20 +259,15 @@ const columns = computed(() => [
     title: $t('page.equipment.colErrors'),
     dataIndex: 'equipment_errors',
     key: 'equipment_errors',
-    width: 260,
+    width: 320,
   },
   {
     title: $t('page.equipment.parametersTitle'),
     dataIndex: 'equipment_parameters',
     key: 'equipment_parameters',
-    width: 260,
+    width: 320,
   },
-  {
-    title: $t('page.equipment.colChecklist'),
-    dataIndex: 'checklist_details_count',
-    key: 'checklist_details_count',
-    sorter: (a: EquipmentItem, b: EquipmentItem) => (a.checklist_details_count || 0) - (b.checklist_details_count || 0),
-  },
+
   {
     title: $t('page.equipment.colActions'),
     key: 'actions',
@@ -293,9 +285,12 @@ function openEditModal(record: EquipmentItem) {
   router.push({ name: 'EquipmentDetail', query: { id: record.id } });
 }
 
-function openChildrenModal(record: EquipmentItem) {
-  activeEquipmentId.value = record.id;
-  showChildrenModal.value = true;
+
+
+function openChecklistModal(record: EquipmentItem) {
+  checklistModalEquipmentId.value = record.id;
+  checklistModalEquipmentName.value = record.name || record.code;
+  checklistModalOpen.value = true;
 }
 
 async function handleDelete(id: string) {
@@ -324,14 +319,6 @@ onMounted(() => {
 
 <template>
   <div class="p-6 space-y-4">
-    <!-- Top Widgets Grid -->
-    <div v-if="showWidgets" class="mb-4">
-      <EquipmentSummaryWidgets
-        :loading="summaryLoading"
-        :summary="summaryData"
-      />
-    </div>
-
     <!-- Action Bar -->
     <div class="action-bar bg-card border border-border rounded-xl p-4 shadow-sm flex flex-nowrap items-center gap-3 overflow-x-auto w-full">
       <Input
@@ -369,9 +356,6 @@ onMounted(() => {
         {{ $t('page.company.btnReset') }}
       </Button>
       <div class="ml-auto flex items-center gap-2">
-        <Button type="default" class="flex items-center gap-1.5" @click="toggleWidgets">
-          {{ showWidgets ? $t('page.equipment.btnHideWidgets') : $t('page.equipment.btnShowWidgets') }}
-        </Button>
         <Button
           type="primary"
           class="bg-[#5c3e35] hover:bg-[#4b332b] border-[#5c3e35] rounded-md font-medium text-white h-full"
@@ -389,6 +373,7 @@ onMounted(() => {
           :columns="columns"
           :data-source="filteredEquipments"
           row-key="id"
+          :row-class-name="softDeletedRowClass"
           :scroll="{ x: 'max-content' }"
           :pagination="{
             current: currentPage,
@@ -402,7 +387,7 @@ onMounted(() => {
         >
           <template #bodyCell="{ column, record }">
             <template v-if="column.key === 'equipment_category'">
-               <span>{{ record.equipment_category?.code || '—' }}</span>
+               <span>{{ record.equipment_category?.name || '—' }}</span>
             </template>
 
             <template v-else-if="column.key === 'is_active'">
@@ -415,10 +400,7 @@ onMounted(() => {
             </template>
             <template v-else-if="column.key === 'equipment_errors'">
                <div class="flex flex-col gap-1 max-w-[260px]">
-                 <div
-                   class="flex flex-wrap gap-1 transition-all duration-300 ease-in-out overflow-hidden"
-                   :class="expandedErrors[record.id] ? 'max-h-[1000px]' : 'max-h-[52px]'"
-                 >
+                 <ExpandableContainer :items="record.equipment_errors">
                    <Tag
                      v-for="err in record.equipment_errors"
                      :key="err.id"
@@ -428,24 +410,12 @@ onMounted(() => {
                    >
                      {{ err.name }}
                    </Tag>
-                 </div>
-                 <div v-if="record.equipment_errors && record.equipment_errors.length > 3">
-                   <span
-                     class="text-xs text-blue-500 hover:text-blue-700 cursor-pointer font-semibold inline-block mt-0.5 select-none"
-                     @click="toggleExpandErrors(record.id)"
-                   >
-                     {{ expandedErrors[record.id] ? $t('page.equipment.btnCollapse') : $t('page.equipment.btnShowMore') }}
-                   </span>
-                 </div>
-                 <span v-if="!record.equipment_errors || record.equipment_errors.length === 0" class="text-gray-400">—</span>
+                 </ExpandableContainer>
                </div>
              </template>
              <template v-else-if="column.key === 'equipment_parameters'">
                <div class="flex flex-col gap-1 max-w-[260px]">
-                 <div
-                   class="flex flex-wrap gap-1 transition-all duration-300 ease-in-out overflow-hidden"
-                   :class="expandedParameters[record.id] ? 'max-h-[1000px]' : 'max-h-[52px]'"
-                 >
+                 <ExpandableContainer :items="record.equipment_parameters">
                    <Tag
                      v-for="param in record.equipment_parameters"
                      :key="param.id"
@@ -454,25 +424,14 @@ onMounted(() => {
                    >
                      {{ param.code }}<span v-if="param.unit"> ({{ param.unit.name }})</span>
                    </Tag>
-                 </div>
-                 <div v-if="record.equipment_parameters && record.equipment_parameters.length > 3">
-                   <span
-                     class="text-xs text-blue-500 hover:text-blue-700 cursor-pointer font-semibold inline-block mt-0.5 select-none"
-                     @click="toggleExpandParameters(record.id)"
-                   >
-                     {{ expandedParameters[record.id] ? $t('page.equipment.btnCollapse') : $t('page.equipment.btnShowMore') }}
-                   </span>
-                 </div>
-                 <span v-if="!record.equipment_parameters || record.equipment_parameters.length === 0" class="text-gray-400">—</span>
+                 </ExpandableContainer>
                </div>
               </template>
-             <template v-else-if="column.key === 'checklist_details_count'">
-               <span>{{ record.checklist_details_count ?? 0 }}</span>
-             </template>
              <template v-else-if="column.key === 'actions'">
               <div class="flex items-center justify-end gap-2 whitespace-nowrap">
                 <Button
                   size="small"
+                  :disabled="isSoftDeleted(record as EquipmentItem)"
                   class="rounded hover:border-primary hover:text-primary"
                   @click="openEditModal(record as EquipmentItem)"
                 >
@@ -480,10 +439,11 @@ onMounted(() => {
                 </Button>
                 <Button
                   size="small"
+                  :disabled="isSoftDeleted(record as EquipmentItem)"
                   class="rounded hover:border-primary hover:text-primary"
-                  @click="openChildrenModal(record as EquipmentItem)"
+                  @click="openChecklistModal(record as EquipmentItem)"
                 >
-                  {{ $t('page.equipment.btnChildren') }}
+                  Checklist
                 </Button>
                 <Popconfirm
                   :title="$t('page.company.deleteConfirm')"
@@ -494,6 +454,7 @@ onMounted(() => {
                   <Button
                     size="small"
                     danger
+                    :disabled="isSoftDeleted(record as EquipmentItem)"
                     class="rounded bg-red-50/50 hover:bg-red-500 hover:text-white border-red-200"
                   >
                     {{ $t('page.company.btnDelete') }}
@@ -506,10 +467,11 @@ onMounted(() => {
       </Spin>
     </div>
 
-    <!-- Sub-equipment Modal -->
-    <EquipmentRelationModal
-      v-model:open="showChildrenModal"
-      :equipment-id="activeEquipmentId"
+    <!-- Checklist Sessions Modal -->
+    <EquipmentChecklistSessionsModal
+      v-model:open="checklistModalOpen"
+      :equipment-id="checklistModalEquipmentId"
+      :equipment-name="checklistModalEquipmentName"
     />
   </div>
 </template>

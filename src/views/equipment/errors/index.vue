@@ -18,7 +18,9 @@ import {
 import axios from 'axios';
 import { useAccessStore } from '@vben/stores';
 import { API_BASE_URL } from '#/api/config';
-import ErrorCharts from './error-charts.vue';
+import { isSoftDeleted, softDeletedRowClass, sortBySoftDeleted } from '#/utils/soft-delete';
+import ExpandableContainer from '#/components/ExpandableContainer.vue';
+import TopMostFrequentErrors from './top-most-frequent-errors.vue';
 
 interface EquipmentOption {
   id: string;
@@ -33,6 +35,7 @@ interface ErrorItem {
   fix?: string;
   protection_measures?: string;
   equipment?: EquipmentOption[];
+  deleted_at?: string | null;
 }
 
 const router = useRouter();
@@ -41,11 +44,7 @@ function goToEquipment(id: string) {
   router.push({ name: 'EquipmentDetail', query: { id } });
 }
 
-const expandedEquipment = ref<Record<string, boolean>>({});
 
-function toggleExpand(id: string) {
-  expandedEquipment.value[id] = !expandedEquipment.value[id];
-}
 
 const loading = ref(false);
 const submitting = ref(false);
@@ -115,6 +114,7 @@ async function loadErrors(page = currentPage.value, size = pageSize.value) {
     const params: Record<string, string | number> = {
       page,
       per_page: size,
+      with_trashed: 'true',
     };
     if (activeSearch.value) {
       params.q = activeSearch.value;
@@ -154,7 +154,7 @@ function handleTableChange(pagination: { current?: number; pageSize?: number }) 
   loadErrors(pagination.current ?? 1, pagination.pageSize ?? 10);
 }
 
-const filteredErrors = computed(() => errorsList.value);
+const filteredErrors = computed(() => sortBySoftDeleted(errorsList.value));
 
 const columns = computed(() => [
   {
@@ -305,7 +305,7 @@ onMounted(() => {
 <template>
   <div class="p-6 space-y-4">
     <!-- Chart Panel -->
-    <ErrorCharts
+    <TopMostFrequentErrors
       v-if="showCharts"
       :errors="chartErrors"
       :loading="chartsLoading"
@@ -328,12 +328,12 @@ onMounted(() => {
       </Button>
 
       <div class="ml-auto flex items-center gap-2">
-        <Button type="default" @click="toggleCharts" :class="{ 'border-[#5c3e35] text-[#5c3e35]': showCharts }">
+        <Button type="default" @click="toggleCharts" :class="{ 'border-[#1890ff] text-[#1890ff]': showCharts }">
           {{ showCharts ? $t('page.ops.btnHideCharts') : $t('page.ops.btnShowCharts') }}
         </Button>
         <Button
           type="primary"
-          class="bg-[#5c3e35] hover:bg-[#4b332b] border-[#5c3e35] rounded-md font-medium text-white h-full"
+          class="bg-[#1890ff] hover:bg-[#40a9ff] border-[#1890ff] rounded-md font-medium text-white h-full"
           @click="openAddModal"
         >
           {{ $t('page.equipment.btnAddError') }}
@@ -348,6 +348,7 @@ onMounted(() => {
           :columns="columns"
           :data-source="filteredErrors"
           row-key="id"
+          :row-class-name="softDeletedRowClass"
           :scroll="{ x: 'max-content' }"
           :pagination="{
             current: currentPage,
@@ -362,35 +363,24 @@ onMounted(() => {
           <template #bodyCell="{ column, record }">
             <template v-if="column.key === 'equipment'">
                <div class="flex flex-col gap-1 max-w-[320px]">
-                  <div
-                    class="flex flex-wrap gap-1 transition-all duration-300 ease-in-out overflow-hidden"
-                    :class="expandedEquipment[record.id] ? 'max-h-[1000px]' : 'max-h-[52px]'"
-                  >
-                    <Tag
-                      v-for="eq in record.equipment"
-                      :key="eq.id"
-                      color="blue"
-                      class="cursor-pointer transition-all duration-200 hover:bg-[#1890ff] hover:text-white hover:border-[#1890ff] hover:-translate-y-0.5 hover:shadow-sm max-w-full truncate"
-                      @click="goToEquipment(eq.id)"
-                    >
-                      {{ eq.name }} ({{ eq.code }})
-                    </Tag>
-                  </div>
-                 <div v-if="record.equipment && record.equipment.length > 3">
-                   <span
-                     class="text-xs text-blue-500 hover:text-blue-700 cursor-pointer font-semibold inline-block mt-0.5 select-none"
-                     @click="toggleExpand(record.id)"
+                 <ExpandableContainer :items="record.equipment">
+                   <Tag
+                     v-for="eq in record.equipment"
+                     :key="eq.id"
+                     color="blue"
+                     class="cursor-pointer transition-all duration-200 hover:bg-[#1890ff] hover:text-white hover:border-[#1890ff] hover:-translate-y-0.5 hover:shadow-sm max-w-full truncate"
+                     @click="goToEquipment(eq.id)"
                    >
-                     {{ expandedEquipment[record.id] ? $t('page.equipment.btnCollapse') : $t('page.equipment.btnShowMore') }}
-                   </span>
-                 </div>
-                 <span v-if="!record.equipment || record.equipment.length === 0" class="text-gray-400">—</span>
+                     {{ eq.name }} ({{ eq.code }})
+                   </Tag>
+                 </ExpandableContainer>
                </div>
              </template>
             <template v-else-if="column.key === 'actions'">
               <div class="space-x-2">
                 <Button
                   size="small"
+                  :disabled="isSoftDeleted(record as ErrorItem)"
                   class="rounded hover:border-primary hover:text-primary"
                   @click="openEditModal(record as ErrorItem)"
                 >
@@ -405,6 +395,7 @@ onMounted(() => {
                   <Button
                     size="small"
                     danger
+                    :disabled="isSoftDeleted(record as ErrorItem)"
                     class="rounded bg-red-50/50 hover:bg-red-500 hover:text-white border-red-200"
                   >
                     {{ $t('page.company.btnDelete') }}
@@ -424,7 +415,7 @@ onMounted(() => {
       :confirm-loading="submitting"
       :ok-text="$t('page.equipment.modalConfirm')"
       :cancel-text="$t('page.equipment.modalCancel')"
-      width="580px"
+      width="600px"
       @ok="handleOk"
       @cancel="showModal = false"
     >

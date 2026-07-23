@@ -343,7 +343,7 @@ async function handleOk() {
       @cancel="showModal = false"
       :ok-text="$t('page.company.btnOk')"
       :cancel-text="$t('page.company.btnCancel')"
-      width="550px"
+      width="600px"
     >
       <Form
         ref="formRef"
