@@ -5,7 +5,7 @@ import { nextTick, ref, watch } from 'vue';
 
 import { $t } from '#/locales';
 import { EchartsUI, useEcharts } from '@vben/plugins/echarts';
-import { Spin } from 'ant-design-vue';
+import { Empty, Spin } from 'ant-design-vue';
 
 interface EquipmentOption {
   code: string;
@@ -218,50 +218,38 @@ watch(
 </script>
 
 <template>
-  <div class="bg-card border border-border rounded-xl p-5 shadow-sm space-y-5">
-    <!-- Header -->
-    <div class="flex items-center gap-2 border-b border-border pb-3">
-      <h3 class="text-base font-semibold text-gray-900 dark:text-gray-100 m-0">
-        {{ $t('page.equipment.chartErrorTitle') }}
-      </h3>
+  <Spin :spinning="props.loading">
+    <div v-if="props.errors.length > 0" class="grid grid-cols-1 md:grid-cols-2 gap-5">
+      <!-- Bar Chart Card -->
+      <div class="border border-border rounded-xl p-4 bg-white dark:bg-gray-900">
+        <div class="mb-1">
+          <h5 class="text-xs font-bold text-foreground uppercase tracking-wider m-0">
+            {{ $t('page.equipment.chartFrequencyTitle') }}
+          </h5>
+          <p class="text-[11px] text-muted-foreground mt-0.5 m-0">
+            {{ $t('page.equipment.chartFrequencyDesc') }}
+          </p>
+        </div>
+        <EchartsUI ref="barChartRef" height="300px" />
+      </div>
+
+      <!-- Pie Chart Card -->
+      <div class="border border-border rounded-xl p-4 bg-white dark:bg-gray-900">
+        <div class="mb-1">
+          <h5 class="text-xs font-bold text-foreground uppercase tracking-wider m-0">
+            {{ $t('page.equipment.chartRatioTitle') }}
+          </h5>
+          <p class="text-[11px] text-muted-foreground mt-0.5 m-0">
+            {{ $t('page.equipment.chartRatioDesc') }}
+          </p>
+        </div>
+        <EchartsUI ref="pieChartRef" height="300px" />
+      </div>
     </div>
 
-    <Spin :spinning="props.loading">
-      <div class="space-y-5">
-        <!-- ECharts Section -->
-        <div v-if="props.errors.length > 0" class="grid grid-cols-1 md:grid-cols-2 gap-5">
-          <!-- Bar Chart Card -->
-          <div class="border border-border rounded-xl p-4">
-            <div class="mb-1">
-              <h5 class="text-xs font-bold text-foreground uppercase tracking-wider m-0">
-                {{ $t('page.equipment.chartFrequencyTitle') }}
-              </h5>
-              <p class="text-[11px] text-muted-foreground mt-0.5 m-0">
-                {{ $t('page.equipment.chartFrequencyDesc') }}
-              </p>
-            </div>
-            <EchartsUI ref="barChartRef" height="300px" />
-          </div>
-
-          <!-- Pie Chart Card -->
-          <div class="border border-border rounded-xl p-4">
-            <div class="mb-1">
-              <h5 class="text-xs font-bold text-foreground uppercase tracking-wider m-0">
-                {{ $t('page.equipment.chartRatioTitle') }}
-              </h5>
-              <p class="text-[11px] text-muted-foreground mt-0.5 m-0">
-                {{ $t('page.equipment.chartRatioDesc') }}
-              </p>
-            </div>
-            <EchartsUI ref="pieChartRef" height="300px" />
-          </div>
-        </div>
-
-        <!-- Empty State -->
-        <div v-else class="py-12 flex justify-center">
-          <Empty :description="$t('page.equipment.chartNoData')" />
-        </div>
-      </div>
-    </Spin>
-  </div>
+    <!-- Empty State -->
+    <div v-else class="py-12 flex justify-center">
+      <Empty :description="$t('page.equipment.chartNoData')" />
+    </div>
+  </Spin>
 </template>

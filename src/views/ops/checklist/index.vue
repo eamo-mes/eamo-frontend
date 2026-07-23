@@ -20,7 +20,6 @@ import { useAccessStore } from '@vben/stores';
 import { API_BASE_URL } from '#/api/config';
 import { isSoftDeleted, softDeletedRowClass, sortBySoftDeleted } from '#/utils/soft-delete';
 import ChecklistCalendar from './components/ChecklistCalendar.vue';
-import ChecklistCharts from './components/ChecklistCharts.vue';
 import ExpandableContainer from '#/components/ExpandableContainer.vue';
 
 interface EquipmentDetail {
@@ -115,13 +114,6 @@ async function loadChartData() {
     message.error($t('page.ops.chartLoadError'));
   } finally {
     chartsLoading.value = false;
-  }
-}
-
-async function toggleCharts() {
-  showCharts.value = !showCharts.value;
-  if (showCharts.value) {
-    await loadChartData();
   }
 }
 
@@ -374,13 +366,6 @@ onMounted(() => {
 
 <template>
   <div class="p-6 space-y-4">
-    <!-- Chart Panel -->
-    <ChecklistCharts
-      v-if="showCharts"
-      :stats="chartStats"
-      :loading="chartsLoading"
-    />
-
     <!-- Action Bar -->
     <div class="action-bar bg-card border border-border rounded-xl p-4 shadow-sm flex flex-nowrap items-center gap-3 overflow-x-auto">
       <Input
@@ -432,14 +417,6 @@ onMounted(() => {
         {{ $t('page.company.btnReset') }}
       </Button>
       <div class="ml-auto flex gap-2 shrink-0">
-        <Button
-          type="default"
-          class="rounded-md font-medium h-full"
-          :class="{ 'border-[#5c3e35] text-[#5c3e35]': showCharts }"
-          @click="toggleCharts"
-        >
-          {{ showCharts ? $t('page.ops.btnHideCharts') : $t('page.ops.btnShowCharts') }}
-        </Button>
         <Button
           type="default"
           class="rounded-md font-medium h-full"

@@ -69,6 +69,8 @@ function getRowClassName(record: ErrorLogItem): string {
 }
 const equipments = ref<EquipmentOption[]>([]);
 const users = ref<UserOption[]>([]);
+
+// 1. Add Error Log / Assign & Handle Modal
 const showModal = ref(false);
 const isEditing = ref(false);
 const editId = ref<string | null>(null);
@@ -91,7 +93,24 @@ const rules = computed(() => ({
   occurred_at: [{ required: true, message: $t('page.ops.occurredAt') }],
 }));
 
-// Computed list of errors for selected equipment
+// 2. Create Equipment Error Modal (Add error type / associate error to equipment)
+const showCreateErrorModal = ref(false);
+const submittingCreateError = ref(false);
+const createErrorFormRef = ref();
+const createErrorFormState = ref({
+  equipment_id: undefined as string | undefined,
+  equipment_error_id: undefined as string | undefined,
+});
+
+const createErrorRules = computed(() => ({
+  equipment_id: [{ required: true, message: $t('page.ops.validationEquipment') }],
+  equipment_error_id: [{ required: true, message: $t('page.ops.selectError') }],
+}));
+
+// All master errors for Modal 1
+const allMasterErrors = ref<ErrorOption[]>([]);
+
+// Computed list of errors for selected equipment in Error Log modal
 const availableErrors = computed(() => {
   if (!formState.value.equipment_id) return [];
   const equip = equipments.value.find(e => e.id === formState.value.equipment_id);
@@ -112,13 +131,26 @@ function getAuthHeaders() {
   };
 }
 
+interface RawEquipmentItem {
+  id: string;
+  code: string;
+  name?: string;
+  equipment_errors?: ErrorOption[];
+}
+
+interface RawUserItem {
+  id: string;
+  name: string;
+}
+
 async function loadInitialData() {
   try {
     const equipRes = await axios.get(`${API_BASE_URL}/v1/equipment`, {
       headers: getAuthHeaders(),
+      params: { per_page: 1000 },
     });
-    const equipData = equipRes.data?.data ?? equipRes.data ?? [];
-    equipments.value = equipData.map((item: any) => ({
+    const equipData: RawEquipmentItem[] = equipRes.data?.data ?? equipRes.data ?? [];
+    equipments.value = equipData.map((item) => ({
       id: item.id,
       code: item.code,
       name: item.name || item.code,
@@ -127,13 +159,24 @@ async function loadInitialData() {
 
     const usersRes = await axios.get(`${API_BASE_URL}/users`, {
       headers: getAuthHeaders(),
+      params: { per_page: 1000 },
     });
-    const usersData = usersRes.data?.data ?? usersRes.data ?? [];
-    users.value = usersData.map((item: any) => ({
+    const usersData: RawUserItem[] = usersRes.data?.data ?? usersRes.data ?? [];
+    users.value = usersData.map((item) => ({
       id: item.id,
       name: item.name,
     }));
-  } catch (error) {
+
+    const errorsRes = await axios.get(`${API_BASE_URL}/v1/equipment-errors`, {
+      headers: getAuthHeaders(),
+      params: { per_page: 1000 },
+    });
+    const errorsData: ErrorOption[] = errorsRes.data?.data ?? errorsRes.data ?? [];
+    allMasterErrors.value = errorsData.map((item) => ({
+      id: item.id,
+      name: item.name,
+    }));
+  } catch (error: unknown) {
     console.error('Failed to load metadata', error);
   }
 }
@@ -226,6 +269,14 @@ function openAddModal() {
   showModal.value = true;
 }
 
+function openCreateErrorModal() {
+  createErrorFormState.value = {
+    equipment_id: undefined,
+    equipment_error_id: undefined,
+  };
+  showCreateErrorModal.value = true;
+}
+
 function openEditModal(record: ErrorLogItem) {
   isEditing.value = true;
   editId.value = record.id;
@@ -250,6 +301,39 @@ async function handleDelete(id: string) {
   } catch (error) {
     message.error($t('page.ops.deleteFailed'));
     console.error(error);
+  }
+}
+
+async function handleCreateEquipmentErrorOk() {
+  try {
+    await createErrorFormRef.value.validateFields();
+    submittingCreateError.value = true;
+
+    // Call update-errors endpoint with equipment_error_ids array
+    const selectedEquip = equipments.value.find(e => e.id === createErrorFormState.value.equipment_id);
+    const existingErrorIds = selectedEquip?.equipment_errors?.map(e => e.id) || [];
+    const newErrorId = createErrorFormState.value.equipment_error_id;
+
+    const updatedErrorIds = Array.from(new Set([...existingErrorIds, newErrorId].filter(Boolean)));
+
+    await axios.post(
+      `${API_BASE_URL}/v1/equipment/${createErrorFormState.value.equipment_id}/errors`,
+      { equipment_error_ids: updatedErrorIds },
+      { headers: getAuthHeaders() }
+    );
+
+    message.success($t('page.ops.successSave'));
+    showCreateErrorModal.value = false;
+    await loadInitialData();
+  } catch (err: unknown) {
+    const formErr = err as { errorFields?: unknown[] };
+    if (!formErr?.errorFields) {
+      const axiosErr = err as { response?: { data?: { message?: string } } };
+      const msg = axiosErr?.response?.data?.message || $t('page.ops.saveFailed');
+      message.error(msg);
+    }
+  } finally {
+    submittingCreateError.value = false;
   }
 }
 
@@ -280,9 +364,11 @@ async function handleOk() {
     }
     showModal.value = false;
     loadItems();
-  } catch (err: any) {
-    if (!err?.errorFields) {
-      const msg = err?.response?.data?.message || $t('page.ops.saveFailed');
+  } catch (err: unknown) {
+    const formErr = err as { errorFields?: unknown[] };
+    if (!formErr?.errorFields) {
+      const axiosErr = err as { response?: { data?: { message?: string } } };
+      const msg = axiosErr?.response?.data?.message || $t('page.ops.saveFailed');
       message.error(msg);
     }
   } finally {
@@ -301,8 +387,9 @@ async function syncOneResolved(id: string) {
     message.success($t('page.ops.syncSuccess'));
     await loadInitialData();
     await loadItems();
-  } catch (error: any) {
-    message.error(error?.response?.data?.message || $t('page.ops.syncFailed'));
+  } catch (error: unknown) {
+    const axiosErr = error as { response?: { data?: { message?: string } } };
+    message.error(axiosErr?.response?.data?.message || $t('page.ops.syncFailed'));
   } finally {
     syncingId.value = null;
   }
@@ -319,8 +406,9 @@ async function syncAllResolved() {
     message.success(res.data?.message || $t('page.ops.syncSuccess'));
     await loadInitialData();
     await loadItems();
-  } catch (error: any) {
-    message.error(error?.response?.data?.message || $t('page.ops.syncFailed'));
+  } catch (error: unknown) {
+    const axiosErr = error as { response?: { data?: { message?: string } } };
+    message.error(axiosErr?.response?.data?.message || $t('page.ops.syncFailed'));
   } finally {
     syncingAll.value = false;
   }
@@ -403,6 +491,13 @@ const columns = computed(() => [
           </Button>
         </Popconfirm>
         <Button
+          type="default"
+          class="rounded-md font-medium border-emerald-600 text-emerald-600 hover:bg-emerald-50"
+          @click="openCreateErrorModal"
+        >
+          {{ $t('page.ops.btnCreateEquipmentError') }}
+        </Button>
+        <Button
           type="primary"
           class="bg-[#5c3e35] hover:bg-[#4b332b] border-[#5c3e35] rounded-md font-medium text-white h-full"
           @click="openAddModal"
@@ -460,7 +555,7 @@ const columns = computed(() => [
                   class="rounded hover:border-primary hover:text-primary"
                   @click="openEditModal(record as ErrorLogItem)"
                 >
-                  {{ $t('page.company.btnEdit') }}
+                  {{ $t('page.ops.editErrorLog') }}
                 </Button>
                 <Popconfirm
                   v-if="record.handled_at && !record.is_synced"
@@ -500,7 +595,47 @@ const columns = computed(() => [
       </Spin>
     </div>
 
-    <!-- Add/Edit Modal -->
+    <!-- Modal 1: Create Error Type for Equipment -->
+    <Modal
+      v-model:open="showCreateErrorModal"
+      :title="$t('page.ops.createEquipmentError')"
+      :confirm-loading="submittingCreateError"
+      :ok-text="$t('page.ops.btnOk')"
+      :cancel-text="$t('page.ops.btnCancel')"
+      width="600px"
+      @ok="handleCreateEquipmentErrorOk"
+      @cancel="showCreateErrorModal = false"
+    >
+      <Form
+        ref="createErrorFormRef"
+        :model="createErrorFormState"
+        :rules="createErrorRules"
+        layout="vertical"
+        class="mt-4"
+      >
+        <FormItem :label="$t('page.ops.colEquipment')" name="equipment_id">
+          <Select
+            v-model:value="createErrorFormState.equipment_id"
+            :options="equipments"
+            :fieldNames="{ label: 'name', value: 'id' }"
+            :placeholder="$t('page.ops.selectEquipment')"
+            class="w-full"
+          />
+        </FormItem>
+
+        <FormItem :label="$t('page.ops.error')" name="equipment_error_id">
+          <Select
+            v-model:value="createErrorFormState.equipment_error_id"
+            :options="allMasterErrors"
+            :fieldNames="{ label: 'name', value: 'id' }"
+            :placeholder="$t('page.ops.selectError')"
+            class="w-full"
+          />
+        </FormItem>
+      </Form>
+    </Modal>
+
+    <!-- Modal 2: Add / Edit / Assign / Handle Error Log -->
     <Modal
       v-model:open="showModal"
       :title="isEditing ? $t('page.ops.editErrorLog') : $t('page.ops.addErrorLog')"
