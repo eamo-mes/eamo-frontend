@@ -1,7 +1,7 @@
 <script lang="ts" setup>
 import { ref, computed, onMounted } from 'vue';
 import { useRouter } from 'vue-router';
-import { Button, Spin, Tabs, Table, Tag, Card, Badge } from 'ant-design-vue';
+import { Button, Spin, Tabs, Table, Tag, Card, Badge, Popconfirm, message } from 'ant-design-vue';
 import axios from 'axios';
 import dayjs from 'dayjs';
 import { listUsersApi, type UserItem } from '#/api/core/users';
@@ -197,17 +197,10 @@ async function loadMyErrorLogs(): Promise<void> {
     const rawLogs: ErrorLogItem[] = res.data?.data ?? res.data ?? [];
 
     const currentUserId = userStore.userInfo?.userId || (userStore.userInfo as { id?: string } | null)?.id;
-    const currentRealName = userStore.userInfo?.realName;
-    const currentUsername = userStore.userInfo?.username;
 
     myErrorLogs.value = rawLogs.filter((log) => {
-      if (!log.handlers || log.handlers.length === 0) return false;
-      return log.handlers.some(
-        (h) =>
-          (currentUserId && h.id === currentUserId) ||
-          (currentRealName && h.name === currentRealName) ||
-          (currentUsername && h.name === currentUsername)
-      );
+      if (!log.handlers || log.handlers.length === 0 || !currentUserId) return false;
+      return log.handlers.some((h) => h.id === currentUserId);
     });
   } catch (error: unknown) {
     console.error('Failed to load my error logs:', error);
@@ -250,6 +243,27 @@ function handleTaskCompletedInDashboard(): void {
   loadMyErrorLogs();
 }
 
+const syncingId = ref<string | null>(null);
+
+async function handleSyncResolvedOne(id: string) {
+  syncingId.value = id;
+  try {
+    await axios.post(
+      `${API_BASE_URL}/v1/equipment/error-monitoring/equipment-error-logs/${id}/sync-resolved`,
+      {},
+      { headers: getAuthHeaders() },
+    );
+    message.success($t('page.ops.syncSuccessOne'));
+    await loadMyErrorLogs();
+    assignedTasksRef.value?.loadAllData();
+  } catch (error: unknown) {
+    const apiErr = (error as { response?: { data?: { message?: string } } })?.response?.data?.message;
+    message.error(apiErr || 'Failed to sync error log');
+  } finally {
+    syncingId.value = null;
+  }
+}
+
 const errorColumns = computed(() => [
   {
     title: $t('page.ops.colEquipment'),
@@ -278,7 +292,7 @@ const errorColumns = computed(() => [
     title: $t('page.ops.colActions'),
     key: 'actions',
     align: 'center' as const,
-    width: 120,
+    width: 200,
   },
 ]);
 
@@ -413,13 +427,30 @@ onMounted(() => {
                 <span>{{ record.handled_at ? dayjs(record.handled_at).format('YYYY-MM-DD HH:mm:ss') : '-' }}</span>
               </template>
               <template v-else-if="column.key === 'actions'">
-                <Button
-                  size="small"
-                  class="rounded hover:border-primary hover:text-primary"
-                  @click="router.push('/maintenance/error-monitoring')"
-                >
-                  {{ $t('page.dashboard.viewTask') }}
-                </Button>
+                <div class="flex items-center justify-center gap-2">
+                  <Popconfirm
+                    :title="$t('page.ops.syncConfirmOne')"
+                    ok-text="Yes"
+                    cancel-text="No"
+                    @confirm="handleSyncResolvedOne(record.id)"
+                  >
+                    <Button
+                      size="small"
+                      :disabled="record.is_synced"
+                      :loading="syncingId === record.id"
+                      class="rounded border-blue-400 text-blue-600 hover:bg-blue-50"
+                    >
+                      {{ $t('page.ops.syncResolvedOne') }}
+                    </Button>
+                  </Popconfirm>
+                  <Button
+                    size="small"
+                    class="rounded hover:border-primary hover:text-primary"
+                    @click="router.push('/maintenance/error-monitoring')"
+                  >
+                    {{ $t('page.dashboard.viewTask') }}
+                  </Button>
+                </div>
               </template>
             </template>
           </Table>

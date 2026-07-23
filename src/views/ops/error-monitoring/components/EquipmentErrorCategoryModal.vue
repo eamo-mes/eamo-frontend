@@ -7,6 +7,11 @@ import { API_BASE_URL } from '#/api/config';
 import { useAccessStore } from '@vben/stores';
 import { $t } from '#/locales';
 
+interface UserOption {
+  id: string;
+  name: string;
+}
+
 interface EquipmentOption {
   id: string;
   code: string;
@@ -23,6 +28,7 @@ const props = defineProps<{
   open: boolean;
   equipments: EquipmentOption[];
   allMasterErrors: ErrorOption[];
+  users?: UserOption[];
 }>();
 
 const emit = defineEmits<{
@@ -37,6 +43,7 @@ const formState = ref({
   equipment_id: undefined as string | undefined,
   equipment_error_id: undefined as string | undefined,
   occurred_at: undefined as Dayjs | undefined,
+  handler_ids: [] as string[],
 });
 
 const rules = computed(() => ({
@@ -52,6 +59,7 @@ watch(
         equipment_id: undefined,
         equipment_error_id: undefined,
         occurred_at: undefined,
+        handler_ids: [],
       };
       formRef.value?.resetFields();
     }
@@ -89,6 +97,7 @@ async function handleOk() {
     const payload = {
       equipment_error_ids: updatedErrorIds,
       occurred_at: formState.value.occurred_at ? formState.value.occurred_at.format('YYYY-MM-DD HH:mm:ss') : null,
+      handler_ids: formState.value.handler_ids,
     };
 
     await axios.post(
@@ -147,6 +156,18 @@ async function handleOk() {
           :options="props.allMasterErrors"
           :field-names="{ label: 'name', value: 'id' }"
           :placeholder="$t('page.ops.selectError')"
+          class="w-full"
+        />
+      </FormItem>
+
+      <FormItem :label="$t('page.ops.selectHandler')" name="handler_ids">
+        <Select
+          v-model:value="formState.handler_ids"
+          mode="multiple"
+          :options="props.users || []"
+          :field-names="{ label: 'name', value: 'id' }"
+          :placeholder="$t('page.ops.selectHandler')"
+          allow-clear
           class="w-full"
         />
       </FormItem>

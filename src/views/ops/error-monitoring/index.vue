@@ -480,6 +480,7 @@ const columns = computed(() => [
       v-model:open="showCreateErrorCategoryModal"
       :equipments="equipments"
       :all-master-errors="allMasterErrors"
+      :users="users"
       @success="async () => { await loadInitialData(); await loadItems(); }"
     />
 

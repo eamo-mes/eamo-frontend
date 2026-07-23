@@ -130,17 +130,10 @@ async function loadAllData(): Promise<void> {
     const rawLogs: AssignedTaskItem[] = errRes.data?.data ?? errRes.data ?? [];
 
     const currentUserId = userStore.userInfo?.userId || (userStore.userInfo as { id?: string } | null)?.id;
-    const currentRealName = userStore.userInfo?.realName;
-    const currentUsername = userStore.userInfo?.username;
 
     myErrorTasks.value = rawLogs.filter((log) => {
-      if (!log.handlers || log.handlers.length === 0) return false;
-      return log.handlers.some(
-        (h) =>
-          (currentUserId && h.id === currentUserId) ||
-          (currentRealName && h.name === currentRealName) ||
-          (currentUsername && h.name === currentUsername)
-      );
+      if (!log.handlers || log.handlers.length === 0 || !currentUserId) return false;
+      return log.handlers.some((h) => h.id === currentUserId);
     });
 
     await nextTick();
