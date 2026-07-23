@@ -102,7 +102,7 @@ async function handleUpdate() {
     } else if (error?.errorFields) {
       // Form validation error, do not show message toast as it shows red hints
     } else {
-      message.error('Cập nhật thất bại / Update failed');
+      message.error($t('page.profile.updateError'));
     }
   } finally {
     submitting.value = false;

@@ -211,9 +211,8 @@ async function loadEquipmentDetail(id: string) {
         fileList.value = [];
       }
     }
-  } catch (err: unknown) {
-    const error = err as { response?: { data?: { message?: string } } };
-    message.error(error?.response?.data?.message || 'Không thể tải chi tiết thiết bị');
+  } catch (err: any) {
+    message.error(err?.response?.data?.message || $t('page.equipment.msgLoadDetailError'));
     goBack();
   } finally {
     loading.value = false;
@@ -256,10 +255,8 @@ const handleRemoveFile = async (file: UploadFile) => {
         fileList.value = [...newFileList, ...localFiles];
       }
       message.success('Xóa ảnh khỏi máy chủ thành công');
-      return true;
-    } catch (err: unknown) {
-      const error = err as { response?: { data?: { message?: string } } };
-      const msg = error?.response?.data?.message || 'Không thể xóa ảnh khỏi máy chủ';
+    } catch (err: any) {
+      const msg = err?.response?.data?.message || $t('page.equipment.msgDeleteImageError');
       message.error(msg);
       return false;
     } finally {
@@ -449,7 +446,7 @@ async function handleSubmit() {
     if (error?.errorFields) {
       // Form validation failed
     } else {
-      const msg = error?.response?.data?.message || 'Không thể lưu thiết bị';
+      const msg = err?.response?.data?.message || $t('page.equipment.msgSaveEquipmentError');
       message.error(msg);
     }
   } finally {

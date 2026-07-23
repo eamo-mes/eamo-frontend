@@ -192,7 +192,7 @@ async function loadEquipments(page = currentPage.value, size = pageSize.value) {
     total.value = res.data?.total ?? equipments.value.length;
     currentPage.value = res.data?.current_page ?? page;
   } catch (err: any) {
-    message.error(err?.response?.data?.message || 'Không thể tải danh sách thiết bị');
+    message.error(err?.response?.data?.message || $t('page.equipment.msgLoadListError'));
   } finally {
     loading.value = false;
   }
@@ -250,7 +250,7 @@ const columns = computed(() => [
     key: 'is_active',
   },
   {
-    title: $t('page.equipment.colMaintenanceIntervalHours') || 'Chu kỳ bảo trì (giờ)',
+    title: $t('page.equipment.colMaintenanceIntervalHours'),
     dataIndex: 'maintenance_interval_hours',
     key: 'maintenance_interval_hours',
     sorter: (a: EquipmentItem, b: EquipmentItem) => (a.maintenance_interval_hours || 0) - (b.maintenance_interval_hours || 0),
@@ -262,7 +262,7 @@ const columns = computed(() => [
     width: 320,
   },
   {
-    title: $t('page.equipment.parametersTitle') || 'Thông số',
+    title: $t('page.equipment.parametersTitle'),
     dataIndex: 'equipment_parameters',
     key: 'equipment_parameters',
     width: 320,
@@ -302,7 +302,7 @@ async function handleDelete(id: string) {
     await loadDashboardSummary();
     message.success('Xóa thiết bị thành công');
   } catch (err: any) {
-    message.error(err?.response?.data?.message || 'Không thể xóa thiết bị');
+    message.error(err?.response?.data?.message || $t('page.equipment.msgDeleteEquipmentError'));
   }
 }
 
@@ -447,8 +447,8 @@ onMounted(() => {
                 </Button>
                 <Popconfirm
                   :title="$t('page.company.deleteConfirm')"
-                  ok-text="Yes"
-                  cancel-text="No"
+                  :ok-text="$t('page.equipment.modalConfirm')"
+                  :cancel-text="$t('page.equipment.modalCancel')"
                   @confirm="handleDelete(record.id)"
                 >
                   <Button

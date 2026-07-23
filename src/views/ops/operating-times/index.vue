@@ -373,8 +373,8 @@ const columns = computed(() => [
                 </Button>
                 <Popconfirm
                   :title="$t('page.company.deleteConfirm')"
-                  ok-text="Yes"
-                  cancel-text="No"
+                  :ok-text="$t('page.ops.btnOk')"
+                  :cancel-text="$t('page.ops.btnCancel')"
                   @confirm="handleDelete(record.id)"
                 >
                   <Button

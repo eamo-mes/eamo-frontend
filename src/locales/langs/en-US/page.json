@@ -6,6 +6,13 @@
     "qrcodeLogin": "Qr Code Login",
     "forgetPassword": "Forget Password",
     "profile": "Profile",
+    "callbackProcessing": "Processing login...",
+    "callbackNoCode": "No code parameter found in callback URL.",
+    "callbackAuthenticating": "Authenticating account...",
+    "callbackPreparing": "Preparing session...",
+    "callbackSuccess": "Login successful",
+    "callbackErrorTitle": "Login Error Occurred",
+    "callbackBackToLogin": "Back to Login"
     "callback": {
       "processing": "Processing login...",
       "verifying": "Authenticating user account...",
@@ -211,6 +218,19 @@
     "msgUpdateErrorSuccess": "Error case updated successfully",
     "msgCreateErrorSuccess": "Error case added successfully",
     "msgSaveErrorError": "Unable to save error case",
+    "msgLoadDetailError": "Unable to load equipment detail",
+    "msgDeleteImageSuccess": "Image deleted from server successfully",
+    "msgDeleteImageError": "Unable to delete image from server",
+    "msgUpdateEquipmentSuccess": "Equipment updated successfully",
+    "msgCreateEquipmentSuccess": "Equipment created successfully",
+    "msgUploadingImage": "Uploading image {current}/{total}...",
+    "msgUploadedImage": "Uploaded image {current}/{total}",
+    "msgUploadFailedImage": "Failed to upload image {current}/{total}",
+    "msgSaveEquipmentError": "Unable to save equipment",
+    "msgLoadListError": "Unable to load equipment list",
+    "msgDeleteEquipmentSuccess": "Equipment deleted successfully",
+    "msgDeleteEquipmentError": "Unable to delete equipment",
+    "msgLoadRelationError": "Unable to load equipment relation diagram"
     "checklistSessionsModalTitle": "Checklist Sessions Details - {name}",
     "filterQuickSearch": "Quick Search",
     "filterSessionName": "Session Name",
@@ -325,7 +345,9 @@
     "confirmPasswordRequired": "Please confirm your new password",
     "passwordMismatch": "Confirm password does not match",
     "btnUpdate": "Update Profile",
-    "updateSuccess": "Profile updated successfully"
+    "updateSuccess": "Profile updated successfully",
+    "updateError": "Update failed",
+    "updateFailed": "Profile update failed"
   },
   "ops": {
     "title": "O&M",
@@ -688,6 +710,17 @@
     "deleteSchedule": "Delete schedule",
     "deleteScheduleConfirm": "Delete all schedules for this day?",
     "deleteScheduleSuccess": "Schedules for the selected day were deleted.",
+    "deleteScheduleError": "Failed to delete schedules for the selected day.",
+    "loadUsersError": "Unable to load users: ",
+    "loadChecklistDetailError": "Unable to load checklist detail",
+    "deleteItemSuccess": "Item deleted from server successfully",
+    "deleteItemError": "Unable to delete item from server",
+    "updateChecklistSuccess": "Checklist updated successfully",
+    "createChecklistSuccess": "Checklist created successfully",
+    "saveChecklistError": "Unable to save checklist",
+    "loadChecklistsError": "Unable to load checklists",
+    "deleteChecklistSuccess": "Checklist deleted successfully",
+    "deleteChecklistError": "Unable to delete checklist"
     "deleteScheduleError": "Failed to delete schedules for the selected day."
   },
   "notification": {

@@ -402,7 +402,7 @@ onMounted(() => {
       />
       <Select
         v-model:value="filterCompanyId"
-        :placeholder="$t('page.company.users.selectCompanyPlaceholder') || 'Lọc theo công ty'"
+        :placeholder="$t('page.company.users.selectCompanyPlaceholder')"
         class="min-w-[180px]"
         allow-clear
         @change="handleCompanyFilterChange"
@@ -413,7 +413,7 @@ onMounted(() => {
       </Select>
       <Select
         v-model:value="filterDepartmentId"
-        :placeholder="$t('page.company.users.selectDeptPlaceholder') || 'Lọc theo phòng ban'"
+        :placeholder="$t('page.company.users.selectDeptPlaceholder')"
         class="min-w-[200px]"
         allow-clear
         @change="handleFilterChange"

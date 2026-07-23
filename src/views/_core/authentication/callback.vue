@@ -7,6 +7,7 @@ import { useAccessStore, useUserStore } from '@vben/stores';
 import { useAuthStore } from '#/store/auth';
 import { getAccessCodesApi } from '#/api/core/auth';
 import { preferences } from '@vben/preferences';
+import { notification } from 'ant-design-vue';
 import { $t } from '#/locales';
 
 defineOptions({ name: 'AuthCallback' });

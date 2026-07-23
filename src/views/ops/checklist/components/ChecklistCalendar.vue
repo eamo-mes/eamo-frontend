@@ -332,7 +332,7 @@ async function handleDeleteSchedule(): Promise<void> {
     emit('refresh-list');
   } catch (err: unknown) {
     const apiError = axios.isAxiosError(err) ? err.response?.data?.message : undefined;
-    message.error(apiError || 'Không thể xóa schedule của ngày đã chọn');
+    message.error(apiError || $t('page.ops.deleteScheduleError'));
   } finally {
     deletingSchedule.value = false;
   }
