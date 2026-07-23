@@ -147,7 +147,7 @@ const columns = computed(() => [
 <template>
   <Modal
     :open="props.open"
-    width="950px"
+    width="1000px"
     :footer="null"
     destroy-on-close
     @cancel="handleClose"

@@ -527,7 +527,7 @@ onMounted(() => {
       :confirm-loading="submitting"
       :ok-text="$t('page.company.btnOk')"
       :cancel-text="$t('page.company.btnCancel')"
-      width="580px"
+      width="600px"
       @ok="handleOk"
       @cancel="showModal = false"
     >

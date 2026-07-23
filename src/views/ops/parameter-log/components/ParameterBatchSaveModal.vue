@@ -172,7 +172,7 @@ function handleCancel(): void {
   <Modal
     :open="props.open"
     :title="$t('page.ops.batchSaveTitle')"
-    width="950px"
+    width="1000px"
     :confirm-loading="submitting"
     :ok-text="$t('page.ops.btnOk')"
     :cancel-text="$t('page.ops.btnCancel')"

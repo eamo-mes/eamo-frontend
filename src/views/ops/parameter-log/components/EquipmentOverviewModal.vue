@@ -150,7 +150,7 @@ function handleClose() {
   <Modal
     :open="props.open"
     :title="$t('page.ops.overviewTitle')"
-    width="1060px"
+    width="1000px"
     :footer="null"
     @cancel="handleClose"
   >

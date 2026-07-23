@@ -1,26 +1,22 @@
 <script lang="ts" setup>
-import { ref, onMounted, computed, watch } from 'vue';
+import { ref, onMounted, computed } from 'vue';
 import {
   Table,
   Button,
-  Modal,
-  Form,
-  FormItem,
-  Select,
-  DatePicker,
   Popconfirm,
   message,
   Spin,
   Tag,
-  Input
+  Input,
 } from 'ant-design-vue';
 import axios from 'axios';
 import dayjs from 'dayjs';
-import type { Dayjs } from 'dayjs';
 import { API_BASE_URL } from '#/api/config';
 import { useAccessStore } from '@vben/stores';
 import { $t } from '#/locales';
 import { isSoftDeleted, softDeletedRowClass, sortBySoftDeleted } from '#/utils/soft-delete';
+import EquipmentErrorCategoryModal from './components/EquipmentErrorCategoryModal.vue';
+import ErrorLogFormModal from './components/ErrorLogFormModal.vue';
 
 interface UserOption {
   id: string;
@@ -43,9 +39,11 @@ interface ErrorLogItem {
   id: string;
   equipment_id: string;
   equipment_error_id: string;
-  occurred_at: string;
-  restarted_at?: string;
-  handled_at?: string;
+  occurred_at?: string | null;
+  restarted_at?: string | null;
+  handled_at?: string | null;
+  created_at?: string;
+  updated_at?: string;
   handler_ids?: string[];
   handled_time?: number;
   is_synced?: boolean;
@@ -56,7 +54,6 @@ interface ErrorLogItem {
 }
 
 const loading = ref(false);
-const submitting = ref(false);
 const syncingAll = ref(false);
 const syncingId = ref<string | null>(null);
 const items = ref<ErrorLogItem[]>([]);
@@ -67,60 +64,19 @@ function getRowClassName(record: ErrorLogItem): string {
     record.is_synced ? 'opacity-40 pointer-events-none bg-gray-50/20 dark:bg-zinc-900/10' : '',
   ].filter(Boolean).join(' ');
 }
+
 const equipments = ref<EquipmentOption[]>([]);
 const users = ref<UserOption[]>([]);
-
-// 1. Add Error Log / Assign & Handle Modal
-const showModal = ref(false);
-const isEditing = ref(false);
-const editId = ref<string | null>(null);
-const searchVal = ref('');
-const activeSearch = ref('');
-
-const formRef = ref();
-const formState = ref({
-  equipment_id: undefined as string | undefined,
-  equipment_error_id: undefined as string | undefined,
-  occurred_at: undefined as Dayjs | undefined,
-  restarted_at: undefined as Dayjs | undefined,
-  handled_at: undefined as Dayjs | undefined,
-  handler_ids: [] as string[],
-});
-
-const rules = computed(() => ({
-  equipment_id: [{ required: true, message: $t('page.ops.validationEquipment') }],
-  equipment_error_id: [{ required: true, message: $t('page.ops.selectError') }],
-  occurred_at: [{ required: true, message: $t('page.ops.occurredAt') }],
-}));
-
-// 2. Create Equipment Error Modal (Add error type / associate error to equipment)
-const showCreateErrorModal = ref(false);
-const submittingCreateError = ref(false);
-const createErrorFormRef = ref();
-const createErrorFormState = ref({
-  equipment_id: undefined as string | undefined,
-  equipment_error_id: undefined as string | undefined,
-});
-
-const createErrorRules = computed(() => ({
-  equipment_id: [{ required: true, message: $t('page.ops.validationEquipment') }],
-  equipment_error_id: [{ required: true, message: $t('page.ops.selectError') }],
-}));
-
-// All master errors for Modal 1
 const allMasterErrors = ref<ErrorOption[]>([]);
 
-// Computed list of errors for selected equipment in Error Log modal
-const availableErrors = computed(() => {
-  if (!formState.value.equipment_id) return [];
-  const equip = equipments.value.find(e => e.id === formState.value.equipment_id);
-  return equip?.equipment_errors ?? [];
-});
+// Modal States
+const showCreateErrorCategoryModal = ref(false);
+const showErrorLogModal = ref(false);
+const isEditing = ref(false);
+const selectedRecord = ref<ErrorLogItem | null>(null);
 
-// Watch selected equipment to reset error
-watch(() => formState.value.equipment_id, () => {
-  formState.value.equipment_error_id = undefined;
-});
+const searchVal = ref('');
+const activeSearch = ref('');
 
 function getAuthHeaders() {
   const accessStore = useAccessStore();
@@ -147,9 +103,13 @@ async function loadInitialData() {
   try {
     const equipRes = await axios.get(`${API_BASE_URL}/v1/equipment`, {
       headers: getAuthHeaders(),
-      params: { per_page: 1000 },
+      params: { paginate: 'false' },
     });
-    const equipData: RawEquipmentItem[] = equipRes.data?.data ?? equipRes.data ?? [];
+    // API trả về mảng trực tiếp khi paginate=false, hoặc { data: [...] } nếu paginated
+    const rawEquip = equipRes.data;
+    const equipData: RawEquipmentItem[] = Array.isArray(rawEquip)
+      ? rawEquip
+      : (rawEquip?.data ?? []);
     equipments.value = equipData.map((item) => ({
       id: item.id,
       code: item.code,
@@ -171,11 +131,14 @@ async function loadInitialData() {
       headers: getAuthHeaders(),
       params: { per_page: 1000 },
     });
-    const errorsData: ErrorOption[] = errorsRes.data?.data ?? errorsRes.data ?? [];
-    allMasterErrors.value = errorsData.map((item) => ({
-      id: item.id,
-      name: item.name,
-    }));
+    const errorsData = errorsRes.data?.data ?? errorsRes.data ?? [];
+    const errorsListArray = Array.isArray(errorsData) ? errorsData : [];
+    allMasterErrors.value = errorsListArray
+      .map((item: { id?: string; name?: string }) => ({
+        id: item.id || '',
+        name: item.name || '',
+      }))
+      .filter((item) => item.id.length > 0);
   } catch (error: unknown) {
     console.error('Failed to load metadata', error);
   }
@@ -198,7 +161,7 @@ async function loadItems() {
 }
 
 function getEquipmentName(id: string) {
-  const equip = equipments.value.find(e => e.id === id);
+  const equip = equipments.value.find((e) => e.id === id);
   return equip ? `${equip.name} (${equip.code})` : id;
 }
 
@@ -206,14 +169,16 @@ function getErrorName(record: ErrorLogItem) {
   if (record.equipment_error?.name) {
     return record.equipment_error.name;
   }
-  const equip = equipments.value.find(e => e.id === record.equipment_id);
-  const err = equip?.equipment_errors?.find(e => e.id === record.equipment_error_id);
-  return err ? err.name : record.equipment_error_id;
+  const equip = equipments.value.find((e) => e.id === record.equipment_id);
+  const err = equip?.equipment_errors?.find((e) => e.id === record.equipment_error_id);
+  if (err?.name) return err.name;
+  const masterErr = allMasterErrors.value.find((e) => e.id === record.equipment_error_id);
+  return masterErr ? masterErr.name : record.equipment_error_id;
 }
 
 function getHandlersText(record: ErrorLogItem) {
   if (record.handlers && record.handlers.length > 0) {
-    return record.handlers.map(h => h.name).join(', ');
+    return record.handlers.map((h) => h.name).join(', ');
   }
   return '-';
 }
@@ -236,59 +201,45 @@ const filteredItems = computed(() => {
   let res = items.value;
   if (activeSearch.value) {
     const q = activeSearch.value.toLowerCase();
-    res = res.filter(item => {
+    res = res.filter((item) => {
       const equipName = getEquipmentName(item.equipment_id).toLowerCase();
       const errName = getErrorName(item).toLowerCase();
       const handlerName = getHandlersText(item).toLowerCase();
       return equipName.includes(q) || errName.includes(q) || handlerName.includes(q);
     });
   }
-  return sortBySoftDeleted([...res].sort((a, b) => {
-    const aSynced = a.is_synced ? 1 : 0;
-    const bSynced = b.is_synced ? 1 : 0;
-    if (aSynced !== bSynced) {
-      return aSynced - bSynced; // 0 (unsynced) first, 1 (synced) last
-    }
-    const aTime = a.occurred_at ? new Date(a.occurred_at).getTime() : 0;
-    const bTime = b.occurred_at ? new Date(b.occurred_at).getTime() : 0;
-    return bTime - aTime;
-  }));
+  return sortBySoftDeleted(
+    [...res].sort((a, b) => {
+      const aSynced = a.is_synced ? 1 : 0;
+      const bSynced = b.is_synced ? 1 : 0;
+      if (aSynced !== bSynced) {
+        return aSynced - bSynced;
+      }
+      const aTime = a.occurred_at
+        ? new Date(a.occurred_at).getTime()
+        : (a.created_at ? new Date(a.created_at).getTime() : 0);
+      const bTime = b.occurred_at
+        ? new Date(b.occurred_at).getTime()
+        : (b.created_at ? new Date(b.created_at).getTime() : 0);
+      return bTime - aTime;
+    }),
+  );
 });
 
 function openAddModal() {
   isEditing.value = false;
-  editId.value = null;
-  formState.value = {
-    equipment_id: undefined,
-    equipment_error_id: undefined,
-    occurred_at: dayjs(),
-    restarted_at: undefined,
-    handled_at: undefined,
-    handler_ids: [],
-  };
-  showModal.value = true;
+  selectedRecord.value = null;
+  showErrorLogModal.value = true;
 }
 
 function openCreateErrorModal() {
-  createErrorFormState.value = {
-    equipment_id: undefined,
-    equipment_error_id: undefined,
-  };
-  showCreateErrorModal.value = true;
+  showCreateErrorCategoryModal.value = true;
 }
 
 function openEditModal(record: ErrorLogItem) {
   isEditing.value = true;
-  editId.value = record.id;
-  formState.value = {
-    equipment_id: record.equipment_id,
-    equipment_error_id: record.equipment_error_id,
-    occurred_at: record.occurred_at ? dayjs(record.occurred_at) : undefined,
-    restarted_at: record.restarted_at ? dayjs(record.restarted_at) : undefined,
-    handled_at: record.handled_at ? dayjs(record.handled_at) : undefined,
-    handler_ids: record.handlers ? record.handlers.map(h => h.id) : [],
-  };
-  showModal.value = true;
+  selectedRecord.value = record;
+  showErrorLogModal.value = true;
 }
 
 async function handleDelete(id: string) {
@@ -304,85 +255,13 @@ async function handleDelete(id: string) {
   }
 }
 
-async function handleCreateEquipmentErrorOk() {
-  try {
-    await createErrorFormRef.value.validateFields();
-    submittingCreateError.value = true;
-
-    // Call update-errors endpoint with equipment_error_ids array
-    const selectedEquip = equipments.value.find(e => e.id === createErrorFormState.value.equipment_id);
-    const existingErrorIds = selectedEquip?.equipment_errors?.map(e => e.id) || [];
-    const newErrorId = createErrorFormState.value.equipment_error_id;
-
-    const updatedErrorIds = Array.from(new Set([...existingErrorIds, newErrorId].filter(Boolean)));
-
-    await axios.post(
-      `${API_BASE_URL}/v1/equipment/${createErrorFormState.value.equipment_id}/errors`,
-      { equipment_error_ids: updatedErrorIds },
-      { headers: getAuthHeaders() }
-    );
-
-    message.success($t('page.ops.successSave'));
-    showCreateErrorModal.value = false;
-    await loadInitialData();
-  } catch (err: unknown) {
-    const formErr = err as { errorFields?: unknown[] };
-    if (!formErr?.errorFields) {
-      const axiosErr = err as { response?: { data?: { message?: string } } };
-      const msg = axiosErr?.response?.data?.message || $t('page.ops.saveFailed');
-      message.error(msg);
-    }
-  } finally {
-    submittingCreateError.value = false;
-  }
-}
-
-async function handleOk() {
-  try {
-    await formRef.value.validateFields();
-    submitting.value = true;
-
-    const payload = {
-      equipment_id: formState.value.equipment_id,
-      equipment_error_id: formState.value.equipment_error_id,
-      occurred_at: formState.value.occurred_at ? formState.value.occurred_at.format('YYYY-MM-DD HH:mm:ss') : null,
-      restarted_at: formState.value.restarted_at ? formState.value.restarted_at.format('YYYY-MM-DD HH:mm:ss') : null,
-      handled_at: formState.value.handled_at ? formState.value.handled_at.format('YYYY-MM-DD HH:mm:ss') : null,
-      handler_ids: formState.value.handler_ids || [],
-    };
-
-    if (isEditing.value && editId.value) {
-      await axios.put(`${API_BASE_URL}/v1/equipment/error-monitoring/equipment-error-logs/${editId.value}`, payload, {
-        headers: getAuthHeaders(),
-      });
-      message.success($t('page.ops.successSave'));
-    } else {
-      await axios.post(`${API_BASE_URL}/v1/equipment/error-monitoring/equipment-error-logs`, payload, {
-        headers: getAuthHeaders(),
-      });
-      message.success($t('page.ops.successSave'));
-    }
-    showModal.value = false;
-    loadItems();
-  } catch (err: unknown) {
-    const formErr = err as { errorFields?: unknown[] };
-    if (!formErr?.errorFields) {
-      const axiosErr = err as { response?: { data?: { message?: string } } };
-      const msg = axiosErr?.response?.data?.message || $t('page.ops.saveFailed');
-      message.error(msg);
-    }
-  } finally {
-    submitting.value = false;
-  }
-}
-
 async function syncOneResolved(id: string) {
   syncingId.value = id;
   try {
     await axios.post(
       `${API_BASE_URL}/v1/equipment/error-monitoring/equipment-error-logs/${id}/sync-resolved`,
       {},
-      { headers: getAuthHeaders() }
+      { headers: getAuthHeaders() },
     );
     message.success($t('page.ops.syncSuccess'));
     await loadInitialData();
@@ -401,7 +280,7 @@ async function syncAllResolved() {
     const res = await axios.post(
       `${API_BASE_URL}/v1/equipment/error-monitoring/equipment-error-logs/sync-resolved`,
       {},
-      { headers: getAuthHeaders() }
+      { headers: getAuthHeaders() },
     );
     message.success(res.data?.message || $t('page.ops.syncSuccess'));
     await loadInitialData();
@@ -455,7 +334,7 @@ const columns = computed(() => [
     align: 'center' as const,
     width: 260,
     fixed: 'right' as const,
-  }
+  },
 ]);
 </script>
 
@@ -533,7 +412,8 @@ const columns = computed(() => [
             <template v-else-if="column.key === 'status'">
               <Tag v-if="record.handled_at" color="green">Resolved</Tag>
               <Tag v-else-if="record.restarted_at" color="orange">Restarted</Tag>
-              <Tag v-else color="red">Active Error</Tag>
+              <Tag v-else-if="record.occurred_at" color="red">Active Error</Tag>
+              <Tag v-else color="blue">Definition</Tag>
             </template>
             <template v-else-if="column.key === 'occurred_at'">
               <span>{{ record.occurred_at ? dayjs(record.occurred_at).format('YYYY-MM-DD HH:mm:ss') : '-' }}</span>
@@ -595,111 +475,22 @@ const columns = computed(() => [
       </Spin>
     </div>
 
-    <!-- Modal 1: Create Error Type for Equipment -->
-    <Modal
-      v-model:open="showCreateErrorModal"
-      :title="$t('page.ops.createEquipmentError')"
-      :confirm-loading="submittingCreateError"
-      :ok-text="$t('page.ops.btnOk')"
-      :cancel-text="$t('page.ops.btnCancel')"
-      width="600px"
-      @ok="handleCreateEquipmentErrorOk"
-      @cancel="showCreateErrorModal = false"
-    >
-      <Form
-        ref="createErrorFormRef"
-        :model="createErrorFormState"
-        :rules="createErrorRules"
-        layout="vertical"
-        class="mt-4"
-      >
-        <FormItem :label="$t('page.ops.colEquipment')" name="equipment_id">
-          <Select
-            v-model:value="createErrorFormState.equipment_id"
-            :options="equipments"
-            :fieldNames="{ label: 'name', value: 'id' }"
-            :placeholder="$t('page.ops.selectEquipment')"
-            class="w-full"
-          />
-        </FormItem>
+    <!-- Sub-components for Modals -->
+    <EquipmentErrorCategoryModal
+      v-model:open="showCreateErrorCategoryModal"
+      :equipments="equipments"
+      :all-master-errors="allMasterErrors"
+      @success="async () => { await loadInitialData(); await loadItems(); }"
+    />
 
-        <FormItem :label="$t('page.ops.error')" name="equipment_error_id">
-          <Select
-            v-model:value="createErrorFormState.equipment_error_id"
-            :options="allMasterErrors"
-            :fieldNames="{ label: 'name', value: 'id' }"
-            :placeholder="$t('page.ops.selectError')"
-            class="w-full"
-          />
-        </FormItem>
-      </Form>
-    </Modal>
-
-    <!-- Modal 2: Add / Edit / Assign / Handle Error Log -->
-    <Modal
-      v-model:open="showModal"
-      :title="isEditing ? $t('page.ops.editErrorLog') : $t('page.ops.addErrorLog')"
-      :confirm-loading="submitting"
-      :ok-text="$t('page.ops.btnOk')"
-      :cancel-text="$t('page.ops.btnCancel')"
-      width="650px"
-      @ok="handleOk"
-      @cancel="showModal = false"
-    >
-      <Form
-        ref="formRef"
-        :model="formState"
-        :rules="rules"
-        layout="vertical"
-        class="mt-4"
-      >
-        <div class="grid grid-cols-2 gap-4">
-          <FormItem :label="$t('page.ops.colEquipment')" name="equipment_id">
-            <Select
-              v-model:value="formState.equipment_id"
-              :options="equipments"
-              :fieldNames="{ label: 'name', value: 'id' }"
-              :placeholder="$t('page.ops.selectEquipment')"
-              class="w-full"
-            />
-          </FormItem>
-
-          <FormItem :label="$t('page.ops.error')" name="equipment_error_id">
-            <Select
-              v-model:value="formState.equipment_error_id"
-              :options="availableErrors"
-              :fieldNames="{ label: 'name', value: 'id' }"
-              :placeholder="$t('page.ops.selectError')"
-              :disabled="!formState.equipment_id"
-              class="w-full"
-            />
-          </FormItem>
-        </div>
-
-        <div class="grid grid-cols-2 gap-4">
-          <FormItem :label="$t('page.ops.occurredAt')" name="occurred_at">
-            <DatePicker v-model:value="formState.occurred_at" show-time format="YYYY-MM-DD HH:mm:ss" style="width: 100%" />
-          </FormItem>
-
-          <FormItem :label="$t('page.ops.handledAt')" name="handled_at">
-            <DatePicker v-model:value="formState.handled_at" show-time format="YYYY-MM-DD HH:mm:ss" style="width: 100%" allowClear />
-          </FormItem>
-        </div>
-
-        <div class="border-t border-gray-100 dark:border-gray-700 pt-4">
-          <FormItem :label="$t('page.ops.handler')" name="handler_ids">
-            <Select
-              v-model:value="formState.handler_ids"
-              mode="multiple"
-              :options="users"
-              :fieldNames="{ label: 'name', value: 'id' }"
-              :placeholder="$t('page.ops.selectHandler')"
-              allowClear
-              class="w-full"
-            />
-          </FormItem>
-        </div>
-      </Form>
-    </Modal>
+    <ErrorLogFormModal
+      v-model:open="showErrorLogModal"
+      :is-editing="isEditing"
+      :record="selectedRecord"
+      :equipments="equipments"
+      :users="users"
+      :all-master-errors="allMasterErrors"
+      @success="loadItems"
+    />
   </div>
 </template>

@@ -16,3 +16,12 @@ These rules apply to all AI agents working on this project.
 
 ## 4. No `any` type in TypeScript
 * **Constraint**: Do not use the `any` type in TypeScript under any circumstances. Always write explicit, type-safe definitions or use helper types.
+
+## 5. Modal Width Standard Guidelines
+* **Constraint**: All `<Modal>` (Ant Design Vue) components MUST strictly specify a `width` attribute choosing from the standard tiers: `600px`, `800px`, `1000px`, or `1200px`.
+* **Selection Criteria**:
+  - **`600px`**: Small/Simple forms (1 column, 1–6 inputs, simple select/inputs, single action confirmation dialogs).
+  - **`800px`**: Medium forms (2 columns, 6–12 inputs, datepickers + multi-selects).
+  - **`1000px`**: Complex forms / Master-detail views (2–3 columns, tables inside modal, multi-step forms, batch inputs).
+  - **`1200px`**: Large data views (Full data tables, complex dashboards, multi-tab comprehensive data management).
+

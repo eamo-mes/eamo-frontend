@@ -532,6 +532,7 @@ onMounted(() => {
       :confirm-loading="submittingJudge"
       :ok-text="$t('page.ops.btnConfirm')"
       :cancel-text="$t('page.ops.btnCancel')"
+      width="600px"
       @ok="handleJudgeOk"
     >
       <div v-if="judgeDetails.length === 0" class="py-4 text-center text-gray-400">

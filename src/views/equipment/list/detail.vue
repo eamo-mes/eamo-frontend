@@ -640,7 +640,7 @@ onMounted(() => {
     </Spin>
 
     <!-- Image Preview Modal -->
-    <Modal :open="previewVisible" :title="previewTitle" :footer="null" @cancel="previewVisible = false">
+    <Modal :open="previewVisible" :title="previewTitle" :footer="null" width="600px" @cancel="previewVisible = false">
       <img alt="preview" style="width: 100%" :src="previewImage" />
     </Modal>
   </div>
