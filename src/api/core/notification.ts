@@ -102,7 +102,7 @@ export async function markAllNotificationsReadApi(): Promise<{ message: string }
 /**
  * Fetch today's schedules (Checklists & Maintenance) for the authenticated user
  */
-export async function getUserTodaySchedulesApi(): Promise<any> {
+export async function getUserTodaySchedulesApi(params?: Record<string, any>): Promise<any> {
   const accessStore = useAccessStore();
   const token = accessStore.accessToken;
 
@@ -111,6 +111,7 @@ export async function getUserTodaySchedulesApi(): Promise<any> {
       Authorization: token ? `Bearer ${token}` : '',
       Accept: 'application/json',
     },
+    params,
   });
 
   return response.data;

@@ -44,17 +44,7 @@ async function renderChart() {
         data: props.data.map((item) => item.remaining),
         itemStyle: {
           borderRadius: [0, 4, 4, 0],
-          color: {
-            colorStops: [
-              { color: '#2ec7c9', offset: 0 },
-              { color: '#67e0e3', offset: 1 },
-            ],
-            type: 'linear',
-            x: 0,
-            x2: 1,
-            y: 0,
-            y2: 0,
-          },
+          color: '#2ec7c9',
         },
         name: $t('page.ops.chartRemainingHours') || 'Thời gian còn lại',
         type: 'bar',

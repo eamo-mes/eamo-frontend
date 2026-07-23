@@ -1,23 +1,21 @@
 <script setup lang="ts">
 import { ref, computed, onMounted } from 'vue';
-import { useRoute, useRouter } from 'vue-router';
-import { Calendar, Drawer, DatePicker, Select, Popconfirm, Button, Tag, message, Input, Spin } from 'ant-design-vue';
+import { useRoute } from 'vue-router';
+import { Calendar, Button, message } from 'ant-design-vue';
 import { $t } from '#/locales';
 import dayjs, { type Dayjs } from 'dayjs';
 import { useUserStore } from '@vben/stores';
 import { requestClient } from '#/api/request';
 import {
   listEquipmentsApi,
-  createMaintenanceLogApi,
-  deleteMaintenanceLogApi,
   type EquipmentOption,
   type MaintenanceCategoryOption,
   type MaintenanceItemOption,
   type ScheduleRow,
-  type MaintenanceLog,
 } from '#/api/ops/maintenance-plans';
+import ScheduleDetailDrawer from './ScheduleDetailDrawer.vue';
+import LastMaintenanceDrawer from './LastMaintenanceDrawer.vue';
 
-const router = useRouter();
 const route = useRoute();
 
 interface LastMaintenanceInfo {
@@ -80,17 +78,19 @@ onMounted(() => {
   fetchLocalEquipments();
 });
 
-function onPanelChange(date: any): void {
-  calendarValue.value = date;
-  emitRange(date);
+function onPanelChange(date: Dayjs | string): void {
+  const d = dayjs(date);
+  calendarValue.value = d;
+  emitRange(d);
 }
 
-function onSelect(date: any): void {
+function onSelect(date: Dayjs | string): void {
+  const d = dayjs(date);
   const oldMonth = calendarValue.value.format('YYYY-MM');
-  const newMonth = date.format('YYYY-MM');
-  calendarValue.value = date;
+  const newMonth = d.format('YYYY-MM');
+  calendarValue.value = d;
   if (oldMonth !== newMonth) {
-    emitRange(date);
+    emitRange(d);
   }
 }
 
@@ -111,158 +111,13 @@ function getSchedulesForDate(date: Dayjs) {
   return schedulesWithNames.value.filter((s) => s.date === dateStr);
 }
 
-function getItemName(schedule: ScheduleRow): string {
-  if (schedule.item_name) return schedule.item_name;
-  const item = props.maintenanceItems.find((i) => i.id === schedule.maintenance_item_id);
-  return item ? item.name : $t('page.ops.unidentified');
-}
-
-function getCategoryName(schedule: ScheduleRow): string {
-  if (schedule.category_name) return schedule.category_name;
-  const item = props.maintenanceItems.find((i) => i.id === schedule.maintenance_item_id);
-  if (!item) return '';
-  const category = props.categories.find((c) => c.id === item.maintenance_category_id);
-  return category ? category.name : '';
-}
-
-function getEquipmentName(schedule: ScheduleRow): string {
-  if (schedule.equipment_name) return schedule.equipment_name;
-  if (!schedule.equipment_id) return '';
-  const eq = props.equipments.find((e) => e.id === schedule.equipment_id);
-  return eq ? `${eq.code}${eq.name ? ` — ${eq.name}` : ''}` : '';
-}
-
-function getUserLabel(userId: string): string {
-  const opt = props.userOptions.find((o) => o.value === userId);
-  return opt ? opt.label : userId;
-}
-
 // --- Drawer logic ---
 const drawerVisible = ref(false);
 const selectedSchedule = ref<ScheduleRow | null>(null);
-const drawerSchedule = ref<{ date: string; user_ids: string[] } | null>(null);
 
 function showScheduleDetail(schedule: ScheduleRow): void {
   selectedSchedule.value = schedule;
-  drawerSchedule.value = {
-    date: schedule.date,
-    user_ids: [...schedule.user_ids],
-  };
-  logResult.value = schedule.result || '';
-  logNote.value = '';
-  existingLog.value = null;
   drawerVisible.value = true;
-  if (schedule.id) {
-    fetchLogForSchedule(schedule.id);
-  }
-}
-
-async function handleSaveDrawer(): Promise<void> {
-  if (selectedSchedule.value && drawerSchedule.value) {
-    if (selectedSchedule.value.id) {
-      logSubmitting.value = true;
-      try {
-        if (!logResult.value || logResult.value === '') {
-          if (existingLog.value) {
-            await deleteMaintenanceLogApi(existingLog.value.id);
-            existingLog.value = null;
-          }
-        } else {
-          if (existingLog.value) {
-            const res = await requestClient.put<MaintenanceLog>(`/v1/maintenance-logs/${existingLog.value.id}`, {
-              result: logResult.value,
-              notes: logNote.value || null,
-            });
-            existingLog.value = res;
-          } else {
-            const res = await createMaintenanceLogApi({
-              maintenance_schedule_id: selectedSchedule.value.id,
-              result: logResult.value,
-              notes: logNote.value || null,
-            });
-            existingLog.value = res;
-          }
-        }
-      } catch (err: unknown) {
-        const apiError = (err as { response?: { data?: { message?: string } } })?.response?.data?.message;
-        message.error(apiError || $t('page.ops.logSaveError'));
-        return;
-      } finally {
-        logSubmitting.value = false;
-      }
-    }
-
-    const updatedSchedules = props.schedules.map((s) => {
-      if (s._key === selectedSchedule.value?._key) {
-        return {
-          ...s,
-          date: drawerSchedule.value!.date,
-          user_ids: [...drawerSchedule.value!.user_ids],
-          result: logResult.value || null,
-        };
-      }
-      return s;
-    });
-    emit('update:schedules', updatedSchedules);
-    drawerVisible.value = false;
-    message.success($t('page.ops.drawerSaveSuccess'));
-  }
-}
-
-function handleCancelDrawer(): void {
-  drawerVisible.value = false;
-}
-
-function handleDeleteDrawer(): void {
-  if (selectedSchedule.value) {
-    const updatedSchedules = props.schedules.filter((s) => s._key !== selectedSchedule.value?._key);
-    emit('update:schedules', updatedSchedules);
-    drawerVisible.value = false;
-    message.success($t('page.ops.drawerDeleteSuccess'));
-  }
-}
-
-function goToPlan(): void {
-  if (selectedSchedule.value?.maintenance_plan_id) {
-    router.push({ name: 'OpsMaintenancePlanDetail', query: { id: selectedSchedule.value.maintenance_plan_id } });
-  }
-}
-
-// --- Maintenance Log Logic ---
-const logResult = ref<string | undefined>('');
-const logNote = ref('');
-const logSubmitting = ref(false);
-const existingLog = ref<MaintenanceLog | null>(null);
-const loadingLog = ref(false);
-
-const resultOptions = computed(() => [
-  { label: $t('page.ops.logResultPending'), value: '' },
-  { label: $t('page.ops.logResultCompleted'), value: 'Completed' },
-  { label: $t('page.ops.logResultPartial'), value: 'Partial' },
-  { label: $t('page.ops.logResultFailed'), value: 'Failed' },
-]);
-
-async function fetchLogForSchedule(scheduleId: string): Promise<void> {
-  loadingLog.value = true;
-  existingLog.value = null;
-  try {
-    const res = await requestClient.get<MaintenanceLog[]>('/v1/maintenance-logs', {
-      params: { maintenance_schedule_id: scheduleId },
-    });
-    const logs = Array.isArray(res) ? res : [];
-    const firstLog = logs[0];
-    if (firstLog) {
-      existingLog.value = firstLog;
-      logResult.value = firstLog.result;
-      logNote.value = firstLog.notes || '';
-    } else {
-      logResult.value = '';
-    }
-  } catch {
-    logResult.value = '';
-  } finally {
-    loadingLog.value = false;
-  }
 }
 
 function getScheduleClass(result: string | undefined | null): string {
@@ -277,19 +132,6 @@ function getScheduleClass(result: string | undefined | null): string {
       return 'bg-indigo-50 dark:bg-indigo-950/30 text-indigo-700 dark:text-indigo-300 border-indigo-250 dark:border-indigo-800/50 hover:bg-indigo-100 dark:hover:bg-indigo-900/40';
   }
 }
-
-const selectedItemDetails = computed(() => {
-  if (!selectedSchedule.value) return null;
-  if (selectedSchedule.value.item_description !== undefined) {
-    return {
-      description: selectedSchedule.value.item_description,
-    };
-  }
-  return (
-    props.maintenanceItems.find((i) => i.id === selectedSchedule.value?.maintenance_item_id) ||
-    null
-  );
-});
 
 const userStore = useUserStore();
 const localEquipments = ref<Equipment[]>([]);
@@ -391,27 +233,6 @@ const hasLastMaintenance = computed(() => {
   return localEquipments.value.some((e) => e.last_maintenance && e.last_maintenance.equipment_id);
 });
 
-const equipmentsWithLastMaintenance = computed(() => {
-  return localEquipments.value.filter(
-    (e) => e.last_maintenance && e.last_maintenance.equipment_id
-  );
-});
-
-const displayedLastMaintenanceEquipments = computed<Equipment[]>(() => {
-  if (lastMaintenanceFilterDate.value) {
-    return equipmentsWithLastMaintenance.value.filter((eq) => {
-      if (!eq.last_maintenance || !eq.last_maintenance.datetime) return false;
-      return dayjs(eq.last_maintenance.datetime).format('YYYY-MM-DD') === lastMaintenanceFilterDate.value;
-    });
-  }
-  return equipmentsWithLastMaintenance.value;
-});
-
-function getPlanCodeById(planId: string): string {
-  const schedule = props.schedules.find((s) => s.maintenance_plan_id === planId);
-  return schedule?.plan_code || '';
-}
-
 function showLastMaintenanceDrawer(): void {
   lastMaintenanceFilterDate.value = null;
   lastMaintenanceDrawerVisible.value = true;
@@ -420,6 +241,10 @@ function showLastMaintenanceDrawer(): void {
 function showLastMaintenanceForDate(dateStr: string): void {
   lastMaintenanceFilterDate.value = dateStr;
   lastMaintenanceDrawerVisible.value = true;
+}
+
+function handleUpdateSchedules(newSchedules: ScheduleRow[]): void {
+  emit('update:schedules', newSchedules);
 }
 </script>
 
@@ -494,271 +319,26 @@ function showLastMaintenanceForDate(dateStr: string): void {
       </Calendar>
     </div>
 
-    <!-- ── Drawer Chi Tiết Hạng Mục Lịch Trình ──────────────────────────────────── -->
-    <Drawer
+    <!-- Drawer Chi Tiết Hạng Mục Lịch Trình -->
+    <ScheduleDetailDrawer
       v-model:open="drawerVisible"
-      :title="$t('page.ops.scheduleDetailTitle')"
-      placement="right"
-      :width="460"
-    >
-      <div v-if="drawerSchedule" class="space-y-6 px-2">
-        <div class="space-y-1 pb-1">
-          <Tag color="blue" class="px-2.5 py-0.5 rounded-full text-xs font-semibold uppercase tracking-wider border-blue-200 text-blue-700 bg-blue-50/60 dark:bg-blue-950/20 dark:text-blue-300 dark:border-blue-850">
-            {{ getCategoryName(selectedSchedule!) }}
-          </Tag>
-          <div class="flex items-center gap-2 mt-2">
-            <h3 class="text-lg font-semibold text-gray-900 dark:text-gray-100 leading-snug">
-              {{ getItemName(selectedSchedule!) }}
-            </h3>
-          </div>
-        </div>
+      :selected-schedule="selectedSchedule"
+      :schedules="props.schedules"
+      :maintenance-items="props.maintenanceItems"
+      :categories="props.categories"
+      :user-options="props.userOptions"
+      :equipments="props.equipments"
+      :read-only="props.readOnly"
+      @update:schedules="handleUpdateSchedules"
+    />
 
-        <div v-if="props.readOnly" class="space-y-4">
-          <div>
-            <span class="text-xs text-gray-400 font-semibold uppercase tracking-wider block mb-1">
-              {{ $t('page.ops.colPlanCode') }}
-            </span>
-            <Input
-              :value="selectedSchedule?.plan_code || '—'"
-              disabled
-              class="bg-gray-50/50 dark:bg-gray-900/30 text-gray-700 dark:text-gray-300 font-medium"
-            />
-          </div>
-          <div>
-            <span class="text-xs text-gray-400 font-semibold uppercase tracking-wider block mb-1">
-              {{ $t('page.ops.colMaintenanceType') }}
-            </span>
-            <Input
-              :value="selectedSchedule?.maintenance_type || '—'"
-              disabled
-              class="bg-gray-50/50 dark:bg-gray-900/30 text-gray-700 dark:text-gray-300 font-medium"
-            />
-          </div>
-          <div>
-            <span class="text-xs text-gray-400 font-semibold uppercase tracking-wider block mb-1">
-              {{ $t('page.ops.placeholderEquipment') }}
-            </span>
-            <Input
-              :value="getEquipmentName(selectedSchedule!) || '—'"
-              disabled
-              class="bg-gray-50/50 dark:bg-gray-900/30 text-gray-700 dark:text-gray-300 font-medium"
-            />
-          </div>
-        </div>
-
-        <div class="space-y-2 border-t border-border pt-4">
-          <span class="text-xs text-gray-400 font-semibold uppercase tracking-wider block">
-            {{ $t('page.ops.itemDetailDescriptionLabel') }}
-          </span>
-          <div v-if="selectedItemDetails?.description" class="text-sm text-gray-650 dark:text-gray-350 leading-relaxed whitespace-pre-line bg-gray-50/20 p-3 rounded-lg border border-gray-100 dark:border-gray-850">
-            {{ selectedItemDetails.description }}
-          </div>
-          <div v-else class="text-sm text-gray-400 dark:text-gray-550 italic bg-gray-50/20 p-3 rounded-lg border border-gray-100 dark:border-gray-850">
-            {{ $t('page.ops.noItemDescription') }}
-          </div>
-        </div>
-
-        <div class="space-y-2 border-t border-border pt-4">
-          <span class="text-xs text-gray-500 font-semibold uppercase tracking-wider block mb-1">
-            {{ $t('page.ops.expectedExecutionDate') }}
-          </span>
-          <DatePicker
-            v-model:value="drawerSchedule.date"
-            value-format="YYYY-MM-DD"
-            format="YYYY-MM-DD"
-            :placeholder="$t('page.ops.placeholderScheduleDate')"
-            class="w-full"
-            :disabled="props.readOnly"
-          />
-        </div>
-
-        <div class="space-y-2 border-t border-border pt-4">
-          <span class="text-xs text-gray-500 font-semibold uppercase tracking-wider block mb-1">
-            {{ $t('page.ops.assignedTechnicians') }}
-          </span>
-          <Select
-            v-model:value="drawerSchedule.user_ids"
-            :options="props.userOptions"
-            :placeholder="$t('page.ops.placeholderAssignedUsers')"
-            mode="multiple"
-            option-filter-prop="label"
-            show-search
-            allow-clear
-            class="w-full"
-            :disabled="props.readOnly"
-          />
-        </div>
-
-        <div class="space-y-4 border-t border-border pt-4">
-          <span class="text-xs text-gray-400 font-semibold uppercase tracking-wider block">
-            {{ $t('page.ops.logTitle') }}
-          </span>
-
-          <div v-if="!selectedSchedule?.id" class="text-sm text-yellow-600 bg-yellow-50 dark:bg-yellow-950/20 dark:text-yellow-400 p-3 rounded-lg border border-yellow-200 dark:border-yellow-900/40">
-            {{ $t('page.ops.logRequiredToSavePlan') }}
-          </div>
-
-          <Spin v-else :spinning="loadingLog">
-            <div class="space-y-4">
-              <div class="space-y-1">
-                <label class="text-xs text-gray-500 font-medium block">
-                  {{ $t('page.ops.logResultLabel') }} <span class="text-red-500">*</span>
-                </label>
-                <Select
-                  v-model:value="logResult"
-                  :placeholder="$t('page.ops.logResultPlaceholder')"
-                  :options="resultOptions"
-                  class="w-full"
-                />
-              </div>
-
-              <div class="space-y-1">
-                <label class="text-xs text-gray-500 font-medium block">
-                  {{ $t('page.ops.logNoteLabel') }}
-                </label>
-                <Input.TextArea
-                  v-model:value="logNote"
-                  :placeholder="$t('page.ops.logNotePlaceholder')"
-                  :rows="3"
-                  class="w-full"
-                />
-              </div>
-            </div>
-          </Spin>
-        </div>
-
-      </div>
-
-      <template #footer>
-        <div class="flex justify-between items-center py-2">
-          <template v-if="props.readOnly">
-            <div class="flex justify-between items-center w-full">
-              <div class="flex gap-2">
-                <Button @click="handleCancelDrawer">
-                  {{ $t('page.ops.btnCancel') }}
-                </Button>
-                <Button type="primary" class="bg-[#5c3e35] hover:bg-[#4b332b] border-[#5c3e35]" @click="goToPlan">
-                  {{ $t('page.ops.btnGoToPlan') }}
-                </Button>
-              </div>
-              <Button
-                type="primary"
-                class="bg-[#5c3e35] hover:bg-[#4b332b] border-[#5c3e35] rounded text-white"
-                :loading="logSubmitting"
-                :disabled="!selectedSchedule?.id"
-                @click="handleSaveDrawer"
-              >
-                {{ $t('page.ops.btnSave') }}
-              </Button>
-            </div>
-          </template>
-
-          <template v-else>
-            <div class="flex gap-2">
-              <Popconfirm
-                :title="$t('page.ops.deleteMaintenanceItemConfirm')"
-                :ok-text="$t('page.ops.btnDelete')"
-                :cancel-text="$t('page.ops.btnCancel')"
-                @confirm="handleDeleteDrawer"
-              >
-                <Button danger>
-                  {{ $t('page.ops.btnDelete') }}
-                </Button>
-              </Popconfirm>
-            </div>
-
-            <div class="flex gap-2">
-              <Button @click="handleCancelDrawer">
-                {{ $t('page.ops.btnCancel') }}
-              </Button>
-              <Button
-                type="primary"
-                class="bg-[#5c3e35] hover:bg-[#4b332b] border-[#5c3e35] rounded text-white"
-                :loading="logSubmitting"
-                @click="handleSaveDrawer"
-              >
-                {{ $t('page.ops.btnSave') }}
-              </Button>
-            </div>
-          </template>
-        </div>
-      </template>
-    </Drawer>
-
-    <!-- ── Drawer hiển thị thông tin log bảo trì gần nhất ──────────────────────────────────── -->
-    <Drawer
+    <!-- Drawer hiển thị thông tin log bảo trì gần nhất -->
+    <LastMaintenanceDrawer
       v-model:open="lastMaintenanceDrawerVisible"
-      :title="$t('page.ops.lastMaintenanceDeviceTitle')"
-      placement="right"
-      :width="460"
-    >
-      <div class="space-y-6 px-2">
-        <div 
-          v-for="(eq, index) in displayedLastMaintenanceEquipments" 
-          :key="eq.id"
-          class="space-y-4"
-        >
-          <div v-if="index > 0" class="border-t border-border pt-4 mt-4"></div>
-
-          <div class="flex justify-between items-center pb-2 border-b border-border">
-            <span class="font-bold text-gray-800 dark:text-gray-200 text-sm">
-              {{ $t('page.ops.placeholderEquipment') }} {{ eq.code }}
-            </span>
-            <Tag color="green">{{ $t('page.ops.maintainedLabel') }}</Tag>
-          </div>
-
-          <div class="space-y-3">
-            <div>
-              <span class="text-xs text-gray-400 font-semibold uppercase tracking-wider block mb-1">
-                {{ $t('page.ops.placeholderEquipment') }}
-              </span>
-              <Input
-                :value="eq.code + (eq.name ? ` — ${eq.name}` : '')"
-                disabled
-                class="bg-gray-50/50 dark:bg-gray-900/30 text-gray-700 dark:text-gray-300 font-medium"
-              />
-            </div>
-            <div>
-              <span class="text-xs text-gray-400 font-semibold uppercase tracking-wider block mb-1">
-                {{ $t('page.ops.colPlanCode') }}
-              </span>
-              <Input
-                :value="eq.last_maintenance ? (getPlanCodeById(eq.last_maintenance.maintenance_plan_id) || eq.last_maintenance.maintenance_plan_id) : ''"
-                disabled
-                class="bg-gray-50/50 dark:bg-gray-900/30 text-gray-700 dark:text-gray-300 font-medium"
-              />
-            </div>
-            <div>
-              <span class="text-xs text-gray-400 font-semibold uppercase tracking-wider block mb-1">
-                {{ $t('page.ops.maintenanceTime') }}
-              </span>
-              <Input
-                :value="eq.last_maintenance?.datetime || ''"
-                disabled
-                class="bg-gray-50/50 dark:bg-gray-900/30 text-gray-700 dark:text-gray-300 font-medium"
-              />
-            </div>
-            <div>
-              <span class="text-xs text-gray-400 font-semibold uppercase tracking-wider block mb-1">
-                {{ $t('page.ops.executor') }}
-              </span>
-              <Input
-                :value="eq.last_maintenance ? getUserLabel(eq.last_maintenance.user_id) : ''"
-                disabled
-                class="bg-gray-50/50 dark:bg-gray-900/30 text-gray-700 dark:text-gray-300 font-medium"
-              />
-            </div>
-          </div>
-        </div>
-        <div v-if="displayedLastMaintenanceEquipments.length === 0" class="text-center py-8 text-gray-400 italic">
-          {{ $t('page.ops.noLastMaintenanceDevice') }}
-        </div>
-      </div>
-      <template #footer>
-        <div class="flex justify-end py-2">
-          <Button @click="lastMaintenanceDrawerVisible = false">{{ $t('page.ops.btnClose') }}</Button>
-        </div>
-      </template>
-    </Drawer>
+      :equipments="localEquipments"
+      :filter-date="lastMaintenanceFilterDate"
+      :schedules="props.schedules"
+      :user-options="props.userOptions"
+    />
   </div>
 </template>

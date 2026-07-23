@@ -612,9 +612,6 @@ onMounted(async () => {
                   :key="item.id"
                   class="flex flex-wrap items-end gap-3 py-3 first:pt-0 last:pb-0"
                 >
-                  <span class="mb-1 w-5 shrink-0 text-right text-xs tabular-nums text-muted-foreground">
-                    {{ index + 1 }}
-                  </span>
                   <div class="flex-1 min-w-[180px]">
                     <span class="text-xs text-gray-400 block mb-1">{{ $t('page.ops.colItemName') }}</span>
                     <Input

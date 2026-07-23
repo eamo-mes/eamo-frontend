@@ -45,17 +45,7 @@ async function renderChart() {
         data: props.data.map((item) => Number(item.actualOp.toFixed(2))),
         itemStyle: {
           borderRadius: [0, 4, 4, 0],
-          color: {
-            colorStops: [
-              { color: '#5ab1ef', offset: 0 },
-              { color: '#1890ff', offset: 1 },
-            ],
-            type: 'linear',
-            x: 0,
-            x2: 1,
-            y: 0,
-            y2: 0,
-          },
+          color: '#1890ff',
         },
         name: $t('page.ops.actualOperatingTime'),
         stack: 'total',
@@ -66,17 +56,7 @@ async function renderChart() {
         data: props.data.map((item) => -Number(item.unplannedStop.toFixed(2))),
         itemStyle: {
           borderRadius: [4, 0, 0, 4],
-          color: {
-            colorStops: [
-              { color: '#cbd5e1', offset: 0 },
-              { color: '#94a3b8', offset: 1 },
-            ],
-            type: 'linear',
-            x: 1,
-            x2: 0,
-            y: 0,
-            y2: 0,
-          },
+          color: '#94a3b8',
         },
         name: $t('page.ops.unplannedStopTime'),
         stack: 'total',

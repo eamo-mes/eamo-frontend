@@ -5,6 +5,7 @@ import { Card, Spin, Dropdown, Menu, message } from 'ant-design-vue';
 import { EchartsUI, useEcharts } from '@vben/plugins/echarts';
 import type { EchartsUIType } from '@vben/plugins/echarts';
 import axios from 'axios';
+import dayjs from 'dayjs';
 import { useAccessStore, useUserStore } from '@vben/stores';
 import { API_BASE_URL } from '#/api/config';
 import {
@@ -12,7 +13,10 @@ import {
   completeChecklistScheduleApi,
   completeMaintenanceScheduleApi,
 } from '#/api/core/notification';
+import { listUsersApi } from '#/api/core/users';
 import { $t } from '#/locales';
+import type { ChecklistSession, UserOption } from '#/views/ops/checklist/components/types';
+import ChecklistJudgeDrawer from '#/views/ops/checklist/components/ChecklistJudgeDrawer.vue';
 
 const props = withDefaults(
   defineProps<{
@@ -68,6 +72,7 @@ export interface AssignedTaskItem {
 const checklistTasks = ref<AssignedTaskItem[]>([]);
 const maintenanceTasks = ref<AssignedTaskItem[]>([]);
 const myErrorTasks = ref<AssignedTaskItem[]>([]);
+const checklistSessions = ref<ChecklistSession[]>([]);
 
 // Passed vs Total calculations for Checklist
 const passedChecklists = computed(() => checklistTasks.value.filter((t) => t.is_completed && t.result === 'pass').length);
@@ -120,17 +125,50 @@ const { renderEcharts: renderPieChart } = useEcharts(pieChartRef);
 async function loadAllData(): Promise<void> {
   loading.value = true;
   try {
-    const data = await getUserTodaySchedulesApi();
-    checklistTasks.value = data.checklist_schedules || [];
-    maintenanceTasks.value = data.maintenance_schedules || [];
+    const todayStr = dayjs().format('YYYY-MM-DD');
 
+    // 1. Checklist & Maintenance schedules từ API (giới hạn từ ngày hôm nay)
+    const data = await getUserTodaySchedulesApi({
+      start_date: todayStr,
+    });
+    const rawChecklists: AssignedTaskItem[] = data.checklist_schedules || [];
+    checklistTasks.value = rawChecklists.filter((task) => {
+      const taskDate = (task.date || task.session_date || task.deadline || task.schedule_date) as string | undefined;
+      if (!taskDate) return true;
+      return dayjs(taskDate).format('YYYY-MM-DD') >= todayStr;
+    });
+
+    const rawMaintenances: AssignedTaskItem[] = data.maintenance_schedules || [];
+    maintenanceTasks.value = rawMaintenances.filter((task) => {
+      const taskDate = (task.date || task.session_date || task.deadline || task.schedule_date) as string | undefined;
+      if (!taskDate) return true;
+      return dayjs(taskDate).format('YYYY-MM-DD') >= todayStr;
+    });
+
+    // 2. Fetch checklist sessions hôm nay để mở Drawer đúng dữ liệu
+    try {
+      const sessionRes = await axios.get(`${API_BASE_URL}/v1/checklist-sessions`, {
+        headers: getAuthHeaders(),
+        params: {
+          include_details: true,
+          start_date: todayStr,
+          end_date: todayStr,
+          per_page: 200,
+        },
+      });
+      const rawSessions = sessionRes.data?.data ?? sessionRes.data ?? [];
+      checklistSessions.value = Array.isArray(rawSessions) ? (rawSessions as ChecklistSession[]) : [];
+    } catch {
+      checklistSessions.value = [];
+    }
+
+    // 3. Error monitoring
     const errRes = await axios.get(`${API_BASE_URL}/v1/equipment/error-monitoring/equipment-error-logs`, {
       headers: getAuthHeaders(),
     });
     const rawLogs: AssignedTaskItem[] = errRes.data?.data ?? errRes.data ?? [];
 
     const currentUserId = userStore.userInfo?.userId || (userStore.userInfo as { id?: string } | null)?.id;
-
     myErrorTasks.value = rawLogs.filter((log) => {
       if (!log.handlers || log.handlers.length === 0 || !currentUserId) return false;
       return log.handlers.some((h) => h.id === currentUserId);
@@ -240,14 +278,71 @@ watch(
   }
 );
 
+const isDrawerOpen = ref(false);
+const selectedSession = ref<ChecklistSession | null>(null);
+const usersList = ref<UserOption[]>([]);
+
+async function fetchUsers(): Promise<void> {
+  try {
+    const raw = await listUsersApi({ per_page: 1000 });
+    usersList.value = Array.isArray(raw) ? (raw as unknown as UserOption[]) : [];
+  } catch {
+    // silently fail
+  }
+}
+
+function openChecklistDrawer(task: AssignedTaskItem): void {
+  const sessionId = task.checklist_session_id as string | undefined;
+
+  // Tìm session đúng từ cache đã fetch
+  let session = sessionId
+    ? checklistSessions.value.find((s) => s.id === sessionId)
+    : checklistSessions.value.find((s) => s.equipment_id === (task.equipment?.id as string));
+
+  if (!session) {
+    // Fallback: tự build từ dữ liệu schedule nếu không tìm thấy session
+    const scheduleDate = (task.date || task.session_date || dayjs().format('YYYY-MM-DD')) as string;
+    session = {
+      id: sessionId || task.id,
+      name: task.session_name || undefined,
+      equipment_id: (task.equipment?.id as string) || null,
+      equipment: task.equipment
+        ? {
+            id: (task.equipment.id as string) || '',
+            code: (task.equipment.code as string) || '',
+            name: (task.equipment.name as string) || '',
+          }
+        : null,
+      session_date: scheduleDate,
+      details: task.detail?.description
+        ? [{
+            id: task.id,
+            checklist_id: (task.checklist_id as string) || task.id,
+            description: task.detail.description as string,
+            logs: [],
+          }]
+        : [],
+      users: [],
+    };
+  }
+
+  selectedSession.value = session;
+  isDrawerOpen.value = true;
+}
+
+async function handleDrawerSubmitted(): Promise<void> {
+  await loadAllData();
+  emit('task-completed');
+}
+
 onMounted(() => {
   loadAllData();
+  fetchUsers();
 });
 
 function handleTaskAction(type: 'maintenance' | 'checklist' | 'error-monitoring', item: AssignedTaskItem): void {
   if (type === 'checklist') {
-    const sessionId = item.checklist_session_id || item.id;
-    router.push({ name: 'OpsCheckListDetail', query: { id: sessionId } });
+    openChecklistDrawer(item);
   } else if (type === 'error-monitoring') {
     router.push('/maintenance/error-monitoring');
   } else {
@@ -421,6 +516,13 @@ defineExpose({
         </div>
       </div>
     </Card>
+
+    <ChecklistJudgeDrawer
+      v-model:open="isDrawerOpen"
+      :session="selectedSession"
+      :users-list="usersList"
+      @submitted="handleDrawerSubmitted"
+    />
   </Spin>
 </template>
 
