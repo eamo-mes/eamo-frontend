@@ -139,13 +139,8 @@ async function loadChecklistDetail(id: string) {
           })) || [],
       };
     }
-  } catch (err: unknown) {
-    const error = err as { response?: { data?: { message?: string }; status?: number } };
-    let msg = error?.response?.data?.message || 'Không thể tải chi tiết phiên kiểm tra';
-    if (error?.response?.status === 404 || (msg && msg.includes('No query results for model'))) {
-      msg = 'Phiên kiểm tra này không tồn tại hoặc đã bị xóa';
-    }
-    message.error(msg);
+  } catch (err: any) {
+    message.error(err?.response?.data?.message || $t('page.ops.loadChecklistDetailError'));
     goBack();
   } finally {
     loading.value = false;
@@ -168,9 +163,8 @@ async function removeDetailRow(index: number) {
         headers: getAuthHeaders(),
       });
       message.success('Xóa hạng mục thành công khỏi máy chủ');
-    } catch (err: unknown) {
-      const error = err as { response?: { data?: { message?: string } } };
-      message.error(error?.response?.data?.message || 'Không thể xóa hạng mục khỏi máy chủ');
+    } catch (err: any) {
+      message.error(err?.response?.data?.message || $t('page.ops.deleteChecklistItemError'));
       return;
     } finally {
       loading.value = false;
@@ -254,7 +248,7 @@ async function handleSubmit() {
     if (error?.errorFields) {
       // Form validation failed
     } else {
-      const msg = error?.response?.data?.message || 'Không thể lưu phiên kiểm tra';
+      const msg = err?.response?.data?.message || $t('page.ops.saveChecklistError');
       message.error(msg);
     }
   } finally {

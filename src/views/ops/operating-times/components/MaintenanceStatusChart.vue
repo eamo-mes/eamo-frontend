@@ -46,7 +46,7 @@ async function renderChart() {
           borderRadius: [0, 4, 4, 0],
           color: '#2ec7c9',
         },
-        name: $t('page.ops.chartRemainingHours') || 'Thời gian còn lại',
+        name: $t('page.ops.chartRemainingHours'),
         type: 'bar',
       },
     ],

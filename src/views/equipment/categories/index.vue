@@ -97,7 +97,7 @@ const filteredCategories = computed(() => sortBySoftDeleted(categories.value));
 
 const columns = computed(() => [
   {
-    title: $t('page.equipment.colCode') || 'Mã loại',
+    title: $t('page.equipment.colCode'),
     dataIndex: 'code',
     key: 'code',
     sorter: (a: CategoryItem, b: CategoryItem) => (a.code || '').localeCompare(b.code || ''),
@@ -273,8 +273,8 @@ onMounted(() => {
                 </Button>
                 <Popconfirm
                   :title="$t('page.company.deleteConfirm')"
-                  ok-text="Yes"
-                  cancel-text="No"
+                  :ok-text="$t('page.equipment.modalConfirm')"
+                  :cancel-text="$t('page.equipment.modalCancel')"
                   @confirm="handleDelete(record.id)"
                 >
                   <Button
@@ -311,7 +311,7 @@ onMounted(() => {
         layout="vertical"
         class="mt-4"
       >
-        <FormItem :label="$t('page.equipment.colCode') || 'Mã loại'" name="code">
+        <FormItem :label="$t('page.equipment.colCode')" name="code">
           <Input v-model:value="formState.code" :placeholder="$t('page.equipment.placeholderCategoryCode')" />
         </FormItem>
         <FormItem :label="$t('page.equipment.colName')" name="name">

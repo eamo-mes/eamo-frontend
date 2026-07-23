@@ -259,8 +259,8 @@ async function handleOk() {
                 </Button>
                 <Popconfirm
                   :title="$t('page.company.deleteConfirm')"
-                  ok-text="Yes"
-                  cancel-text="No"
+                  :ok-text="$t('page.company.btnOk')"
+                  :cancel-text="$t('page.company.btnCancel')"
                   @confirm="handleDelete(record.id)"
                 >
                   <Button size="small" danger class="rounded bg-red-50/50 hover:bg-red-500 hover:text-white border-red-200">
