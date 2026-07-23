@@ -169,7 +169,7 @@
     "widgetLinkedEquipments": "liên kết với {count} thiết bị",
     "chartFrequencyTitle": "Tần suất theo số lượng thiết bị",
     "chartFrequencyDesc": "Số lượng thiết bị liên kết với từng định nghĩa lỗi (top 8)",
-    "chartRatioTitle": "Tỷ lệ đóng góp",
+    "chartRatioTitle": "Tỷ lệ lỗi",
     "chartRatioDesc": "Tỷ lệ của từng lỗi so với tổng số liên kết thiết bị",
     "chartNoData": "Không có dữ liệu thống kê lỗi",
     "chartEquipmentLinks": "Liên kết thiết bị",
@@ -345,10 +345,10 @@
   "ops": {
     "deadlineLabel": "Deadline",
     "placeholderSelectDeadline": "Select deadline",
-    "deleteSchedule": "Delete schedule",
-    "deleteScheduleConfirm": "Delete all schedules for this day?",
-    "deleteScheduleSuccess": "Schedules for the selected day were deleted.",
-    "deleteScheduleError": "Failed to delete schedules for the selected day.",
+    "deleteSchedule": "Xóa lịch trình",
+    "deleteScheduleConfirm": "Xác nhận xóa lịch trình này?",
+    "deleteScheduleSuccess": "Đã xóa lịch trình thành công.",
+    "deleteScheduleError": "Không thể xóa lịch trình.",
     "title": "Vận hành & Bảo trì",
     "maintenanceTitle": "Bảo trì thiết bị",
     "operationTitle": "Vận hành thiết bị",
@@ -714,7 +714,6 @@
     "loadChecklistsError": "Không thể tải danh sách phiên kiểm tra",
     "deleteChecklistSuccess": "Xóa phiên kiểm tra thành công",
     "deleteChecklistError": "Không thể xóa phiên kiểm tra"
-    "judgeError": "Đánh giá checklist thất bại"
   },
   "notification": {
     "title": "Danh sách thông báo",

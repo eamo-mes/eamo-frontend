@@ -1,11 +1,13 @@
 <script lang="ts" setup>
 import type { EchartsUIType } from '@vben/plugins/echarts';
 
-import { nextTick, ref, watch, computed } from 'vue';
+import { nextTick, ref, watch } from 'vue';
+
 
 import { $t } from '#/locales';
 import { EchartsUI, useEcharts } from '@vben/plugins/echarts';
-import { Spin } from 'ant-design-vue';
+import { Empty, Spin } from 'ant-design-vue';
+
 
 interface EquipmentOption {
   code: string;
@@ -37,27 +39,8 @@ const pieChartRef = ref<EchartsUIType>();
 const { renderEcharts: renderBarChart } = useEcharts(barChartRef);
 const { renderEcharts: renderPieChart } = useEcharts(pieChartRef);
 
-const affectedEquipmentsCount = computed(() => {
-  const ids = new Set<string>();
-  props.errors.forEach((err) => {
-    err.equipment?.forEach((eq) => ids.add(eq.id));
-  });
-  return ids.size;
-});
 
-const topCriticalError = computed(() => {
-  if (!props.errors || props.errors.length === 0) return null;
-  let maxCount = -1;
-  let topErr: ErrorItem | null = null;
-  for (const err of props.errors) {
-    const count = err.equipment ? err.equipment.length : 0;
-    if (count > maxCount) {
-      maxCount = count;
-      topErr = err;
-    }
-  }
-  return topErr ? { name: topErr.name, count: maxCount } : null;
-});
+
 
 async function updateCharts() {
   await nextTick();
@@ -116,16 +99,10 @@ async function updateCharts() {
             fontSize: 11,
           },
           itemStyle: {
-            color: {
-              type: 'linear',
-              x: 0, y: 0, x2: 1, y2: 0,
-              colorStops: [
-                { offset: 0, color: '#5ab1ef' },
-                { offset: 1, color: '#1890ff' },
-              ],
-            },
+            color: '#1890ff',
           },
         })),
+
         itemStyle: {
           borderRadius: [0, 4, 4, 0],
         },
@@ -253,12 +230,12 @@ watch(
         <!-- ECharts Section -->
         <div v-if="props.errors.length > 0" class="grid grid-cols-1 md:grid-cols-2 gap-5">
           <!-- Bar Chart Card -->
-          <div class="border border-[#1890ff]/15 dark:border-[#1890ff]/30 rounded-xl p-4">
+          <div class="border border-border rounded-xl p-4 bg-white dark:bg-gray-900">
             <div class="mb-1">
-              <h5 class="text-xs font-bold uppercase tracking-wider m-0">
+              <h5 class="text-xs font-bold text-foreground uppercase tracking-wider m-0">
                 Frequency by Equipment Count
               </h5>
-              <p class="text-[11px] mt-0.5 m-0">
+              <p class="text-[11px] text-muted-foreground mt-0.5 m-0">
                 Number of equipments linked to each error definition
               </p>
             </div>
@@ -266,18 +243,19 @@ watch(
           </div>
 
           <!-- Pie Chart Card -->
-          <div class="border border-[#1890ff]/15 dark:border-[#1890ff]/30 rounded-xl p-4">
+          <div class="border border-border rounded-xl p-4 bg-white dark:bg-gray-900">
             <div class="mb-1">
-              <h5 class="text-xs font-bold uppercase tracking-wider m-0">
+              <h5 class="text-xs font-bold text-foreground uppercase tracking-wider m-0">
                 Contribution Ratio
               </h5>
-              <p class="text-[11px] mt-0.5 m-0">
+              <p class="text-[11px] text-muted-foreground mt-0.5 m-0">
                 Proportion of each error relative to total equipment linkages
               </p>
             </div>
             <EchartsUI ref="pieChartRef" height="300px" />
           </div>
         </div>
+
 
         <!-- Empty State -->
         <div v-else class="py-12 flex justify-center">

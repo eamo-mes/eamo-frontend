@@ -1,6 +1,6 @@
 <script lang="ts" setup>
 import { ref, computed, onMounted } from 'vue';
-import { useRouter } from 'vue-router';
+import { useRoute, useRouter } from 'vue-router';
 import { $t } from '#/locales';
 import {
   Button,
@@ -39,6 +39,7 @@ interface ErrorItem {
 }
 
 const router = useRouter();
+const route = useRoute();
 
 function goToEquipment(id: string) {
   router.push({ name: 'EquipmentDetail', query: { id } });
@@ -296,9 +297,27 @@ async function handleOk() {
   }
 }
 
-onMounted(() => {
-  loadErrors();
-  loadEquipments();
+onMounted(async () => {
+  await Promise.all([loadErrors(), loadEquipments()]);
+  const errorId = (route.query.id || route.query.error_id) as string;
+  if (errorId) {
+    const found = errorsList.value.find((e) => e.id === errorId);
+    if (found) {
+      openEditModal(found);
+    } else {
+      try {
+        const res = await axios.get(`${API_BASE_URL}/v1/equipment-errors/${errorId}`, {
+          headers: getAuthHeaders(),
+        });
+        const data = res.data?.data ?? res.data;
+        if (data && data.id) {
+          openEditModal(data);
+        }
+      } catch {
+        // silently fail
+      }
+    }
+  }
 });
 </script>
 

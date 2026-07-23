@@ -15,7 +15,8 @@ import {
   Popconfirm,
   message,
   Spin,
-  Card
+  Card,
+  Empty
 } from 'ant-design-vue';
 import axios from 'axios';
 import dayjs from 'dayjs';
@@ -412,8 +413,8 @@ onMounted(() => {
               </div>
 
               <div class="py-2">
-                <div v-if="formState.checklist_details.length === 0" class="py-5 text-center text-sm text-muted-foreground">
-                  {{ $t('page.ops.noDetailItems') }}
+                <div v-if="formState.checklist_details.length === 0" class="py-6 flex justify-center">
+                  <Empty :description="$t('page.ops.noDetailItems')" />
                 </div>
 
                 <div v-else class="max-h-[300px] overflow-y-auto divide-y divide-border pr-2 scrollbar-thin">

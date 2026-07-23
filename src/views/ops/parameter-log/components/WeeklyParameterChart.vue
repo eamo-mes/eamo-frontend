@@ -30,8 +30,9 @@ const chartRef = ref<EchartsUIType>();
 const { renderEcharts } = useEcharts(chartRef);
 
 const LINE_COLORS = [
-  '#3b82f6', // Blue
+  '#1890ff', // Primary Blue
 ];
+
 
 interface ParameterStats {
   id: string;
@@ -441,8 +442,13 @@ async function updateChart() {
         },
       },
     },
+    textStyle: {
+      fontFamily: 'system-ui, -apple-system, sans-serif',
+      color: '#4b5563',
+    },
     series: seriesList,
   });
+
 }
 </script>
 
@@ -478,7 +484,7 @@ async function updateChart() {
 
     <!-- Multi-Line Chart Container -->
     <Spin :spinning="loading">
-      <div class="bg-card border border-border rounded-xl p-4 shadow-sm min-h-[420px] relative">
+      <div class="border border-border rounded-xl p-4 bg-white dark:bg-gray-900 min-h-[420px] relative">
         <EchartsUI v-if="logs.length > 0" ref="chartRef" height="400px" />
         <Empty
           v-else
@@ -487,5 +493,6 @@ async function updateChart() {
         />
       </div>
     </Spin>
+
   </div>
 </template>

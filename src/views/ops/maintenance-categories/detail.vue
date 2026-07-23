@@ -14,6 +14,7 @@ import {
   message,
   Spin,
   Card,
+  Empty,
 } from 'ant-design-vue';
 import axios from 'axios';
 import { useAccessStore } from '@vben/stores';
@@ -275,8 +276,8 @@ onMounted(() => {
               </div>
 
               <!-- Items list -->
-              <div v-if="formState.items.length === 0" class="py-5 text-center text-sm text-muted-foreground">
-                {{ $t('page.ops.noItems') }}
+              <div v-if="formState.items.length === 0" class="py-6 flex justify-center">
+                <Empty :description="$t('page.ops.noItems')" />
               </div>
 
               <div v-else class="max-h-[360px] overflow-y-auto divide-y divide-border pr-2 scrollbar-thin">

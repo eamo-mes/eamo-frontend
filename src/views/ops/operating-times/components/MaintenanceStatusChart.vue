@@ -5,7 +5,7 @@ import { nextTick, ref, watch } from 'vue';
 
 import { $t } from '#/locales';
 import { EchartsUI, useEcharts } from '@vben/plugins/echarts';
-import { Skeleton } from 'ant-design-vue';
+import { Empty, Spin } from 'ant-design-vue';
 
 interface MaintenanceItemData {
   name: string;
@@ -44,12 +44,16 @@ async function renderChart() {
         data: props.data.map((item) => item.remaining),
         itemStyle: {
           borderRadius: [0, 4, 4, 0],
-          color: '#2ec7c9',
+          color: '#1890ff',
         },
         name: $t('page.ops.chartRemainingHours'),
         type: 'bar',
       },
     ],
+    textStyle: {
+      fontFamily: 'system-ui, -apple-system, sans-serif',
+      color: '#4b5563',
+    },
     tooltip: {
       axisPointer: { type: 'shadow' },
       formatter: (params: unknown) => {
@@ -95,14 +99,20 @@ watch(
 </script>
 
 <template>
-  <div
-    class="shadow-sm border border-border rounded-xl p-4 flex flex-col h-[360px] bg-card"
-  >
-    <Skeleton :loading="props.loading" active :paragraph="{ rows: 7 }">
-      <h3 class="text-sm font-semibold text-foreground mb-3 text-center">
+  <div class="border border-border rounded-xl p-4 bg-white dark:bg-gray-900 flex flex-col h-[360px]">
+    <div class="mb-2">
+      <h5 class="text-xs font-bold text-foreground uppercase tracking-wider m-0">
         {{ $t('page.ops.chartMaintenanceStatusTitle') }}
-      </h3>
-      <EchartsUI ref="chartRef" />
-    </Skeleton>
+      </h5>
+    </div>
+    <Spin :spinning="props.loading">
+      <div v-if="props.data && props.data.length > 0" class="h-[290px]">
+        <EchartsUI ref="chartRef" height="290px" />
+      </div>
+      <div v-else class="py-12 flex justify-center">
+        <Empty :description="$t('page.ops.noChartData')" />
+      </div>
+    </Spin>
   </div>
 </template>
+

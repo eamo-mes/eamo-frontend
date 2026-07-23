@@ -296,6 +296,14 @@ const errorColumns = computed(() => [
   },
 ]);
 
+function goToErrorDetail(errorId?: string): void {
+  if (errorId) {
+    router.push({ path: '/equipment/errors', query: { id: errorId } });
+  } else {
+    router.push('/equipment/errors');
+  }
+}
+
 onMounted(() => {
   loadEquipments();
   loadCategories();
@@ -308,11 +316,11 @@ onMounted(() => {
 <template>
   <div class="p-6 space-y-6">
     <!-- Ant Design Vben Tabs Bar Container -->
-    <Card :bordered="false" class="workspace-tabs-card rounded-xl border border-border bg-card shadow-sm">
-      <Tabs v-model:activeKey="activeTab" class="vben-workspace-tabs">
+    <div class="w-full flex justify-center items-center py-2 px-4 rounded-xl border border-border bg-card shadow-sm">
+      <Tabs v-model:activeKey="activeTab" centered class="vben-workspace-tabs">
         <TabPane key="maintenance">
           <template #tab>
-            <span class="inline-flex items-center gap-2 px-1 py-0.5 text-sm font-medium">
+            <span class="inline-flex items-center gap-2 px-2 py-0.5 text-sm font-medium">
               <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4 text-blue-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
               </svg>
@@ -323,7 +331,7 @@ onMounted(() => {
 
         <TabPane key="checklist">
           <template #tab>
-            <span class="inline-flex items-center gap-2 px-1 pb-1 text-sm font-medium">
+            <span class="inline-flex items-center gap-2 px-2 py-0.5 text-sm font-medium">
               <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4 text-emerald-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
               </svg>
@@ -334,7 +342,7 @@ onMounted(() => {
 
         <TabPane key="error-monitoring">
           <template #tab>
-            <span class="inline-flex items-center gap-2 px-1 py-0.5 text-sm font-medium">
+            <span class="inline-flex items-center gap-2 px-2 py-0.5 text-sm font-medium">
               <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4 text-rose-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
               </svg>
@@ -344,7 +352,7 @@ onMounted(() => {
           </template>
         </TabPane>
       </Tabs>
-    </Card>
+    </div>
 
     <!-- Top Summary / Task Overview Card -->
     <div class="assigned-tasks-wrapper">
@@ -408,12 +416,18 @@ onMounted(() => {
           >
             <template #bodyCell="{ column, record }">
               <template v-if="column.key === 'equipment'">
-                <span class="font-medium text-foreground">
+                <span class="text-foreground">
                   {{ record.equipment ? `${record.equipment.name} (${record.equipment.code})` : record.equipment_id }}
                 </span>
               </template>
               <template v-else-if="column.key === 'error'">
-                <span>{{ record.equipment_error?.name || record.equipment_error_id }}</span>
+                <Tag
+                  color="red"
+                  class="cursor-pointer hover:opacity-80 transition-opacity font-medium m-0"
+                  @click="goToErrorDetail(record.equipment_error_id || record.equipment_error?.id)"
+                >
+                  {{ record.equipment_error?.name || record.equipment_error_id }}
+                </Tag>
               </template>
               <template v-else-if="column.key === 'status'">
                 <Tag v-if="record.handled_at" color="green">{{ $t('page.dashboard.statusCompleted') }}</Tag>
@@ -461,26 +475,32 @@ onMounted(() => {
 </template>
 
 <style scoped>
-.workspace-tabs-card {
-  margin-bottom: 1.5rem !important;
-}
-
 .assigned-tasks-wrapper {
-  margin-top: 1.5rem !important;
+  margin-top: 1rem !important;
   margin-bottom: 1.5rem !important;
-}
-
-.workspace-tabs-card :deep(.ant-card-body) {
-  padding: 8px 16px 0 16px;
 }
 
 :deep(.vben-workspace-tabs .ant-tabs-nav) {
   margin-bottom: 0 !important;
 }
 
+:deep(.vben-workspace-tabs .ant-tabs-nav::before) {
+  border-bottom: none !important;
+}
+
 :deep(.vben-workspace-tabs .ant-tabs-tab) {
-  padding: 10px 16px;
+  width: 210px;
+  justify-content: center;
+  padding: 6px 14px;
+  border-radius: 8px;
   transition: all 0.2s ease;
+}
+
+:deep(.vben-workspace-tabs .ant-tabs-tab-btn) {
+  width: 100%;
+  display: flex;
+  justify-content: center;
+  align-items: center;
 }
 
 :deep(.vben-workspace-tabs .ant-tabs-tab-active) {

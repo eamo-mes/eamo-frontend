@@ -13,13 +13,13 @@ import {
   Select,
   Space,
   DatePicker,
-  Tag
+  Tag,
+  Empty,
 } from 'ant-design-vue';
 import axios from 'axios';
 import { useAccessStore } from '@vben/stores';
 import { API_BASE_URL } from '#/api/config';
 import { isSoftDeleted, softDeletedRowClass, sortBySoftDeleted } from '#/utils/soft-delete';
-import ChecklistCalendar from './components/ChecklistCalendar.vue';
 import ExpandableContainer from '#/components/ExpandableContainer.vue';
 
 interface EquipmentDetail {
@@ -90,7 +90,6 @@ const submittingJudge = ref(false);
 const selectedSession = ref<ChecklistSession | null>(null);
 const judgeDetails = ref<any[]>([]);
 
-const showCalendar = ref(false);
 const showCharts = ref(false);
 const chartStats = ref<any>(null);
 const chartsLoading = ref(false);
@@ -418,13 +417,6 @@ onMounted(() => {
       </Button>
       <div class="ml-auto flex gap-2 shrink-0">
         <Button
-          type="default"
-          class="rounded-md font-medium h-full"
-          @click="showCalendar = !showCalendar"
-        >
-          {{ showCalendar ? $t('page.ops.btnListView') : $t('page.ops.btnCalendarView') }}
-        </Button>
-        <Button
           type="primary"
           class="bg-[#5c3e35] hover:bg-[#4b332b] border-[#5c3e35] rounded-md font-medium text-white h-full"
           @click="openAddPage"
@@ -434,16 +426,8 @@ onMounted(() => {
       </div>
     </div>
 
-    <!-- Calendar Component -->
-    <ChecklistCalendar
-      v-if="showCalendar"
-      :equipments="equipments"
-      :equipment-id="selectedEquipmentId"
-      @refresh-list="loadSessions"
-    />
-
     <!-- Table -->
-    <div v-else class="bg-card border border-border rounded-xl shadow-sm overflow-hidden">
+    <div class="bg-card border border-border rounded-xl shadow-sm overflow-hidden">
       <Spin :spinning="loading">
         <Table
           :columns="columns"
@@ -535,8 +519,8 @@ onMounted(() => {
       width="600px"
       @ok="handleJudgeOk"
     >
-      <div v-if="judgeDetails.length === 0" class="py-4 text-center text-gray-400">
-        {{ $t('page.ops.noItemsToJudge') }}
+      <div v-if="judgeDetails.length === 0" class="py-6 flex justify-center">
+        <Empty :description="$t('page.ops.noItemsToJudge')" />
       </div>
       <div v-else class="space-y-4 py-4">
         <div v-for="(item, index) in judgeDetails" :key="index" class="flex items-center justify-between p-2 bg-gray-50 rounded border border-gray-100">

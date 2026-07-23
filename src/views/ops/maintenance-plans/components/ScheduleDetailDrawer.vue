@@ -211,16 +211,18 @@ function goToPlan(): void {
       <!-- Header Banner Card -->
       <div class="rounded-lg border border-border bg-card p-4 space-y-2">
         <div class="flex items-center justify-between gap-2">
-          <h3 class="text-base font-semibold text-foreground leading-tight">
-            {{ getItemName(props.selectedSchedule) }}
-          </h3>
+          <div>
+            <h3 class="text-base font-semibold text-foreground leading-tight">
+              {{ getItemName(props.selectedSchedule) }}
+            </h3>
+            <p v-if="getEquipmentName(props.selectedSchedule)" class="text-xs text-muted-foreground mt-1">
+              {{ getEquipmentName(props.selectedSchedule) }}
+            </p>
+          </div>
           <Tag v-if="getCategoryName(props.selectedSchedule)" color="blue" class="m-0 font-medium">
             {{ getCategoryName(props.selectedSchedule) }}
           </Tag>
         </div>
-        <p v-if="getEquipmentName(props.selectedSchedule)" class="text-xs text-muted-foreground">
-          {{ getEquipmentName(props.selectedSchedule) }}
-        </p>
       </div>
 
       <!-- Read-Only Information Descriptions -->
@@ -351,18 +353,7 @@ function goToPlan(): void {
         </template>
 
         <template v-else>
-          <Popconfirm
-            :title="$t('page.ops.deleteMaintenanceItemConfirm')"
-            :ok-text="$t('page.ops.btnDelete')"
-            :cancel-text="$t('page.ops.btnCancel')"
-            @confirm="handleDeleteDrawer"
-          >
-            <Button danger>
-              {{ $t('page.ops.btnDelete') }}
-            </Button>
-          </Popconfirm>
-
-          <div class="flex gap-2">
+          <div class="flex items-center justify-end w-full gap-2">
             <Button @click="handleCancelDrawer">
               {{ $t('page.ops.btnCancel') }}
             </Button>

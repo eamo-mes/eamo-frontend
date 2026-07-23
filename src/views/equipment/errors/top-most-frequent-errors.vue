@@ -226,9 +226,6 @@ watch(
           <h5 class="text-xs font-bold text-foreground uppercase tracking-wider m-0">
             {{ $t('page.equipment.chartFrequencyTitle') }}
           </h5>
-          <p class="text-[11px] text-muted-foreground mt-0.5 m-0">
-            {{ $t('page.equipment.chartFrequencyDesc') }}
-          </p>
         </div>
         <EchartsUI ref="barChartRef" height="300px" />
       </div>
@@ -239,9 +236,6 @@ watch(
           <h5 class="text-xs font-bold text-foreground uppercase tracking-wider m-0">
             {{ $t('page.equipment.chartRatioTitle') }}
           </h5>
-          <p class="text-[11px] text-muted-foreground mt-0.5 m-0">
-            {{ $t('page.equipment.chartRatioDesc') }}
-          </p>
         </div>
         <EchartsUI ref="pieChartRef" height="300px" />
       </div>

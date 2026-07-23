@@ -8,6 +8,7 @@ import {
   Select,
   Tag,
   message,
+  Empty,
 } from 'ant-design-vue';
 import axios from 'axios';
 import dayjs from 'dayjs';
@@ -198,16 +199,18 @@ function handleClose(): void {
       <!-- Header Banner Card -->
       <div class="rounded-lg border border-border bg-card p-4 space-y-2">
         <div class="flex items-center justify-between gap-2">
-          <h3 class="text-base font-semibold text-foreground leading-tight">
-            {{ props.session.equipment?.name || props.session.name || props.session.equipment?.code || $t('page.ops.unidentified') }}
-          </h3>
+          <div>
+            <h3 class="text-base font-semibold text-foreground leading-tight">
+              {{ props.session.equipment?.name || props.session.name || props.session.equipment?.code || $t('page.ops.unidentified') }}
+            </h3>
+            <p v-if="props.session.session_date" class="text-xs text-muted-foreground mt-1">
+              {{ props.session.session_date }}
+            </p>
+          </div>
           <Tag color="blue" class="m-0 font-medium">
             {{ props.session.equipment?.code || 'CHECKLIST' }}
           </Tag>
         </div>
-        <p v-if="props.session.session_date" class="text-xs text-muted-foreground">
-          {{ props.session.session_date }}
-        </p>
       </div>
 
       <!-- Checklist Items Section -->
@@ -216,11 +219,8 @@ function handleClose(): void {
           {{ $t('page.ops.detailItemsHeader') }}
         </label>
 
-        <div
-          v-if="judgeDetails.length === 0"
-          class="flex flex-col items-center justify-center py-8 px-4 text-center rounded-lg border border-dashed border-border bg-muted/20 text-muted-foreground text-sm"
-        >
-          <span>{{ $t('page.ops.noItemsToJudge') }}</span>
+        <div v-if="judgeDetails.length === 0" class="py-6 flex justify-center">
+          <Empty :description="$t('page.ops.noItemsToJudge')" />
         </div>
 
         <div v-else class="space-y-2.5 max-h-[360px] overflow-y-auto pr-1">
@@ -306,31 +306,18 @@ function handleClose(): void {
     </div>
 
     <template #footer>
-      <div class="flex items-center justify-between gap-2 py-1">
-        <Popconfirm
-          :title="$t('page.ops.deleteScheduleConfirm')"
-          :ok-text="$t('page.ops.btnConfirm')"
-          :cancel-text="$t('page.ops.btnCancel')"
-          @confirm="handleDeleteSchedule"
+      <div class="flex items-center justify-end gap-2 py-1">
+        <Button @click="handleClose">
+          {{ $t('page.ops.btnCancel') }}
+        </Button>
+        <Button
+          type="primary"
+          class="bg-[#5c3e35] hover:bg-[#4b332b] border-[#5c3e35] text-white"
+          :loading="submitting"
+          @click="handleJudgeOk"
         >
-          <Button danger :loading="deletingSchedule">
-            {{ $t('page.ops.deleteSchedule') }}
-          </Button>
-        </Popconfirm>
-
-        <div class="flex justify-end gap-2">
-          <Button @click="handleClose">
-            {{ $t('page.ops.btnCancel') }}
-          </Button>
-          <Button
-            type="primary"
-            class="bg-[#5c3e35] hover:bg-[#4b332b] border-[#5c3e35] text-white"
-            :loading="submitting"
-            @click="handleJudgeOk"
-          >
-            {{ $t('page.ops.btnConfirm') }}
-          </Button>
-        </div>
+          {{ $t('page.ops.btnConfirm') }}
+        </Button>
       </div>
     </template>
   </Drawer>

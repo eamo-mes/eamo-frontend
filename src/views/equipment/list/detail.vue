@@ -17,6 +17,7 @@ import {
   Card,
   Modal,
   Upload,
+  Empty,
 } from 'ant-design-vue';
 import type { UploadFile, UploadProps } from 'ant-design-vue';
 import axios from 'axios';
@@ -592,8 +593,8 @@ onMounted(() => {
               </div>
             </div>
           </div>
-          <div v-if="formState.equipment_parameters.length === 0" class="py-5 text-center text-sm text-muted-foreground">
-            {{ $t('page.equipment.noParameters') }}
+          <div v-if="formState.equipment_parameters.length === 0" class="py-6 flex justify-center">
+            <Empty :description="$t('page.equipment.noParameters')" />
           </div>
           <div v-else class="max-h-[320px] divide-y divide-border overflow-y-auto">
             <div v-for="(param, index) in formState.equipment_parameters" :key="index" class="flex flex-wrap items-end gap-2 py-3 first:pt-0 last:pb-0">

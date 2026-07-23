@@ -13,15 +13,6 @@ const routes: RouteRecordRaw[] = [
     path: '/equipment',
     children: [
       {
-        name: 'EquipmentCategories',
-        path: 'categories',
-        component: () => import('#/views/equipment/categories/index.vue'),
-        meta: {
-          icon: 'lucide:tag',
-          title: $t('page.equipment.categories'),
-        },
-      },
-      {
         name: 'EquipmentList',
         path: 'list',
         component: () => import('#/views/equipment/list/index.vue'),
@@ -40,12 +31,12 @@ const routes: RouteRecordRaw[] = [
         },
       },
       {
-        name: 'EquipmentErrors',
-        path: 'errors',
-        component: () => import('#/views/equipment/errors/index.vue'),
+        name: 'EquipmentCategories',
+        path: 'categories',
+        component: () => import('#/views/equipment/categories/index.vue'),
         meta: {
-          icon: 'lucide:alert-triangle',
-          title: $t('page.equipment.errors'),
+          icon: 'lucide:tag',
+          title: $t('page.equipment.categories'),
         },
       },
       {
@@ -55,6 +46,78 @@ const routes: RouteRecordRaw[] = [
         meta: {
           icon: 'lucide:box',
           title: $t('page.equipment.units'),
+        },
+      },
+      {
+        name: 'OpsMaintenanceCategories',
+        path: '/maintenance/maintenance-categories',
+        component: () => import('#/views/ops/maintenance-categories/index.vue'),
+        meta: {
+          icon: 'lucide:wrench',
+          title: $t('page.ops.maintenanceCategories'),
+        },
+      },
+      {
+        name: 'OpsMaintenanceCategoryDetail',
+        path: '/maintenance/maintenance-categories/detail',
+        component: () => import('#/views/ops/maintenance-categories/detail.vue'),
+        meta: {
+          hideInMenu: true,
+          title: $t('page.ops.maintenanceCategoryDetail'),
+        },
+      },
+      {
+        name: 'OpsMaintenancePlans',
+        path: '/maintenance/maintenance-plans',
+        component: () => import('#/views/ops/maintenance-plans/index.vue'),
+        meta: {
+          icon: 'lucide:clipboard-check',
+          title: $t('page.ops.maintenancePlans'),
+        },
+      },
+      {
+        name: 'OpsMaintenancePlanDetail',
+        path: '/maintenance/maintenance-plans/detail',
+        component: () => import('#/views/ops/maintenance-plans/detail.vue'),
+        meta: {
+          hideInMenu: true,
+          title: $t('page.ops.maintenancePlanDetail'),
+        },
+      },
+      {
+        name: 'OpsCheckList',
+        path: '/maintenance/checklist',
+        component: () => import('#/views/ops/checklist/index.vue'),
+        meta: {
+          icon: 'lucide:clipboard-list',
+          title: $t('page.ops.checklist'),
+        },
+      },
+      {
+        name: 'OpsCheckListDetail',
+        path: '/maintenance/checklist/detail',
+        component: () => import('#/views/ops/checklist/detail.vue'),
+        meta: {
+          hideInMenu: true,
+          title: $t('page.ops.checklistDetail'),
+        },
+      },
+      {
+        name: 'EquipmentErrors',
+        path: 'errors',
+        component: () => import('#/views/equipment/errors/index.vue'),
+        meta: {
+          icon: 'lucide:alert-triangle',
+          title: $t('page.equipment.errors'),
+        },
+      },
+      {
+        name: 'OpsErrorMonitoring',
+        path: '/maintenance/error-monitoring',
+        component: () => import('#/views/ops/error-monitoring/index.vue'),
+        meta: {
+          icon: 'lucide:activity',
+          title: $t('page.ops.errorMonitoring'),
         },
       },
     ],

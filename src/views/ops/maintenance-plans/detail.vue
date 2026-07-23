@@ -15,6 +15,7 @@ import {
   message,
   Breadcrumb,
   Popconfirm,
+  Empty,
 } from 'ant-design-vue';
 import AddMaintenanceItemModal from './components/AddMaintenanceItemModal.vue';
 import VisualMaintenanceCalendar from './components/VisualMaintenanceCalendar.vue';
@@ -608,7 +609,7 @@ onMounted(async () => {
               <!-- Danh sách items hiện có (UI design pattern cũ) -->
               <div class="max-h-[340px] divide-y divide-border overflow-y-auto pr-1">
                 <div
-                  v-for="(item, index) in categoryItems"
+                  v-for="(item) in categoryItems"
                   :key="item.id"
                   class="flex flex-wrap items-end gap-3 py-3 first:pt-0 last:pb-0"
                 >
@@ -669,8 +670,8 @@ onMounted(async () => {
                 </div>
 
                 <!-- Empty state (khi chưa có item nào) -->
-                <div v-if="categoryItems.length === 0" class="px-4 py-6 text-center text-gray-400 text-sm italic">
-                  {{ $t('page.ops.noItems') }}
+                <div v-if="categoryItems.length === 0" class="py-6 flex justify-center">
+                  <Empty :description="$t('page.ops.noItems')" />
                 </div>
               </div>
 
@@ -693,8 +694,8 @@ onMounted(async () => {
             class="!mt-6 rounded-xl shadow-sm"
             style="margin-top: 24px !important;"
           >
-            <div v-if="formState.schedules.length === 0" class="text-center text-gray-400 py-8 border border-dashed border-gray-200 dark:border-gray-700 rounded-lg">
-              {{ $t('page.ops.noSchedules') }}
+            <div v-if="formState.schedules.length === 0" class="py-6 flex justify-center">
+              <Empty :description="$t('page.ops.noSchedules')" />
             </div>
 
             <div v-else class="space-y-3">

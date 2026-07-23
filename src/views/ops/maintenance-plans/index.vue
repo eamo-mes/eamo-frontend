@@ -14,11 +14,9 @@ import {
   Tag,
 } from 'ant-design-vue';
 import axios from 'axios';
-import { listUsersApi, type UserItem } from '#/api/core/users';
 import { useAccessStore } from '@vben/stores';
 import { API_BASE_URL } from '#/api/config';
 import { isSoftDeleted, softDeletedRowClass, sortBySoftDeleted } from '#/utils/soft-delete';
-import VisualMaintenanceCalendar from './components/VisualMaintenanceCalendar.vue';
 
 interface EquipmentInfo {
   id: string;
@@ -85,12 +83,6 @@ const selectedEquipmentId = ref<string | undefined>(undefined);
 const selectedCategoryId = ref<string | undefined>(undefined);
 const equipments = ref<EquipmentOption[]>([]);
 const categories = ref<MaintenanceCategoryOption[]>([]);
-
-const showCalendar = ref(false);
-const allSchedules = ref<any[]>([]);
-const users = ref<UserItem[]>([]);
-const maintenanceItems = ref<MaintenanceItemOption[]>([]);
-const loadingSchedules = ref(false);
 
 const currentPage = ref(1);
 const pageSize = ref(15);
@@ -287,94 +279,6 @@ const categoryOptions = computed(() =>
   }))
 );
 
-const userOptions = computed(() =>
-  users.value.map((u) => ({
-    label: u.name,
-    value: u.id,
-  }))
-);
-
-async function loadAllSchedules(startDate?: string, endDate?: string): Promise<void> {
-  try {
-    const params: any = { per_page: 1000, with_logs: true };
-    if (startDate) params.start_date = startDate;
-    if (endDate) params.end_date = endDate;
-
-    const res = await axios.get(`${API_BASE_URL}/v1/maintenance-schedules`, {
-      headers: getAuthHeaders(),
-      params,
-    });
-    const raw = res.data?.data ?? res.data ?? [];
-    allSchedules.value = (Array.isArray(raw) ? raw : []).map((s: any) => ({
-      id: s.id,
-      maintenance_item_id: s.maintenance_item_id,
-      maintenance_plan_id: s.maintenance_plan_id,
-      date: s.date,
-      user_ids: (s.users ?? []).map((u: any) => u.id),
-      result: s.maintenance_logs?.[0]?.result || null,
-      _key: Math.random().toString(36).slice(2) + Date.now().toString(36),
-      plan_code: s.maintenance_plan?.plan_code || '—',
-      equipment_id: s.maintenance_plan?.equipment_id || '',
-      maintenance_type: s.maintenance_plan?.maintenance_type || '—',
-      equipment_name: s.maintenance_plan?.equipment
-        ? `${s.maintenance_plan.equipment.code}${s.maintenance_plan.equipment.name ? ` — ${s.maintenance_plan.equipment.name}` : ''}`
-        : '—',
-      category_name: s.maintenance_plan?.maintenance_category?.name || '—',
-      item_name: s.maintenance_item?.name || '—',
-      item_description: s.maintenance_item?.description || '',
-    }));
-  } catch {
-    // silently fail
-  }
-}
-
-async function loadMaintenanceItems(): Promise<void> {
-  try {
-    const res = await axios.get(`${API_BASE_URL}/v1/maintenance-items`, {
-      headers: getAuthHeaders(),
-      params: { per_page: 1000 },
-    });
-    const raw = res.data?.data ?? res.data ?? [];
-    maintenanceItems.value = Array.isArray(raw) ? (raw as MaintenanceItemOption[]) : [];
-  } catch {
-    // silently fail
-  }
-}
-
-async function loadUsers(): Promise<void> {
-  try {
-    users.value = await listUsersApi({ per_page: 1000 });
-  } catch {
-    // silently fail
-  }
-}
-
-const calendarRange = ref<{ start_date: string; end_date: string } | null>(null);
-
-async function handleCalendarRangeChange(range: { start_date: string; end_date: string }): Promise<void> {
-  calendarRange.value = range;
-  if (showCalendar.value) {
-    loadingSchedules.value = true;
-    try {
-      await loadAllSchedules(range.start_date, range.end_date);
-    } finally {
-      loadingSchedules.value = false;
-    }
-  }
-}
-
-async function toggleCalendarView(): Promise<void> {
-  showCalendar.value = !showCalendar.value;
-  if (showCalendar.value && !calendarRange.value) {
-    loadingSchedules.value = true;
-    try {
-      await Promise.all([loadMaintenanceItems(), loadUsers()]);
-    } finally {
-      loadingSchedules.value = false;
-    }
-  }
-}
-
 /*
 async function toggleCalendarView(): Promise<void> {
   showCalendar.value = !showCalendar.value;
@@ -456,8 +360,6 @@ onMounted(() => {
   loadEquipments();
   loadCategories();
   loadPlans();
-  loadUsers();
-  loadMaintenanceItems();
 });
 </script>
 
@@ -515,9 +417,6 @@ onMounted(() => {
           {{ $t('page.company.btnReset') }}
         </Button>
         <div class="ml-auto flex gap-2">
-          <Button type="default" @click="toggleCalendarView">
-            {{ showCalendar ? $t('page.ops.btnListView') : $t('page.ops.btnCalendarView') }}
-          </Button>
           <Button
             type="primary"
             class="bg-[#5c3e35] hover:bg-[#4b332b] border-[#5c3e35] rounded-md text-white h-full"
@@ -528,23 +427,8 @@ onMounted(() => {
         </div>
       </div>
 
-      <!-- Calendar View -->
-      <div v-if="showCalendar" class="bg-card border border-border rounded-xl p-6 shadow-sm">
-        <Spin :spinning="loadingSchedules">
-          <VisualMaintenanceCalendar
-            v-model:schedules="allSchedules"
-            :maintenance-items="maintenanceItems"
-            :categories="categories"
-            :equipments="equipments"
-            :user-options="userOptions"
-            :read-only="true"
-            @range-change="handleCalendarRangeChange"
-          />
-        </Spin>
-      </div>
-
       <!-- Table View -->
-      <div v-else class="bg-card border border-border rounded-xl shadow-sm overflow-hidden">
+      <div class="bg-card border border-border rounded-xl shadow-sm overflow-hidden">
         <Spin :spinning="loading">
           <Table
             :columns="columns"
