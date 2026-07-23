@@ -56,7 +56,7 @@ async function renderChart() {
             y2: 0,
           },
         },
-        name: $t('page.ops.chartRemainingHours') || 'Thời gian còn lại',
+        name: $t('page.ops.chartRemainingHours'),
         type: 'bar',
       },
     ],

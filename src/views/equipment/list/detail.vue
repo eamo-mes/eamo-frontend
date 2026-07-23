@@ -201,7 +201,7 @@ async function loadEquipmentDetail(id: string) {
       existingImages.value = record.equipment_images ? [...record.equipment_images] : [];
     }
   } catch (err: any) {
-    message.error(err?.response?.data?.message || 'Không thể tải chi tiết thiết bị');
+    message.error(err?.response?.data?.message || $t('page.equipment.msgLoadDetailError'));
     goBack();
   } finally {
     loading.value = false;
@@ -266,7 +266,7 @@ async function removeExistingImage(index: number) {
       }
       message.success('Xóa ảnh khỏi máy chủ thành công');
     } catch (err: any) {
-      const msg = err?.response?.data?.message || 'Không thể xóa ảnh khỏi máy chủ';
+      const msg = err?.response?.data?.message || $t('page.equipment.msgDeleteImageError');
       message.error(msg);
     } finally {
       submitting.value = false;
@@ -461,7 +461,7 @@ async function handleSubmit() {
     if (err?.errorFields) {
       // Form validation failed
     } else {
-      const msg = err?.response?.data?.message || 'Không thể lưu thiết bị';
+      const msg = err?.response?.data?.message || $t('page.equipment.msgSaveEquipmentError');
       message.error(msg);
     }
   } finally {
@@ -608,8 +608,8 @@ onMounted(() => {
                         </Button>
                         <Popconfirm
                           :title="$t('page.equipment.deleteImageConfirm')"
-                          ok-text="Yes"
-                          cancel-text="No"
+                          :ok-text="$t('page.equipment.modalConfirm')"
+                          :cancel-text="$t('page.equipment.modalCancel')"
                           @confirm="removeExistingImage(idx)"
                         >
                           <Button type="text" danger size="small" class="text-white hover:text-red-400 p-0 font-medium">

@@ -54,7 +54,7 @@ async function loadRelationData(id: string) {
     }
   } catch (err: any) {
     message.error(
-      err?.response?.data?.message || 'Không thể tải sơ đồ quan hệ thiết bị',
+      err?.response?.data?.message || $t('page.equipment.msgLoadRelationError'),
     );
   } finally {
     childrenLoading.value = false;

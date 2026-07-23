@@ -175,7 +175,7 @@ async function loadSessions(page = currentPage.value, size = pageSize.value) {
       loadChartData();
     }
   } catch (err: any) {
-    message.error(err?.response?.data?.message || 'Không thể tải danh sách phiên kiểm tra');
+    message.error(err?.response?.data?.message || $t('page.ops.loadChecklistListError'));
   } finally {
     loading.value = false;
   }
@@ -272,7 +272,7 @@ async function handleDelete(id: string) {
     message.success('Xóa phiên kiểm tra thành công');
     await loadSessions();
   } catch (err: any) {
-    message.error(err?.response?.data?.message || 'Không thể xóa phiên kiểm tra');
+    message.error(err?.response?.data?.message || $t('page.ops.deleteChecklistError'));
   } finally {
     loading.value = false;
   }
@@ -314,7 +314,7 @@ async function handleJudgeOk() {
     isJudgeModalOpen.value = false;
     await loadSessions();
   } catch (err: any) {
-    message.error(err?.response?.data?.message || 'Đánh giá phiên kiểm tra thất bại');
+    message.error(err?.response?.data?.message || $t('page.ops.judgeError'));
   } finally {
     submittingJudge.value = false;
   }

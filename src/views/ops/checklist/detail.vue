@@ -135,7 +135,7 @@ async function loadChecklistDetail(id: string) {
       };
     }
   } catch (err: any) {
-    message.error(err?.response?.data?.message || 'Không thể tải chi tiết phiên checklist');
+    message.error(err?.response?.data?.message || $t('page.ops.loadChecklistDetailError'));
     goBack();
   } finally {
     loading.value = false;
@@ -159,7 +159,7 @@ async function removeDetailRow(index: number) {
       });
       message.success('Xóa hạng mục thành công khỏi máy chủ');
     } catch (err: any) {
-      message.error(err?.response?.data?.message || 'Không thể xóa hạng mục khỏi máy chủ');
+      message.error(err?.response?.data?.message || $t('page.ops.deleteChecklistItemError'));
       return;
     } finally {
       loading.value = false;
@@ -242,7 +242,7 @@ async function handleSubmit() {
     if (err?.errorFields) {
       // Form validation failed
     } else {
-      const msg = err?.response?.data?.message || 'Không thể lưu phiên kiểm tra';
+      const msg = err?.response?.data?.message || $t('page.ops.saveChecklistError');
       message.error(msg);
     }
   } finally {

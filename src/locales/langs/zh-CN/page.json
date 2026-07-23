@@ -5,7 +5,14 @@
     "codeLogin": "Đăng nhập mã xác thực",
     "qrcodeLogin": "Đăng nhập mã QR",
     "forgetPassword": "Quên mật khẩu",
-    "profile": "Thông tin cá nhân"
+    "profile": "Thông tin cá nhân",
+    "callbackProcessing": "Đang xử lý đăng nhập...",
+    "callbackNoCode": "Không tìm thấy tham số code trong URL callback.",
+    "callbackAuthenticating": "Đang xác thực thông tin tài khoản...",
+    "callbackPreparing": "Đang chuẩn bị phiên làm việc...",
+    "callbackSuccess": "Đăng nhập thành công",
+    "callbackErrorTitle": "Xảy ra lỗi đăng nhập",
+    "callbackBackToLogin": "Quay lại Đăng nhập"
   },
   "dashboard": {
     "title": "Tổng quan",
@@ -160,7 +167,20 @@
     "msgDeleteErrorError": "Không thể xóa báo lỗi",
     "msgUpdateErrorSuccess": "Cập nhật báo lỗi thành công",
     "msgCreateErrorSuccess": "Thêm báo lỗi thành công",
-    "msgSaveErrorError": "Không thể lưu báo lỗi"
+    "msgSaveErrorError": "Không thể lưu báo lỗi",
+    "msgLoadDetailError": "Không thể tải chi tiết thiết bị",
+    "msgDeleteImageSuccess": "Xóa ảnh khỏi máy chủ thành công",
+    "msgDeleteImageError": "Không thể xóa ảnh khỏi máy chủ",
+    "msgUpdateEquipmentSuccess": "Cập nhật thông tin thiết bị thành công",
+    "msgCreateEquipmentSuccess": "Thêm thiết bị thành công",
+    "msgUploadingImage": "Đang tải lên ảnh {current}/{total}...",
+    "msgUploadedImage": "Đã tải xong ảnh {current}/{total}",
+    "msgUploadFailedImage": "Tải lên thất bại ảnh {current}/{total}",
+    "msgSaveEquipmentError": "Không thể lưu thiết bị",
+    "msgLoadListError": "Không thể tải danh sách thiết bị",
+    "msgDeleteEquipmentSuccess": "Xóa thiết bị thành công",
+    "msgDeleteEquipmentError": "Không thể xóa thiết bị",
+    "msgLoadRelationError": "Không thể tải sơ đồ quan hệ thiết bị"
   },
   "company": {
     "title": "Quản lý doanh nghiệp",
@@ -258,7 +278,9 @@
     "confirmPasswordRequired": "Vui lòng xác nhận mật khẩu mới",
     "passwordMismatch": "Mật khẩu xác nhận không khớp",
     "btnUpdate": "Cập nhật thông tin",
-    "updateSuccess": "Cập nhật thông tin thành công"
+    "updateSuccess": "Cập nhật thông tin thành công",
+    "updateError": "Cập nhật thất bại",
+    "updateFailed": "Cập nhật thất bại"
   },
   "ops": {
     "deadlineLabel": "Deadline",
@@ -572,6 +594,16 @@
     "judgeTimeLabel": "Thời gian đánh giá",
     "placeholderSelectTime": "Chọn thời gian",
     "judgeSuccess": "Đánh giá checklist thành công",
-    "judgeError": "Đánh giá checklist thất bại"
+    "judgeError": "Đánh giá checklist thất bại",
+    "loadUsersError": "Không thể tải danh sách người dùng: ",
+    "loadChecklistDetailError": "Không thể tải chi tiết phiên checklist",
+    "deleteItemSuccess": "Xóa hạng mục thành công khỏi máy chủ",
+    "deleteItemError": "Không thể xóa hạng mục khỏi máy chủ",
+    "updateChecklistSuccess": "Cập nhật phiên kiểm tra thành công",
+    "createChecklistSuccess": "Thêm mới phiên kiểm tra thành công",
+    "saveChecklistError": "Không thể lưu phiên kiểm tra",
+    "loadChecklistsError": "Không thể tải danh sách phiên kiểm tra",
+    "deleteChecklistSuccess": "Xóa phiên kiểm tra thành công",
+    "deleteChecklistError": "Không thể xóa phiên kiểm tra"
   }
 }

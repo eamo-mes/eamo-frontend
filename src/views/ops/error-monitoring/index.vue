@@ -381,8 +381,8 @@ const columns = computed(() => [
       <div class="ml-auto flex gap-2">
         <Popconfirm
           :title="$t('page.ops.syncConfirmAll')"
-          ok-text="Yes"
-          cancel-text="No"
+          :ok-text="$t('page.ops.btnOk')"
+          :cancel-text="$t('page.ops.btnCancel')"
           @confirm="syncAllResolved"
         >
           <Button
@@ -454,8 +454,8 @@ const columns = computed(() => [
                 <Popconfirm
                   v-if="record.handled_at && !record.is_synced"
                   :title="$t('page.ops.syncConfirmOne')"
-                  ok-text="Yes"
-                  cancel-text="No"
+                  :ok-text="$t('page.ops.btnOk')"
+                  :cancel-text="$t('page.ops.btnCancel')"
                   @confirm="syncOneResolved(record.id)"
                 >
                   <Button
@@ -468,8 +468,8 @@ const columns = computed(() => [
                 </Popconfirm>
                 <Popconfirm
                   :title="$t('page.company.deleteConfirm')"
-                  ok-text="Yes"
-                  cancel-text="No"
+                  :ok-text="$t('page.ops.btnOk')"
+                  :cancel-text="$t('page.ops.btnCancel')"
                   @confirm="handleDelete(record.id)"
                 >
                   <Button

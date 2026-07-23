@@ -346,8 +346,8 @@ onMounted(() => {
                 </Button>
                 <Popconfirm
                   :title="$t('page.company.deleteConfirm')"
-                  ok-text="Yes"
-                  cancel-text="No"
+                  :ok-text="$t('page.ops.btnOk')"
+                  :cancel-text="$t('page.ops.btnCancel')"
                   @confirm="handleDelete((record as CategoryItem).id)"
                 >
                   <Button
