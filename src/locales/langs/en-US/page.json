@@ -230,7 +230,7 @@
     "msgLoadListError": "Unable to load equipment list",
     "msgDeleteEquipmentSuccess": "Equipment deleted successfully",
     "msgDeleteEquipmentError": "Unable to delete equipment",
-    "msgLoadRelationError": "Unable to load equipment relation diagram"
+    "msgLoadRelationError": "Unable to load equipment relation diagram",
     "checklistSessionsModalTitle": "Checklist Sessions Details - {name}",
     "filterQuickSearch": "Quick Search",
     "filterSessionName": "Session Name",

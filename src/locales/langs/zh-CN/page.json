@@ -223,7 +223,7 @@
     "msgLoadListError": "Không thể tải danh sách thiết bị",
     "msgDeleteEquipmentSuccess": "Xóa thiết bị thành công",
     "msgDeleteEquipmentError": "Không thể xóa thiết bị",
-    "msgLoadRelationError": "Không thể tải sơ đồ quan hệ thiết bị"
+    "msgLoadRelationError": "Không thể tải sơ đồ quan hệ thiết bị",
     "checklistSessionsModalTitle": "Chi tiết phiên kiểm tra - {name}",
     "filterQuickSearch": "Tìm kiếm nhanh",
     "filterSessionName": "Tên phiên",
