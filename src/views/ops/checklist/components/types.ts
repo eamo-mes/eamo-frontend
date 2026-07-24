@@ -1,7 +1,7 @@
 export interface UserOption {
   id: string;
   name: string;
-  email: string;
+  email?: string;
 }
 
 export interface EquipmentDetail {
@@ -11,17 +11,17 @@ export interface EquipmentDetail {
 }
 
 export interface ChecklistLog {
-  id: string;
-  status: 'pending' | 'completed';
-  result: 'pass' | 'fail' | null;
+  id?: string;
+  status?: string;
+  result?: string | null;
   checked_at?: string | null;
 }
 
 export interface ChecklistDetailItem {
   id: string;
   schedule_id?: string;
-  checklist_id: string;
-  description: string;
+  checklist_id?: string;
+  description?: string;
   logs?: ChecklistLog[];
 }
 
@@ -30,16 +30,18 @@ export interface ChecklistSchedule {
   date: string;
   checklist_detail_id: string;
   checklist_id: string;
-  description: string;
-  logs: ChecklistLog[];
+  description?: string;
+  logs?: ChecklistLog[];
 }
 
 export interface ChecklistSession {
   id: string;
   name?: string;
-  equipment_id: string | null;
+  equipment_id?: string | null;
   equipment?: EquipmentDetail | null;
-  session_date: string | null;
+  session_date?: string | null;
+  cycle_type?: string;
+  cycle_interval?: number;
   details?: ChecklistDetailItem[];
   schedules?: ChecklistSchedule[];
   users?: UserOption[];

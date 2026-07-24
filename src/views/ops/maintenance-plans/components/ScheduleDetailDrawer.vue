@@ -1,7 +1,39 @@
 <script setup lang="ts">
 import { ref, computed, watch } from 'vue';
 import { useRouter } from 'vue-router';
-import { Drawer, DatePicker, Select, Popconfirm, Button, Tag, message, Input, Spin, Descriptions } from 'ant-design-vue';
+import { Drawer, Button, message, Input, Spin, DatePicker, Select, Empty, Tag } from 'ant-design-vue';
+
+const equipmentBannerInfo = computed(() => {
+  if (!activeSchedule.value) return null;
+  const eqId = activeSchedule.value.equipment_id;
+  const eq = props.equipments.find((e) => e.id === eqId);
+  const code = activeSchedule.value.equipment_code || eq?.code || '';
+  const name = activeSchedule.value.equipment_name || eq?.name || '';
+
+  let catName = activeSchedule.value.category_name || '';
+  if (!catName && activeSchedule.value.maintenance_category_id) {
+    const cat = props.categories.find((c) => c.id === activeSchedule.value?.maintenance_category_id);
+    if (cat?.name) catName = cat.name;
+  }
+
+  let title = '';
+  if (catName && name) {
+    title = `${catName} — ${name}`;
+  } else if (name) {
+    title = name;
+  } else if (catName) {
+    title = catName;
+  } else {
+    title = activeSchedule.value.plan_code || $t('page.ops.scheduleDetailTitle') || 'Chi tiết lịch bảo trì';
+  }
+
+  return {
+    title,
+    code,
+    date: drawerSchedule.value.date || activeSchedule.value.date,
+  };
+});
+import dayjs from 'dayjs';
 import { $t } from '#/locales';
 import { requestClient } from '#/api/request';
 import {
@@ -17,6 +49,13 @@ import {
 interface UserOption {
   label: string;
   value: string;
+}
+
+interface ItemEvalState {
+  schedule_id?: string;
+  log_id?: string;
+  result: 'Completed' | 'Pending';
+  notes: string;
 }
 
 const props = defineProps<{
@@ -37,45 +76,56 @@ const emit = defineEmits<{
 
 const router = useRouter();
 
-const drawerSchedule = ref<{ date: string; user_ids: string[] } | null>(null);
-const logResult = ref<string | undefined>('');
-const logNote = ref('');
-const logSubmitting = ref(false);
-const existingLog = ref<MaintenanceLog | null>(null);
-const loadingLog = ref(false);
-
-const resultOptions = computed(() => [
-  { label: $t('page.ops.logResultPending'), value: '' },
-  { label: $t('page.ops.logResultCompleted'), value: 'Completed' },
-  { label: $t('page.ops.logResultPartial'), value: 'Partial' },
-  { label: $t('page.ops.logResultFailed'), value: 'Failed' },
-]);
-
-const selectedItemDetails = computed(() => {
-  if (!props.selectedSchedule) return null;
-  if (props.selectedSchedule.item_description !== undefined) {
-    return {
-      description: props.selectedSchedule.item_description,
-    };
-  }
-  return (
-    props.maintenanceItems.find((i) => i.id === props.selectedSchedule?.maintenance_item_id) ||
-    null
-  );
+const drawerSchedule = ref<{ date: string; user_ids: string[] }>({
+  date: dayjs().format('YYYY-MM-DD'),
+  user_ids: [],
 });
 
-function getItemName(schedule: ScheduleRow): string {
-  if (schedule.item_name) return schedule.item_name;
-  const item = props.maintenanceItems.find((i) => i.id === schedule.maintenance_item_id);
-  return item ? item.name : $t('page.ops.unidentified');
+const itemEvaluations = ref<Record<string, ItemEvalState>>({});
+const loadingLog = ref(false);
+const submitting = ref(false);
+
+const activeSchedule = computed(() => props.selectedSchedule);
+
+const planSchedules = computed(() => {
+  if (!activeSchedule.value) return [];
+  const planId = activeSchedule.value.maintenance_plan_id || activeSchedule.value.plan_code;
+  const list = planId
+    ? props.schedules.filter((s) => (s.maintenance_plan_id || s.plan_code) === planId)
+    : [activeSchedule.value];
+
+  const targetDate = activeSchedule.value.date
+    ? dayjs(activeSchedule.value.date).format('YYYY-MM-DD')
+    : '';
+
+  if (targetDate) {
+    const sameDateList = list.filter((s) => {
+      const sDate = s.date ? dayjs(s.date).format('YYYY-MM-DD') : '';
+      return sDate === targetDate;
+    });
+    if (sameDateList.length > 0) return sameDateList;
+  }
+  return list;
+});
+
+function isUuid(val?: string | null): boolean {
+  if (!val) return false;
+  return /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(val);
 }
 
-function getCategoryName(schedule: ScheduleRow): string {
-  if (schedule.category_name) return schedule.category_name;
+function getItemName(schedule: ScheduleRow): string {
+  if (schedule.maintenance_item?.name) return schedule.maintenance_item.name;
+  if (schedule.item_name && !isUuid(schedule.item_name)) return schedule.item_name;
   const item = props.maintenanceItems.find((i) => i.id === schedule.maintenance_item_id);
-  if (!item) return '';
-  const category = props.categories.find((c) => c.id === item.maintenance_category_id);
-  return category ? category.name : '';
+  if (item?.name) return item.name;
+  if (schedule.item_name && !isUuid(schedule.item_name)) return schedule.item_name;
+  return $t('page.ops.unidentified') || 'Chưa xác định';
+}
+
+function getItemDescription(schedule: ScheduleRow): string | null {
+  if (schedule.item_description) return schedule.item_description;
+  const item = props.maintenanceItems.find((i) => i.id === schedule.maintenance_item_id);
+  return item?.description || null;
 }
 
 function getEquipmentName(schedule: ScheduleRow): string {
@@ -85,97 +135,161 @@ function getEquipmentName(schedule: ScheduleRow): string {
   return eq ? `${eq.code}${eq.name ? ` — ${eq.name}` : ''}` : '';
 }
 
-async function fetchLogForSchedule(scheduleId: string): Promise<void> {
-  loadingLog.value = true;
-  existingLog.value = null;
-  try {
-    const res = await requestClient.get<MaintenanceLog[]>('/v1/maintenance-logs', {
-      params: { maintenance_schedule_id: scheduleId },
-    });
-    const logs = Array.isArray(res) ? res : [];
-    const firstLog = logs[0];
-    if (firstLog) {
-      existingLog.value = firstLog;
-      logResult.value = firstLog.result;
-      logNote.value = firstLog.notes || '';
-    } else {
-      logResult.value = '';
+const drawerTitle = computed(() => {
+  const base = $t('page.ops.scheduleDetailTitle') || 'Chi tiết & Đánh giá bảo trì';
+  if (activeSchedule.value) {
+    const eqName = getEquipmentName(activeSchedule.value);
+    if (eqName) {
+      return `${base} - ${eqName}`;
     }
-  } catch {
-    logResult.value = '';
-  } finally {
-    loadingLog.value = false;
   }
+  return base;
+});
+
+function getEvalKey(sched: ScheduleRow): string {
+  return sched.id || sched._key || 'unknown';
+}
+
+function getItemEvalState(sched: ScheduleRow): ItemEvalState {
+  const key = getEvalKey(sched);
+  if (!itemEvaluations.value[key]) {
+    itemEvaluations.value[key] = {
+      schedule_id: sched.id,
+      result: sched.result === 'Completed' ? 'Completed' : 'Pending',
+      notes: '',
+    };
+  }
+  return itemEvaluations.value[key];
+}
+
+function setItemResult(sched: ScheduleRow, result: 'Completed' | 'Pending'): void {
+  const state = getItemEvalState(sched);
+  state.result = result;
+}
+
+async function fetchLogsForPlanSchedules(): Promise<void> {
+  loadingLog.value = true;
+  const evalMap: Record<string, ItemEvalState> = {};
+
+  for (const s of planSchedules.value) {
+    const key = getEvalKey(s);
+    evalMap[key] = {
+      schedule_id: s.id,
+      result: s.result === 'Completed' ? 'Completed' : 'Pending',
+      notes: '',
+    };
+
+    if (s.id) {
+      try {
+        const res = await requestClient.get<MaintenanceLog[]>('/v1/maintenance-logs', {
+          params: { maintenance_schedule_id: s.id },
+        });
+        const logs = Array.isArray(res) ? res : [];
+        const firstLog = logs[0];
+        if (firstLog) {
+          evalMap[key].log_id = firstLog.id;
+          evalMap[key].result = firstLog.result === 'Completed' ? 'Completed' : 'Pending';
+          evalMap[key].notes = firstLog.notes || '';
+        }
+      } catch {
+        // ignore
+      }
+    }
+  }
+
+  itemEvaluations.value = evalMap;
+  loadingLog.value = false;
 }
 
 watch(
   () => [props.open, props.selectedSchedule] as const,
   ([isOpen, sched]) => {
     if (isOpen && sched) {
-      drawerSchedule.value = {
-        date: sched.date,
-        user_ids: [...sched.user_ids],
-      };
-      logResult.value = sched.result || '';
-      logNote.value = '';
-      existingLog.value = null;
-      if (sched.id) {
-        fetchLogForSchedule(sched.id);
+      let initialUserIds: string[] = [];
+      if (Array.isArray(sched.user_ids) && sched.user_ids.length > 0) {
+        initialUserIds = [...sched.user_ids];
+      } else if (Array.isArray(sched.users)) {
+        initialUserIds = sched.users.map((u) => u.id);
       }
+
+      // Fallback to maintenance item's default user_ids
+      if (initialUserIds.length === 0 && sched.maintenance_item_id) {
+        const item = props.maintenanceItems.find((i) => i.id === sched.maintenance_item_id);
+        if (item && Array.isArray(item.user_ids)) {
+          initialUserIds = [...item.user_ids];
+        }
+      }
+
+      drawerSchedule.value = {
+        date: sched.date || dayjs().format('YYYY-MM-DD'),
+        user_ids: initialUserIds,
+      };
+      fetchLogsForPlanSchedules();
     }
   },
-  { immediate: true }
+  { immediate: true, deep: true }
 );
 
 async function handleSaveDrawer(): Promise<void> {
-  if (props.selectedSchedule && drawerSchedule.value) {
-    if (props.selectedSchedule.id) {
-      logSubmitting.value = true;
-      try {
-        if (!logResult.value || logResult.value === '') {
-          if (existingLog.value) {
-            await deleteMaintenanceLogApi(existingLog.value.id);
-            existingLog.value = null;
+  if (!activeSchedule.value) return;
+
+  submitting.value = true;
+  try {
+    const updatedSchedules = [...props.schedules];
+
+    for (const s of planSchedules.value) {
+      const key = getEvalKey(s);
+      const evalState = itemEvaluations.value[key];
+
+      if (evalState && s.id) {
+        if (evalState.result === 'Pending') {
+          if (evalState.log_id) {
+            try {
+              await deleteMaintenanceLogApi(evalState.log_id);
+            } catch {
+              // ignore
+            }
           }
-        } else {
-          if (existingLog.value) {
-            const res = await requestClient.put<MaintenanceLog>(`/v1/maintenance-logs/${existingLog.value.id}`, {
-              result: logResult.value,
-              notes: logNote.value || null,
+        } else if (evalState.result === 'Completed') {
+          if (evalState.log_id) {
+            await requestClient.put<MaintenanceLog>(`/v1/maintenance-logs/${evalState.log_id}`, {
+              result: 'Completed',
+              notes: evalState.notes || null,
             });
-            existingLog.value = res;
           } else {
-            const res = await createMaintenanceLogApi({
-              maintenance_schedule_id: props.selectedSchedule.id,
-              result: logResult.value,
-              notes: logNote.value || null,
+            const newLog = await createMaintenanceLogApi({
+              maintenance_schedule_id: s.id,
+              result: 'Completed',
+              notes: evalState.notes || null,
             });
-            existingLog.value = res;
+            evalState.log_id = newLog.id;
           }
         }
-      } catch (err: unknown) {
-        const apiError = (err as { response?: { data?: { message?: string } } })?.response?.data?.message;
-        message.error(apiError || $t('page.ops.logSaveError'));
-        return;
-      } finally {
-        logSubmitting.value = false;
+      }
+
+      // Update schedule in local list
+      const idx = updatedSchedules.findIndex((x) => (x.id && x.id === s.id) || x._key === s._key);
+      if (idx !== -1) {
+        const target = updatedSchedules[idx];
+        if (target) {
+          updatedSchedules[idx] = {
+            ...target,
+            date: drawerSchedule.value.date,
+            user_ids: Array.isArray(drawerSchedule.value.user_ids) ? [...drawerSchedule.value.user_ids] : [],
+            result: evalState ? evalState.result : target.result,
+          };
+        }
       }
     }
 
-    const updatedSchedules = props.schedules.map((s) => {
-      if (s._key === props.selectedSchedule?._key) {
-        return {
-          ...s,
-          date: drawerSchedule.value!.date,
-          user_ids: [...drawerSchedule.value!.user_ids],
-          result: logResult.value || null,
-        };
-      }
-      return s;
-    });
     emit('update:schedules', updatedSchedules);
     emit('update:open', false);
-    message.success($t('page.ops.drawerSaveSuccess'));
+    message.success($t('page.ops.drawerSaveSuccess') || 'Đã ghi nhận kết quả đánh giá bảo trì');
+  } catch (err: unknown) {
+    const apiError = (err as { response?: { data?: { message?: string } } })?.response?.data?.message;
+    message.error(apiError || $t('page.ops.logSaveError') || 'Không thể lưu nhật ký đánh giá');
+  } finally {
+    submitting.value = false;
   }
 }
 
@@ -183,18 +297,9 @@ function handleCancelDrawer(): void {
   emit('update:open', false);
 }
 
-function handleDeleteDrawer(): void {
-  if (props.selectedSchedule) {
-    const updatedSchedules = props.schedules.filter((s) => s._key !== props.selectedSchedule?._key);
-    emit('update:schedules', updatedSchedules);
-    emit('update:open', false);
-    message.success($t('page.ops.drawerDeleteSuccess'));
-  }
-}
-
 function goToPlan(): void {
-  if (props.selectedSchedule?.maintenance_plan_id) {
-    router.push({ name: 'OpsMaintenancePlanDetail', query: { id: props.selectedSchedule.maintenance_plan_id } });
+  if (activeSchedule.value?.maintenance_plan_id) {
+    router.push({ name: 'OpsMaintenancePlanDetail', query: { id: activeSchedule.value.maintenance_plan_id } });
   }
 }
 </script>
@@ -202,171 +307,155 @@ function goToPlan(): void {
 <template>
   <Drawer
     :open="props.open"
-    :title="$t('page.ops.scheduleDetailTitle')"
+    :title="drawerTitle"
     placement="right"
     :width="600"
     @close="handleCancelDrawer"
   >
-    <div v-if="drawerSchedule && props.selectedSchedule" class="space-y-6 px-1">
-      <!-- Header Banner Card -->
-      <div class="rounded-lg border border-border bg-card p-4 space-y-2">
-        <div class="flex items-center justify-between gap-2">
+    <Spin :spinning="loadingLog">
+        <div v-if="activeSchedule" class="space-y-6 px-1 pb-4">
+        <!-- Header Banner Card (Matching ChecklistJudgeDrawer layout) -->
+        <div v-if="equipmentBannerInfo" class="p-3 bg-muted/40 rounded-lg border border-border flex justify-between items-center">
           <div>
-            <h3 class="text-base font-semibold text-foreground leading-tight">
-              {{ getItemName(props.selectedSchedule) }}
-            </h3>
-            <p v-if="getEquipmentName(props.selectedSchedule)" class="text-xs text-muted-foreground mt-1">
-              {{ getEquipmentName(props.selectedSchedule) }}
-            </p>
+            <div class="font-semibold text-sm text-foreground">
+              {{ equipmentBannerInfo.title }}
+            </div>
+            <div class="text-xs text-muted-foreground mt-0.5">
+              {{ equipmentBannerInfo.date }}
+            </div>
           </div>
-          <Tag v-if="getCategoryName(props.selectedSchedule)" color="blue" class="m-0 font-medium">
-            {{ getCategoryName(props.selectedSchedule) }}
+          <Tag v-if="equipmentBannerInfo.code" color="blue">
+            {{ equipmentBannerInfo.code }}
           </Tag>
         </div>
-      </div>
+        <!-- Expected Execution Date & Technicians (Grid Layout at the top) -->
+        <div class="grid grid-cols-1 md:grid-cols-1 gap-4">
+          <div class="space-y-1.5 col-span-1">
+            <label class="text-xs font-semibold text-foreground block">
+              {{ $t('page.ops.expectedExecutionDate') || 'Ngày thực hiện dự kiến' }}
+            </label>
+            <DatePicker
+              v-model:value="drawerSchedule.date"
+              value-format="YYYY-MM-DD"
+              format="YYYY-MM-DD"
+              :placeholder="$t('page.ops.placeholderScheduleDate')"
+              class="w-full"
+            />
+          </div>
 
-      <!-- Read-Only Information Descriptions -->
-      <div v-if="props.readOnly" class="space-y-2 border-t border-border pt-4">
-        <label class="text-[11px] font-semibold uppercase tracking-widest text-muted-foreground block mb-2">
-          {{ $t('page.ops.title') }}
-        </label>
-        <Descriptions bordered size="small" :column="1">
-          <Descriptions.Item :label="$t('page.ops.colPlanCode')">
-            <span class="text-foreground">{{ props.selectedSchedule?.plan_code || '—' }}</span>
-          </Descriptions.Item>
-          <Descriptions.Item :label="$t('page.ops.colMaintenanceType')">
-            <span class="text-foreground">{{ props.selectedSchedule?.maintenance_type || '—' }}</span>
-          </Descriptions.Item>
-          <Descriptions.Item :label="$t('page.ops.placeholderEquipment')">
-            <span class="text-foreground">{{ getEquipmentName(props.selectedSchedule) || '—' }}</span>
-          </Descriptions.Item>
-        </Descriptions>
-      </div>
-
-      <!-- Item Detailed Description -->
-      <div class="space-y-2 border-t border-border pt-4">
-        <label class="text-[11px] font-semibold uppercase tracking-widest text-muted-foreground block">
-          {{ $t('page.ops.itemDetailDescriptionLabel') }}
-        </label>
-        <div v-if="selectedItemDetails?.description" class="text-sm text-foreground leading-relaxed whitespace-pre-line bg-card p-3 rounded-lg border border-border">
-          {{ selectedItemDetails.description }}
-        </div>
-        <div v-else class="flex flex-col items-center justify-center py-6 px-4 text-center rounded-lg border border-dashed border-border bg-muted/20 text-muted-foreground text-sm">
-          <span>{{ $t('page.ops.noItemDescription') }}</span>
-        </div>
-      </div>
-
-      <!-- Expected Execution Date -->
-      <div class="space-y-1.5 border-t border-border pt-4">
-        <label class="text-sm font-medium text-foreground block">
-          {{ $t('page.ops.expectedExecutionDate') }}
-        </label>
-        <DatePicker
-          v-model:value="drawerSchedule.date"
-          value-format="YYYY-MM-DD"
-          format="YYYY-MM-DD"
-          :placeholder="$t('page.ops.placeholderScheduleDate')"
-          class="w-full"
-        />
-      </div>
-
-      <!-- Assigned Technicians -->
-      <div class="space-y-1.5 border-t border-border pt-4">
-        <label class="text-sm font-medium text-foreground block">
-          {{ $t('page.ops.assignedTechnicians') }}
-        </label>
-        <Select
-          v-model:value="drawerSchedule.user_ids"
-          :options="props.userOptions"
-          :placeholder="$t('page.ops.placeholderAssignedUsers')"
-          mode="multiple"
-          option-filter-prop="label"
-          show-search
-          allow-clear
-          class="w-full"
-        />
-      </div>
-
-      <!-- Maintenance Log Section Card -->
-      <div class="space-y-3 border-t border-border pt-4">
-        <label class="text-[11px] font-semibold uppercase tracking-widest text-muted-foreground block">
-          {{ $t('page.ops.logTitle') }}
-        </label>
-
-        <div v-if="!props.selectedSchedule?.id" class="text-sm text-yellow-700 bg-yellow-50 dark:bg-yellow-950/30 dark:text-yellow-300 p-3 rounded-lg border border-yellow-200 dark:border-yellow-900/50">
-          {{ $t('page.ops.logRequiredToSavePlan') }}
+          <div class="space-y-1.5 col-span-1">
+            <label class="text-xs font-semibold text-foreground block">
+              {{ $t('page.ops.assignedTechnicians') || 'Người thực hiện' }}
+            </label>
+            <Select
+              v-model:value="drawerSchedule.user_ids"
+              :options="props.userOptions"
+              :placeholder="$t('page.ops.placeholderAssignedUsers')"
+              mode="multiple"
+              option-filter-prop="label"
+              show-search
+              allow-clear
+              class="w-full"
+            />
+          </div>
         </div>
 
-        <Spin v-else :spinning="loadingLog">
-          <div class="rounded-lg border border-border bg-card p-4 space-y-4">
-            <div class="space-y-1.5">
-              <label class="text-sm font-medium text-foreground block">
-                {{ $t('page.ops.logResultLabel') }} <span class="text-red-500">*</span>
-              </label>
-              <Select
-                v-model:value="logResult"
-                :placeholder="$t('page.ops.logResultPlaceholder')"
-                :options="resultOptions"
-                class="w-full"
-              />
-            </div>
+        <div class="border-t border-border pt-4 space-y-4">
+          <!-- Title block -->
+          <div>
+            <h3 class="text-xs font-bold text-foreground uppercase tracking-wider m-0">
+              {{ $t('page.ops.evalTitle') || 'Đánh giá hạng mục bảo trì' }} ({{ planSchedules.length }})
+            </h3>
+          </div>
+          <div v-if="planSchedules.length === 0" class="py-10 flex justify-center">
+            <Empty :description="$t('page.ops.noSchedules') || 'Chưa có lịch bảo trì cho ngày này.'" />
+          </div>
 
-            <div class="space-y-1.5">
-              <label class="text-sm font-medium text-foreground block">
-                {{ $t('page.ops.logNoteLabel') }}
-              </label>
+          <div v-else class="space-y-2.5">
+            <div
+              v-for="(sched, index) in planSchedules"
+              :key="sched.id || sched._key || index"
+              class="rounded-lg border border-border p-3 space-y-2.5"
+            >
+              <!-- Item Header: Index + Name & Description -->
+              <div class="min-w-0">
+                <h4 class="text-sm font-semibold text-foreground leading-snug m-0">
+                  {{ getItemName(sched) }}
+                </h4>
+                <p v-if="getItemDescription(sched)" class="text-xs text-muted-foreground mt-1 whitespace-pre-line leading-relaxed m-0">
+                  {{ getItemDescription(sched) }}
+                </p>
+              </div>
+
+              <!-- Notes TextArea -->
               <Input.TextArea
-                v-model:value="logNote"
-                :placeholder="$t('page.ops.logNotePlaceholder')"
-                :rows="3"
-                class="w-full"
+                v-model:value="getItemEvalState(sched).notes"
+                :rows="2"
+                :placeholder="$t('page.ops.judgeNotesPlaceholder') || 'Ghi chú hoặc nguyên nhân không đạt...'"
+                class="w-full text-xs resize-none"
               />
+
+              <!-- Pass/Fail Button placed below input, aligned to far right -->
+              <div class="flex items-center justify-end pt-2">
+                <Button
+                  type="default"
+                  size="small"
+                  :class="[
+                    'flex items-center gap-1 px-3 py-1 font-medium transition-colors shrink-0',
+                    getItemEvalState(sched).result === 'Completed'
+                      ? 'border-emerald-500 bg-emerald-50 text-emerald-700 dark:bg-emerald-950/40 dark:text-emerald-300 dark:border-emerald-600'
+                      : 'border-red-500 bg-red-50 text-red-700 dark:bg-red-950/40 dark:text-red-300 dark:border-red-600'
+                  ]"
+                  :title="getItemEvalState(sched).result === 'Completed' ? $t('page.ops.resultPass') : $t('page.ops.resultFail')"
+                  @click="setItemResult(sched, getItemEvalState(sched).result === 'Completed' ? 'Pending' : 'Completed')"
+                >
+                  <svg
+                    v-if="getItemEvalState(sched).result === 'Completed'"
+                    class="w-4 h-4 text-emerald-600 dark:text-emerald-400"
+                    fill="none"
+                    stroke="currentColor"
+                    viewBox="0 0 24 24"
+                  >
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M5 13l4 4L19 7" />
+                  </svg>
+                  <svg
+                    v-else
+                    class="w-4 h-4 text-red-600 dark:text-red-400"
+                    fill="none"
+                    stroke="currentColor"
+                    viewBox="0 0 24 24"
+                  >
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M6 18L18 6M6 6l12 12" />
+                  </svg>
+                  <span class="text-xs uppercase tracking-wider">
+                    {{ getItemEvalState(sched).result === 'Completed' ? $t('page.ops.resultPass') : $t('page.ops.resultFail') }}
+                  </span>
+                </Button>
+              </div>
             </div>
           </div>
-        </Spin>
+        </div>
       </div>
-
-    </div>
+    </Spin>
 
     <template #footer>
       <div class="flex items-center justify-between gap-2 py-1">
-        <template v-if="props.readOnly">
-          <div class="flex items-center justify-between w-full gap-2">
-            <div class="flex gap-2">
-              <Button @click="handleCancelDrawer">
-                {{ $t('page.ops.btnCancel') }}
-              </Button>
-              <Button type="primary" class="bg-[#5c3e35] hover:bg-[#4b332b] border-[#5c3e35]" @click="goToPlan">
-                {{ $t('page.ops.btnGoToPlan') }}
-              </Button>
-            </div>
-            <Button
-              type="primary"
-              class="bg-[#5c3e35] hover:bg-[#4b332b] border-[#5c3e35] text-white"
-              :loading="logSubmitting"
-              :disabled="!props.selectedSchedule?.id"
-              @click="handleSaveDrawer"
-            >
-              {{ $t('page.ops.btnSave') }}
-            </Button>
-          </div>
-        </template>
-
-        <template v-else>
-          <div class="flex items-center justify-end w-full gap-2">
-            <Button @click="handleCancelDrawer">
-              {{ $t('page.ops.btnCancel') }}
-            </Button>
-            <Button
-              type="primary"
-              class="bg-[#5c3e35] hover:bg-[#4b332b] border-[#5c3e35] text-white"
-              :loading="logSubmitting"
-              @click="handleSaveDrawer"
-            >
-              {{ $t('page.ops.btnSave') }}
-            </Button>
-          </div>
-        </template>
+        <div class="flex items-center gap-2">
+          <Button @click="handleCancelDrawer">
+            {{ $t('page.ops.btnCancel') || 'Hủy' }}
+          </Button>
+          <Button type="primary" @click="goToPlan">
+            {{ $t('page.ops.btnGoToPlan') || 'Đi tới Kế hoạch' }}
+          </Button>
+        </div>
+        <Button
+          v-if="!props.readOnly"
+          type="primary"
+          :loading="submitting"
+          @click="handleSaveDrawer"
+        >
+          {{ $t('page.ops.btnSave') || 'Lưu' }}
+        </Button>
       </div>
     </template>
   </Drawer>

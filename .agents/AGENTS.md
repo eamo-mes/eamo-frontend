@@ -46,5 +46,16 @@ These rules apply to all AI agents working on this project.
   - **Bar Charts**: Use rounded right edges `borderRadius: [0, 4, 4, 0]`, `barWidth: '52%'`, and position value labels on the right (`position: 'right'`).
   - **Donut / Pie Charts**: Use hollow donut radius `['55%', '78%']`, slice `borderRadius: 8`, `borderColor: '#fff'`, centered summary label (`position: 'center'`), and formatted legend showing calculated percentage with string truncation for long labels.
 
+## 7. TypeScript API Model Naming & Nullable Field Guidelines
+* **Snake_case API Naming**: Backend API entities in this project strictly use `snake_case` (e.g., `equipment_code`, `equipment_name`, `maintenance_plan_id`). All frontend API calls and TypeScript interfaces MUST consistently use `snake_case` matching the backend models and must NOT mix `camelCase` (e.g. do NOT use `equipmentCode`, always use `equipment_code`).
+* **Nullable Field Typing**: Fields from backend APIs that can return `null` (e.g., `equipment_name`, `notes`, `deleted_at`) MUST be explicitly typed as nullable (`string | null | undefined`) in TypeScript interfaces to avoid `TS2322` type assignment incompatibility errors.
+
+## 8. Nested Dynamic Items List UI Design Guidelines
+* **Standard Nested List Layout**: When displaying dynamic list items within cards or forms (such as checklist detail items or manual schedule rows), prefer the clean `divide-y divide-border` list pattern with a scrollable container (`max-h-[300px..360px] overflow-y-auto divide-y divide-border pr-2 scrollbar-thin`) and item rows (`flex items-center gap-3 py-3 first:pt-0 last:pb-0`), instead of wrapping each line in heavy nested cards.
+* **Deletion Confirmations**: Item delete actions MUST be wrapped in Ant Design Vue `<Popconfirm>` with clear confirmation titles.
+* **Reference Sample Component**: Reference [checklist/detail.vue](file:///c:/Users/khanh/Projects/eamo/frontend/src/views/ops/checklist/detail.vue) for the benchmark implementation of this nested item list style.
+
+
+
 
 

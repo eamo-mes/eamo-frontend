@@ -1,7 +1,13 @@
 <script setup lang="ts">
 import { ref, computed, onMounted } from 'vue';
-import { useRoute } from 'vue-router';
+import { useRoute, useRouter } from 'vue-router';
 import { Calendar, Button, message } from 'ant-design-vue';
+
+const router = useRouter();
+
+function createPlanForDate(date: dayjs.Dayjs): void {
+  router.push({ name: 'OpsMaintenancePlanDetail', query: { date: date.format('YYYY-MM-DD') } });
+}
 import { $t } from '#/locales';
 import dayjs, { type Dayjs } from 'dayjs';
 import { useUserStore } from '@vben/stores';
@@ -291,30 +297,45 @@ function handleUpdateSchedules(newSchedules: ScheduleRow[]): void {
         @select="onSelect"
       >
         <template #dateCellRender="{ current }">
-          <ul class="relative z-10 list-none p-0 m-0 overflow-y-auto max-h-[85px]">
-            <li
-              v-for="node in getLastMaintenanceForDate(current)"
-              :key="node.equipmentId"
-              class="mb-1 py-0.5 px-2 text-xs rounded border truncate cursor-pointer transition-all duration-200 ease-in-out hover:-translate-y-[0.5px] hover:shadow-sm bg-purple-50 dark:bg-purple-950/30 text-purple-700 dark:text-purple-300 border-purple-250 dark:border-purple-800/50 hover:bg-purple-100 dark:hover:bg-purple-900/40 font-semibold flex items-center gap-1"
-              :title="node.label"
-              @click="showLastMaintenanceForDate(current.format('YYYY-MM-DD'))"
-            >
-              <svg xmlns="http://www.w3.org/2000/svg" class="h-3 w-3 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
-              </svg>
-              <span>{{ node.label }}</span>
-            </li>
-            <li
-              v-for="s in getSchedulesForDate(current)"
-              :key="s._key"
-              class="mb-1 py-0.5 px-2 text-xs rounded border truncate cursor-pointer transition-all duration-200 ease-in-out hover:-translate-y-[0.5px] hover:shadow-sm"
-              :class="getScheduleClass(s.result)"
-              :title="s.itemName"
-              @click="showScheduleDetail(s)"
-            >
-              {{ s.itemName }}
-            </li>
-          </ul>
+          <div class="cell-content flex flex-col justify-between h-full min-h-[75px]">
+            <ul class="relative z-10 list-none p-0 m-0 overflow-y-auto max-h-[85px]">
+              <li
+                v-for="node in getLastMaintenanceForDate(current)"
+                :key="node.equipmentId"
+                class="mb-1 py-0.5 px-2 text-xs rounded border truncate cursor-pointer transition-all duration-200 ease-in-out hover:-translate-y-[0.5px] hover:shadow-sm bg-purple-50 dark:bg-purple-950/30 text-purple-700 dark:text-purple-300 border-purple-250 dark:border-purple-800/50 hover:bg-purple-100 dark:hover:bg-purple-900/40 font-semibold flex items-center gap-1"
+                :title="node.label"
+                @click="showLastMaintenanceForDate(current.format('YYYY-MM-DD'))"
+              >
+                <svg xmlns="http://www.w3.org/2000/svg" class="h-3 w-3 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                </svg>
+                <span>{{ node.label }}</span>
+              </li>
+              <li
+                v-for="s in getSchedulesForDate(current)"
+                :key="s._key"
+                class="mb-1 py-0.5 px-2 text-xs rounded border truncate cursor-pointer transition-all duration-200 ease-in-out hover:-translate-y-[0.5px] hover:shadow-sm"
+                :class="getScheduleClass(s.result)"
+                :title="s.itemName"
+                @click="showScheduleDetail(s)"
+              >
+                {{ s.itemName }}
+              </li>
+            </ul>
+
+            <!-- Fitted Action Button under cell -->
+            <div v-if="!props.readOnly" class="mt-1 pt-1 border-t border-dashed border-border/50">
+              <Button
+                type="dashed"
+                size="small"
+                block
+                class="!h-5 !text-[10px] !px-1 flex items-center justify-center gap-1 opacity-80 hover:opacity-100 transition-opacity !rounded-md"
+                @click.stop="createPlanForDate(current)"
+              >
+                <span class="truncate">{{ $t('page.ops.btnAddPlanShort') || 'Maintenance Plan' }}</span>
+              </Button>
+            </div>
+          </div>
         </template>
       </Calendar>
     </div>
@@ -342,3 +363,18 @@ function handleUpdateSchedules(newSchedules: ScheduleRow[]): void {
     />
   </div>
 </template>
+
+<style scoped>
+/* Selection highlight effect when clicking calendar cell - blue top line and subtle blue bg */
+:deep(.ant-picker-calendar-full .ant-picker-cell-selected .ant-picker-calendar-date),
+:deep(.ant-picker-cell-selected .ant-picker-cell-inner),
+:deep(.ant-picker-cell-selected .ant-picker-calendar-date) {
+  border-top: 2px solid #1890ff !important;
+  background-color: rgba(24, 144, 255, 0.08) !important;
+}
+
+:deep(.ant-picker-calendar-date-selected) {
+  background-color: rgba(24, 144, 255, 0.08) !important;
+  border-top: 2px solid #1890ff !important;
+}
+</style>

@@ -4,12 +4,12 @@ import {
   Drawer,
   DatePicker,
   Button,
-  Popconfirm,
   Select,
   Tag,
   message,
   Empty,
 } from 'ant-design-vue';
+import { useRouter } from 'vue-router';
 import axios from 'axios';
 import dayjs from 'dayjs';
 import { useAccessStore } from '@vben/stores';
@@ -33,6 +33,8 @@ const emit = defineEmits<{
   (e: 'update:open', value: boolean): void;
   (e: 'submitted'): void;
 }>();
+
+const router = useRouter();
 
 const submitting = ref(false);
 const deletingSchedule = ref(false);
@@ -80,9 +82,9 @@ watch(
       judgeDetails.value = (currentSession.details || []).map((d) => {
         const latestLog = getLatestCompletedLog(d);
         return {
-          checklist_id: d.checklist_id,
+          checklist_id: d.checklist_id || '',
           description: d.description || '',
-          result: latestLog?.result || 'fail',
+          result: latestLog?.result === 'pass' ? 'pass' : 'fail',
         };
       });
 
@@ -184,6 +186,18 @@ async function handleDeleteSchedule(): Promise<void> {
 
 function handleClose(): void {
   emit('update:open', false);
+}
+
+function goToChecklistDetail(): void {
+  const sessionId = props.session?.id || props.session?.checklist_id;
+  const eqId = props.session?.equipment_id || props.session?.equipment?.id;
+  if (sessionId) {
+    router.push({
+      path: '/maintenance/checklist/detail',
+      query: { id: sessionId, ...(eqId ? { equipment_id: eqId } : {}) },
+    });
+    handleClose();
+  }
 }
 </script>
 
@@ -306,17 +320,21 @@ function handleClose(): void {
     </div>
 
     <template #footer>
-      <div class="flex items-center justify-end gap-2 py-1">
-        <Button @click="handleClose">
-          {{ $t('page.ops.btnCancel') }}
-        </Button>
+      <div class="flex items-center justify-between gap-2 py-1">
+        <div class="flex items-center gap-2">
+          <Button @click="handleClose">
+            {{ $t('page.ops.btnCancel') || 'Hủy' }}
+          </Button>
+          <Button type="primary" @click="goToChecklistDetail">
+            {{ $t('page.ops.btnGoToChecklist') || 'Đi tới Checklist' }}
+          </Button>
+        </div>
         <Button
           type="primary"
-          class="bg-[#5c3e35] hover:bg-[#4b332b] border-[#5c3e35] text-white"
           :loading="submitting"
           @click="handleJudgeOk"
         >
-          {{ $t('page.ops.btnConfirm') }}
+          {{ $t('page.ops.btnSave') || 'Lưu' }}
         </Button>
       </div>
     </template>

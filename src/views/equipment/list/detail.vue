@@ -447,7 +447,7 @@ async function handleSubmit() {
     if (error?.errorFields) {
       // Form validation failed
     } else {
-      const msg = err?.response?.data?.message || $t('page.equipment.msgSaveEquipmentError');
+      const msg = error?.response?.data?.message || $t('page.equipment.msgSaveEquipmentError');
       message.error(msg);
     }
   } finally {

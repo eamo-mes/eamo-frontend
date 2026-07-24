@@ -23,7 +23,7 @@ import dayjs from 'dayjs';
 import { useAccessStore, useUserStore } from '@vben/stores';
 import { API_BASE_URL } from '#/api/config';
 import { listUsersApi } from '#/api/core/users';
-import ChecklistCalendar from './components/ChecklistCalendar.vue';
+import ChecklistCalendar from '../../dashboard/workspace/components/ChecklistCalendar.vue';
 
 interface EquipmentOption {
   id: string;
@@ -74,13 +74,6 @@ function getAuthHeaders() {
     Accept: 'application/json',
     'Content-Type': 'application/json',
   };
-}
-
-function generateUUID() {
-  return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, function(c) {
-    const r = Math.random() * 16 | 0, v = c === 'x' ? r : (r & 0x3 | 0x8);
-    return v.toString(16);
-  });
 }
 
 function normalizeDateTime(value: string | null | undefined): string {
@@ -150,7 +143,7 @@ async function loadChecklistDetail(id: string) {
 
 function addDetailRow() {
   formState.value.checklist_details.push({
-    checklist_id: generateUUID(),
+    checklist_id: crypto.randomUUID(),
     description: '',
   });
 }
@@ -249,7 +242,7 @@ async function handleSubmit() {
     if (error?.errorFields) {
       // Form validation failed
     } else {
-      const msg = err?.response?.data?.message || $t('page.ops.saveChecklistError');
+      const msg = error?.response?.data?.message || $t('page.ops.saveChecklistError');
       message.error(msg);
     }
   } finally {
@@ -272,6 +265,10 @@ function handleCalendarRefresh() {
 onMounted(() => {
   loadEquipments();
   loadUsers();
+
+  if (route.query.equipment_id) {
+    formState.value.equipment_id = route.query.equipment_id as string;
+  }
 
   const id = route.query.id as string;
   if (id) {
@@ -327,9 +324,10 @@ onMounted(() => {
       </div>
     </div>
 
-    <!-- Checklist Form and Calendar -->
+    <!-- Checklist Form and Calendar Body -->
     <div>
-      <div v-if="!showCalendar">
+      <!-- List View: Main Information + Checklist Details Form -->
+      <div v-show="!showCalendar">
         <Spin :spinning="loading || submitting">
           <Form
             ref="formRef"
@@ -450,12 +448,20 @@ onMounted(() => {
         </Spin>
       </div>
 
-      <ChecklistCalendar
-        v-else-if="formState.equipment_id"
-        :equipment-id="formState.equipment_id"
-        :equipments="equipments"
-        @refresh-list="handleCalendarRefresh"
-      />
+      <!-- Calendar View: Standard Checklist Calendar Card -->
+      <div v-show="showCalendar">
+        <Card class="shadow-sm border-border rounded-xl">
+          <ChecklistCalendar
+            v-if="formState.equipment_id"
+            :equipment-id="formState.equipment_id"
+            :equipments="equipments"
+            @refresh-list="handleCalendarRefresh"
+          />
+          <div v-else class="py-10 flex justify-center">
+            <Empty :description="$t('page.ops.selectEquipmentToViewCalendar') || 'Vui lòng chọn thiết bị để xem lịch checklist.'" />
+          </div>
+        </Card>
+      </div>
     </div>
   </div>
 </template>

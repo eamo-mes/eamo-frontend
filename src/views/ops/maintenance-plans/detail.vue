@@ -18,7 +18,7 @@ import {
   Empty,
 } from 'ant-design-vue';
 import AddMaintenanceItemModal from './components/AddMaintenanceItemModal.vue';
-import VisualMaintenanceCalendar from './components/VisualMaintenanceCalendar.vue';
+import VisualMaintenanceCalendar from '../../dashboard/workspace/components/VisualMaintenanceCalendar.vue';
 import { ChevronLeft } from '@vben/icons';
 import { listUsersApi, type UserItem } from '#/api/core/users';
 import {
@@ -694,66 +694,75 @@ onMounted(async () => {
             class="!mt-6 rounded-xl shadow-sm"
             style="margin-top: 24px !important;"
           >
-            <div v-if="formState.schedules.length === 0" class="py-6 flex justify-center">
-              <Empty :description="$t('page.ops.noSchedules')" />
-            </div>
+            <div class="py-2">
+              <div v-if="formState.schedules.length === 0" class="py-6 flex justify-center">
+                <Empty :description="$t('page.ops.noSchedules')" />
+              </div>
 
-            <div v-else class="space-y-3">
-              <div
-                v-for="(schedule, idx) in formState.schedules"
-                :key="schedule._key"
-                class="flex flex-wrap md:flex-nowrap gap-2 items-end bg-gray-50/50 p-3 rounded-lg border border-border"
-              >
-                <!-- Hạng mục bảo trì -->
-                <div class="flex-1 min-w-[200px]">
-                  <span class="text-xs text-gray-500 block mb-1 font-medium">{{ $t('page.ops.colMaintenanceItem') }}</span>
-                  <Select
-                    v-model:value="schedule.maintenance_item_id"
-                    :options="maintenanceItemOptions"
-                    :placeholder="$t('page.ops.placeholderMaintenanceItem')"
-                    show-search
-                    option-filter-prop="label"
-                    allow-clear
-                    class="w-full"
-                  />
-                </div>
+              <div v-else class="max-h-[360px] overflow-y-auto divide-y divide-border pr-2 scrollbar-thin">
+                <div
+                  v-for="(schedule, idx) in formState.schedules"
+                  :key="schedule._key"
+                  class="flex flex-wrap md:flex-nowrap items-center gap-3 py-3 first:pt-0 last:pb-0"
+                >
+                  <!-- Hạng mục bảo trì -->
+                  <div class="flex-1 min-w-[200px]">
+                    <span class="text-xs text-gray-400 block mb-1 font-medium">{{ $t('page.ops.colMaintenanceItem') }}</span>
+                    <Select
+                      v-model:value="schedule.maintenance_item_id"
+                      :options="maintenanceItemOptions"
+                      :placeholder="$t('page.ops.placeholderMaintenanceItem')"
+                      show-search
+                      option-filter-prop="label"
+                      allow-clear
+                      class="w-full"
+                    />
+                  </div>
 
-                <!-- Ngày thực hiện -->
-                <div class="w-[160px]">
-                  <span class="text-xs text-gray-500 block mb-1 font-medium">{{ $t('page.ops.colScheduleDate') }}</span>
-                  <DatePicker
-                    v-model:value="schedule.date"
-                    value-format="YYYY-MM-DD"
-                    format="YYYY-MM-DD"
-                    :placeholder="$t('page.ops.placeholderScheduleDate')"
-                    class="w-full"
-                  />
-                </div>
+                  <!-- Ngày thực hiện -->
+                  <div class="w-[160px]">
+                    <span class="text-xs text-gray-400 block mb-1 font-medium">{{ $t('page.ops.colScheduleDate') }}</span>
+                    <DatePicker
+                      v-model:value="schedule.date"
+                      value-format="YYYY-MM-DD"
+                      format="YYYY-MM-DD"
+                      :placeholder="$t('page.ops.placeholderScheduleDate')"
+                      class="w-full"
+                    />
+                  </div>
 
-                <!-- Người thực hiện -->
-                <div class="flex-1 min-w-[200px]">
-                  <span class="text-xs text-gray-500 block mb-1 font-medium">{{ $t('page.ops.colAssignedUsers') }}</span>
-                  <Select
-                    v-model:value="schedule.user_ids"
-                    :options="userOptions"
-                    :placeholder="$t('page.ops.placeholderAssignedUsers')"
-                    mode="multiple"
-                    option-filter-prop="label"
-                    show-search
-                    allow-clear
-                    class="w-full"
-                  />
-                </div>
+                  <!-- Người thực hiện -->
+                  <div class="flex-1 min-w-[200px]">
+                    <span class="text-xs text-gray-400 block mb-1 font-medium">{{ $t('page.ops.colAssignedUsers') }}</span>
+                    <Select
+                      v-model:value="schedule.user_ids"
+                      :options="userOptions"
+                      :placeholder="$t('page.ops.placeholderAssignedUsers')"
+                      mode="multiple"
+                      option-filter-prop="label"
+                      show-search
+                      allow-clear
+                      class="w-full"
+                    />
+                  </div>
 
-                <!-- Nút Xóa -->
-                <div class="pb-1">
-                  <Button
-                    type="text"
-                    danger
-                    @click="removeScheduleRow(idx)"
-                  >
-                    {{ $t('page.ops.btnDelete') }}
-                  </Button>
+                  <!-- Nút Xóa -->
+                  <div class="self-end pb-0.5">
+                    <Popconfirm
+                      :title="$t('page.ops.deleteConfirm') || 'Bạn có chắc chắn muốn xóa lịch này?'"
+                      :ok-text="$t('page.ops.btnConfirm')"
+                      :cancel-text="$t('page.ops.btnCancel')"
+                      @confirm="removeScheduleRow(idx)"
+                    >
+                      <Button
+                        type="text"
+                        danger
+                        class="shrink-0 px-2"
+                      >
+                        {{ $t('page.ops.btnDelete') }}
+                      </Button>
+                    </Popconfirm>
+                  </div>
                 </div>
               </div>
             </div>
@@ -761,7 +770,7 @@ onMounted(async () => {
             <Button
               type="dashed"
               block
-              class="mt-4"
+              class="mt-3"
               :disabled="!formState.maintenance_category_id"
               @click="addScheduleRow"
             >
@@ -781,6 +790,7 @@ onMounted(async () => {
             :categories="categories"
             :user-options="userOptions"
             :equipment-id="formState.equipment_id"
+            :equipments="equipments"
           />
         </Card>
 

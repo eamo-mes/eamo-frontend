@@ -1,6 +1,6 @@
 <script lang="ts" setup>
 import { ref, onMounted, watch } from 'vue';
-import { Calendar, Spin, message } from 'ant-design-vue';
+import { Calendar, Spin, Button, message } from 'ant-design-vue';
 import axios from 'axios';
 import dayjs, { Dayjs } from 'dayjs';
 import { useAccessStore } from '@vben/stores';
@@ -83,36 +83,30 @@ function getLatestCompletedLog(detail: ChecklistDetailItem): ChecklistLog | unde
     .at(-1);
 }
 
-function getSessionStatus(session: ChecklistSession): 'warning' | 'error' | 'success' {
-  if (!session.details || session.details.length === 0) return 'warning';
+function getSessionStatus(session: ChecklistSession): 'error' | 'success' {
+  if (!session.details || session.details.length === 0) return 'error';
 
   const completedLogs = session.details.map(getLatestCompletedLog);
-  if (completedLogs.some(log => !log)) return 'warning';
+  const allCompleted = completedLogs.every((log) => log !== undefined);
+  const allPassed = allCompleted && completedLogs.every((log) => log?.result === 'pass');
 
-  const hasFail = completedLogs.some(log => log?.result === 'fail');
-  return hasFail ? 'error' : 'success';
-}
-
-function getSessionStatusLabel(session: ChecklistSession): string {
-  const status = getSessionStatus(session);
-  if (status === 'error') return $t('page.ops.statusFailed');
-  if (status === 'success') return $t('page.ops.statusPassed');
-  return $t('page.ops.statusPending');
+  return allPassed ? 'success' : 'error';
 }
 
 function getSessionClass(session: ChecklistSession): string {
   const status = getSessionStatus(session);
-  switch (status) {
-    case 'success':
-      return 'bg-emerald-50 dark:bg-emerald-950/30 text-emerald-700 dark:text-emerald-300 border-emerald-250 dark:border-emerald-800/50 hover:bg-emerald-100 dark:hover:bg-emerald-900/40';
-    case 'error':
-      return 'bg-rose-50 dark:bg-rose-950/30 text-rose-700 dark:text-rose-300 border-rose-250 dark:border-rose-800/50 hover:bg-rose-100 dark:hover:bg-rose-900/40';
-    default:
-      return 'bg-amber-50 dark:bg-amber-950/30 text-amber-700 dark:text-amber-300 border-amber-250 dark:border-amber-800/50 hover:bg-amber-100 dark:hover:bg-amber-900/40';
+  if (status === 'success') {
+    return 'bg-emerald-50 dark:bg-emerald-950/30 text-emerald-700 dark:text-emerald-300 border-emerald-200 dark:border-emerald-800/50 hover:bg-emerald-100 dark:hover:bg-emerald-900/40';
   }
+  return 'bg-indigo-50 dark:bg-indigo-950/30 text-indigo-700 dark:text-indigo-300 border-indigo-200 dark:border-indigo-800/50 hover:bg-indigo-100 dark:hover:bg-indigo-900/40';
 }
 
 function getSessionsForDay(date: Dayjs): ChecklistSession[] {
+  const today = dayjs().startOf('day');
+  if (date.isBefore(today, 'day')) {
+    return [];
+  }
+
   const dateStr = date.format('YYYY-MM-DD');
   const dailySessions = new Map<string, ChecklistSession>();
 
@@ -144,7 +138,8 @@ function getSessionsForDay(date: Dayjs): ChecklistSession[] {
   return [...dailySessions.values()];
 }
 
-function openJudgeModal(session: ChecklistSession): void {
+function openJudgeModal(session?: ChecklistSession): void {
+  if (!session) return;
   selectedSession.value = session;
   isModalOpen.value = true;
 }
@@ -175,23 +170,38 @@ onMounted(() => {
       <Spin :spinning="loading">
         <Calendar v-model:value="calendarValue">
           <template #dateCellRender="{ current }">
-            <ul class="relative z-10 list-none p-0 m-0 overflow-y-auto max-h-[85px]">
-              <li
-                v-for="session in getSessionsForDay(current)"
-                :key="session.id"
-                class="mb-1 py-0.5 px-2 text-xs rounded border truncate cursor-pointer transition-all duration-200 ease-in-out hover:-translate-y-[0.5px] hover:shadow-sm font-semibold flex items-center justify-between gap-1"
-                :class="getSessionClass(session)"
-                :title="session.equipment?.name || ''"
-                @click.stop="openJudgeModal(session)"
-              >
-                <span class="truncate">
-                  {{ session.equipment?.name || $t('page.ops.placeholderEquipment') }}
-                </span>
-                <span class="text-[10px] opacity-80 shrink-0 font-medium">
-                  {{ getSessionStatusLabel(session) }}
-                </span>
-              </li>
-            </ul>
+            <div class="cell-content flex flex-col justify-between h-full min-h-[85px]">
+              <div>
+                <div
+                  v-for="session in getSessionsForDay(current)"
+                  :key="session.id"
+                  class="mb-1 p-1.5 text-xs rounded border cursor-pointer transition-all duration-200 ease-in-out hover:-translate-y-[0.5px] hover:shadow-sm"
+                  :class="getSessionClass(session)"
+                  :title="session.equipment?.name || session.name || ''"
+                  @click.stop="openJudgeModal(session)"
+                >
+                  <div class="font-semibold text-xs truncate leading-tight">
+                    {{ session.name || session.equipment?.name || $t('page.ops.checklistDrawer.sessionText') }}
+                  </div>
+                  <div class="text-[10px] opacity-80 mt-1 font-medium leading-tight truncate">
+                    {{ session.equipment?.code || '—' }}
+                  </div>
+                </div>
+              </div>
+
+              <!-- Fitted Action Button under cell -->
+              <div class="mt-1 pt-1 border-t border-dashed border-border/50">
+                <Button
+                  type="dashed"
+                  size="small"
+                  block
+                  class="!h-5 !text-[10px] !px-1 flex items-center justify-center gap-1 opacity-80 hover:opacity-100 transition-opacity !rounded-md"
+                  @click.stop="openJudgeModal(getSessionsForDay(current)[0])"
+                >
+                  <span class="truncate">{{ $t('page.ops.checklistDrawer.cellButtonLabel') }}</span>
+                </Button>
+              </div>
+            </div>
           </template>
         </Calendar>
       </Spin>

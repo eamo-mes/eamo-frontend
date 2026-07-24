@@ -13,60 +13,17 @@ import {
   Spin,
   Tag,
 } from 'ant-design-vue';
-import axios from 'axios';
-import { useAccessStore } from '@vben/stores';
-import { API_BASE_URL } from '#/api/config';
 import { isSoftDeleted, softDeletedRowClass, sortBySoftDeleted } from '#/utils/soft-delete';
-
-interface EquipmentInfo {
-  id: string;
-  code: string;
-  name: string | null;
-}
-
-interface MaintenanceCategoryInfo {
-  id: string;
-  name: string;
-}
-
-interface MaintenancePlanItem {
-  id: string;
-  plan_code: string | null;
-  equipment_id: string;
-  equipment: EquipmentInfo | null;
-  maintenance_category_id: string | null;
-  maintenance_category: MaintenanceCategoryInfo | null;
-  maintenance_type: string;
-  date: string | null;
-  start_time: string | null;
-  end_time: string | null;
-  cycle_type: string | null;
-  cycle_interval: number | null;
-  notes: string | null;
-  deleted_at?: string | null;
-}
-
-interface EquipmentOption {
-  id: string;
-  code: string;
-  name: string | null;
-}
-
-interface MaintenanceCategoryOption {
-  id: string;
-  name: string;
-}
-
-interface MaintenanceItemOption {
-  id: string;
-  name: string;
-  description: string | null;
-  maintenance_category_id: string;
-}
-
-interface AxiosErrorResponse {
-  response?: { data?: { message?: string } };
-}
+import {
+  fetchEquipmentsApi,
+  fetchCategoriesApi,
+  fetchMaintenancePlansApi,
+  deleteMaintenancePlanApi,
+  type EquipmentOption,
+  type MaintenanceCategoryOption,
+  type MaintenancePlanItem,
+  type FetchMaintenancePlansParams,
+} from './api';
 
 interface TablePagination {
   current?: number;
@@ -88,23 +45,9 @@ const currentPage = ref(1);
 const pageSize = ref(15);
 const total = ref(0);
 
-function getAuthHeaders(): Record<string, string> {
-  const accessStore = useAccessStore();
-  return {
-    Authorization: `Bearer ${accessStore.accessToken}`,
-    Accept: 'application/json',
-    'Content-Type': 'application/json',
-  };
-}
-
 async function loadEquipments(): Promise<void> {
   try {
-    const res = await axios.get(`${API_BASE_URL}/v1/equipment`, {
-      headers: getAuthHeaders(),
-      params: { per_page: 1000 },
-    });
-    const raw = res.data?.data ?? res.data ?? [];
-    equipments.value = Array.isArray(raw) ? (raw as EquipmentOption[]) : [];
+    equipments.value = await fetchEquipmentsApi();
   } catch {
     // silently fail
   }
@@ -112,12 +55,7 @@ async function loadEquipments(): Promise<void> {
 
 async function loadCategories(): Promise<void> {
   try {
-    const res = await axios.get(`${API_BASE_URL}/v1/maintenance-categories`, {
-      headers: getAuthHeaders(),
-      params: { per_page: 1000 },
-    });
-    const raw = res.data?.data ?? res.data ?? [];
-    categories.value = Array.isArray(raw) ? (raw as MaintenanceCategoryOption[]) : [];
+    categories.value = await fetchCategoriesApi();
   } catch {
     // silently fail
   }
@@ -126,21 +64,19 @@ async function loadCategories(): Promise<void> {
 async function loadPlans(page = currentPage.value, size = pageSize.value): Promise<void> {
   loading.value = true;
   try {
-    const params: Record<string, boolean | number | string> = { page, per_page: size, with_trashed: true };
+    const params: FetchMaintenancePlansParams = { page, per_page: size, with_trashed: true };
     if (activeSearch.value) params.q = activeSearch.value;
     if (selectedEquipmentId.value) params.equipment_id = selectedEquipmentId.value;
     if (selectedCategoryId.value) params.maintenance_category_id = selectedCategoryId.value;
 
-    const res = await axios.get(`${API_BASE_URL}/v1/maintenance-plans`, {
-      headers: getAuthHeaders(),
-      params,
-    });
-    const raw = res.data?.data ?? res.data ?? [];
-    plans.value = Array.isArray(raw) ? (raw as MaintenancePlanItem[]) : [];
-    total.value = typeof res.data?.total === 'number' ? res.data.total : plans.value.length;
-    currentPage.value = typeof res.data?.current_page === 'number' ? res.data.current_page : page;
+    const res = await fetchMaintenancePlansApi(params);
+    const raw = res.data ?? [];
+    plans.value = Array.isArray(raw) ? raw : [];
+    total.value = typeof res.total === 'number' ? res.total : plans.value.length;
+    currentPage.value = typeof res.current_page === 'number' ? res.current_page : page;
   } catch (err: unknown) {
-    const apiError = (err as AxiosErrorResponse)?.response?.data?.message;
+    const apiError = (err as { response?: { data?: { message?: string } } })?.response?.data?.message
+      || (err as { message?: string })?.message;
     message.error(apiError || $t('page.ops.planLoadError'));
   } finally {
     loading.value = false;
@@ -217,85 +153,12 @@ function handleTableChange(pagination: TablePagination): void {
   loadPlans(current, size);
 }
 
-/*
-function handleTableChange(pagination: TablePagination): void {
-  const current = pagination.current ?? 1;
-  const size = pagination.pageSize ?? 15;
-  currentPage.value = current;
-  pageSize.value = size;
-  loadPlans(current, size);
-}
-
-const columns = computed(() => [
-  {
-    title: $t('page.ops.colPlanCode'),
-    dataIndex: 'plan_code',
-    key: 'plan_code',
-    width: 140,
-  },
-  {
-    title: $t('page.ops.placeholderEquipment'),
-    key: 'equipment',
-    width: 180,
-  },
-  {
-    title: $t('page.ops.maintenanceCategories'),
-    dataIndex: ['maintenance_category', 'name'],
-    key: 'maintenance_category',
-    width: 180,
-  },
-  {
-    title: $t('page.ops.colMaintenanceType'),
-    dataIndex: 'maintenance_type',
-    key: 'maintenance_type',
-    width: 150,
-  },
-  {
-    title: $t('page.ops.startDate'),
-    dataIndex: 'date',
-    key: 'date',
-    width: 120,
-  },
-  {
-    title: $t('page.ops.colCycleType'),
-    dataIndex: 'cycle_type',
-    key: 'cycle_type',
-    width: 110,
-  },
-  {
-    title: $t('page.company.colActions'),
-    key: 'actions',
-    width: 160,
-    align: 'right' as const,
-    fixed: 'right' as const,
-  },
-]);
-*/
-
 const categoryOptions = computed(() =>
   categories.value.map(cat => ({
     label: cat.name,
     value: cat.id,
   }))
 );
-
-/*
-async function toggleCalendarView(): Promise<void> {
-  showCalendar.value = !showCalendar.value;
-  if (showCalendar.value) {
-    loadingSchedules.value = true;
-    try {
-      await Promise.all([loadMaintenanceItems(), loadUsers()]);
-      // If we already have a range, load schedules for it immediately
-      if (calendarRange.value) {
-        await loadAllSchedules(calendarRange.value.start_date, calendarRange.value.end_date);
-      }
-    } finally {
-      loadingSchedules.value = false;
-    }
-  }
-}
-*/
 
 function openAdd(): void {
   router.push({ name: 'OpsMaintenancePlanDetail' });
@@ -307,13 +170,12 @@ function openEdit(id: string): void {
 
 async function handleDelete(id: string): Promise<void> {
   try {
-    await axios.delete(`${API_BASE_URL}/v1/maintenance-plans/${id}`, {
-      headers: getAuthHeaders(),
-    });
+    await deleteMaintenancePlanApi(id);
     message.success($t('page.ops.planDeleteSuccess'));
     await loadPlans();
   } catch (err: unknown) {
-    const apiError = (err as AxiosErrorResponse)?.response?.data?.message;
+    const apiError = (err as { response?: { data?: { message?: string } } })?.response?.data?.message
+      || (err as { message?: string })?.message;
     message.error(apiError || $t('page.ops.planDeleteError'));
   }
 }
@@ -333,28 +195,6 @@ function getMaintenanceTypeColor(type: string): string {
   if (type === 'Inspection') return 'default';
   return 'default';
 }
-
-/*
-function openEdit(id: string): void {
-  router.push({ name: 'OpsMaintenancePlanDetail', query: { id } });
-}
-
-async function handleDelete(id: string): Promise<void> {
-  try {
-    await axios.delete(`${API_BASE_URL}/v1/maintenance-plans/${id}`, {
-      headers: getAuthHeaders(),
-    });
-    plans.value = plans.value.filter(p => p.id !== id);
-    if (plans.value.length === 0 && currentPage.value > 1) currentPage.value -= 1;
-    message.success($t('page.ops.planDeleteSuccess'));
-    loadPlans();
-  } catch (err: unknown) {
-    const apiError = (err as AxiosErrorResponse)?.response?.data?.message;
-    message.error(apiError || $t('page.ops.planDeleteError'));
-  }
-}
-*/
-
 
 onMounted(() => {
   loadEquipments();

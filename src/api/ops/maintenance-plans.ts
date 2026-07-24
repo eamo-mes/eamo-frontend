@@ -49,8 +49,21 @@ export interface ScheduleRow {
   maintenance_type?: string;
   item_name?: string;
   category_name?: string;
-  equipment_name?: string;
+  equipment_code?: string | null;
+  equipment_name?: string | null;
   item_description?: string;
+  maintenance_logs?: Array<{ result?: string }>;
+  maintenance_plan?: {
+    plan_code?: string;
+    equipment_id?: string;
+    maintenance_type?: string;
+    equipment?: { code?: string; name?: string };
+    maintenance_category?: { name?: string };
+  };
+  maintenance_item?: {
+    name?: string;
+    description?: string;
+  };
 }
 
 export interface MaintenancePlanRawSchedule {
@@ -116,7 +129,52 @@ export interface SaveMaintenanceLogPayload {
   notes?: string | null;
 }
 
+interface RawMaintenanceItemResponse {
+  id: string;
+  name: string;
+  description: string | null;
+  maintenance_category_id: string;
+  users?: Array<{ id: string }>;
+}
+
+export interface FetchMaintenancePlansParams {
+  page: number;
+  per_page: number;
+  with_trashed?: boolean;
+  q?: string;
+  equipment_id?: string;
+  maintenance_category_id?: string;
+}
+
+export interface FetchMaintenancePlansResult {
+  data?: MaintenancePlanRecord[];
+  total?: number;
+  current_page?: number;
+  per_page?: number;
+}
+
+export interface FetchMaintenanceSchedulesParams {
+  start_date?: string;
+  end_date?: string;
+  with_logs?: boolean;
+  equipment_id?: string;
+  per_page?: number;
+}
+
 // ─── API Functions ───────────────────────────────────────────────────────────
+
+export async function listMaintenanceSchedulesApi(
+  params: FetchMaintenanceSchedulesParams,
+): Promise<ScheduleRow[]> {
+  const raw = await requestClient.get<ScheduleRow[]>('/v1/maintenance-schedules', {
+    params: {
+      per_page: 1000,
+      with_logs: true,
+      ...params,
+    },
+  });
+  return Array.isArray(raw) ? raw : [];
+}
 
 export async function listEquipmentsApi(): Promise<EquipmentOption[]> {
   const res = await requestClient.get<EquipmentOption[]>('/v1/equipment', {
@@ -133,7 +191,7 @@ export async function listCategoriesApi(): Promise<MaintenanceCategoryOption[]> 
 }
 
 export async function listMaintenanceItemsApi(): Promise<MaintenanceItemOption[]> {
-  const res = await requestClient.get<any[]>('/v1/maintenance-items', {
+  const res = await requestClient.get<RawMaintenanceItemResponse[]>('/v1/maintenance-items', {
     params: { per_page: 1000 },
   });
   const rawList = Array.isArray(res) ? res : [];
@@ -142,18 +200,18 @@ export async function listMaintenanceItemsApi(): Promise<MaintenanceItemOption[]
     name: item.name,
     description: item.description ?? null,
     maintenance_category_id: item.maintenance_category_id,
-    user_ids: (item.users ?? []).map((u: { id: string }) => u.id),
+    user_ids: (item.users ?? []).map((u) => u.id),
   }));
 }
 
 export async function createMaintenanceItemApi(payload: SaveMaintenanceItemPayload): Promise<MaintenanceItemOption> {
-  const created = await requestClient.post<any>('/v1/maintenance-items', payload);
+  const created = await requestClient.post<RawMaintenanceItemResponse>('/v1/maintenance-items', payload);
   return {
     id: created.id,
     name: created.name,
     description: created.description ?? null,
     maintenance_category_id: created.maintenance_category_id,
-    user_ids: (created.users ?? []).map((u: { id: string }) => u.id),
+    user_ids: (created.users ?? []).map((u) => u.id),
   };
 }
 
@@ -163,6 +221,20 @@ export async function updateMaintenanceItemApi(id: string, payload: SaveMaintena
 
 export async function deleteMaintenanceItemApi(id: string): Promise<void> {
   await requestClient.delete(`/v1/maintenance-items/${id}`);
+}
+
+export async function listMaintenancePlansApi(
+  params: FetchMaintenancePlansParams,
+): Promise<FetchMaintenancePlansResult> {
+  const res = await requestClient.get<FetchMaintenancePlansResult>('/v1/maintenance-plans', {
+    params,
+    responseReturn: 'body',
+  });
+  return res ?? {};
+}
+
+export async function deleteMaintenancePlanApi(id: string): Promise<void> {
+  await requestClient.delete(`/v1/maintenance-plans/${id}`);
 }
 
 export async function getMaintenancePlanDetailApi(id: string): Promise<MaintenancePlanRecord> {
