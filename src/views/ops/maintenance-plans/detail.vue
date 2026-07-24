@@ -17,7 +17,6 @@ import {
   Popconfirm,
   Empty,
 } from 'ant-design-vue';
-import AddMaintenanceItemModal from './components/AddMaintenanceItemModal.vue';
 import VisualMaintenanceCalendar from '../../dashboard/workspace/components/VisualMaintenanceCalendar.vue';
 import { ChevronLeft } from '@vben/icons';
 import { listUsersApi, type UserItem } from '#/api/core/users';
@@ -39,6 +38,7 @@ import {
   type MaintenancePlanRecord,
   type SaveScheduleItemPayload,
 } from '#/api/ops/maintenance-plans';
+import dayjs from 'dayjs';
 
 // ─── State ───────────────────────────────────────────────────────────────────
 
@@ -81,17 +81,6 @@ const equipmentOptions = computed(() =>
     value: eq.id,
   }))
 );
-
-const maintenanceItemOptions = computed(() => {
-  const catId = formState.value.maintenance_category_id;
-  if (!catId) return [];
-  return maintenanceItems.value
-    .filter(item => item.maintenance_category_id === catId)
-    .map(item => ({
-      label: item.name,
-      value: item.id,
-    }));
-});
 
 const categoryOptions = computed(() =>
   categories.value.map(cat => ({
@@ -271,6 +260,27 @@ async function handleSubmit(): Promise<void> {
     await formRef.value.validateFields();
     submitting.value = true;
 
+    // Automatically persist unsaved temp items in categoryItems
+    for (const item of categoryItems.value) {
+      if (item.id.startsWith('temp_') && item.name.trim()) {
+        try {
+          const created = await createMaintenanceItemApi({
+            name: item.name.trim(),
+            description: item.description?.trim() || null,
+            maintenance_category_id: formState.value.maintenance_category_id!,
+            user_ids: item.user_ids ?? [],
+          });
+          const idx = maintenanceItems.value.findIndex(i => i.id === item.id);
+          if (idx !== -1) {
+            maintenanceItems.value[idx] = created;
+          }
+          setItemUserIds(created.id, item.user_ids ?? []);
+        } catch {
+          // ignore
+        }
+      }
+    }
+
     const saveSchedules: SaveScheduleItemPayload[] = [];
     for (const s of formState.value.schedules) {
       let itemId = s.maintenance_item_id;
@@ -358,20 +368,6 @@ function goBack(): void {
   router.push({ name: 'OpsMaintenancePlans' });
 }
 
-const isAddItemModalOpen = ref(false);
-
-function showAddItemModal(): void {
-  isAddItemModalOpen.value = true;
-}
-
-function handleAddItemSuccess(item: MaintenanceItemOption, userIds: string[]): void {
-  maintenanceItems.value.push(item);
-  setItemUserIds(item.id, userIds);
-  if (isEditing.value) {
-    handleSubmit();
-  }
-}
-
 function setItemUserIds(itemId: string, userIds: string[]): void {
   const matchingSchedules = formState.value.schedules.filter(s => s.maintenance_item_id === itemId);
   if (matchingSchedules.length > 0) {
@@ -390,6 +386,21 @@ function setItemUserIds(itemId: string, userIds: string[]): void {
   }
 }
 
+const selectedCategoryName = computed(() => {
+  const catId = formState.value.maintenance_category_id;
+  if (!catId) return '';
+  const found = categories.value.find(c => c.id === catId);
+  return found ? found.name : '';
+});
+
+const appliedItemsCardTitle = computed(() => {
+  const baseTitle = $t('page.ops.appliedItemsTitle');
+  if (selectedCategoryName.value) {
+    return `${baseTitle} — ${selectedCategoryName.value}`;
+  }
+  return baseTitle;
+});
+
 const categoryItems = computed(() => {
   const catId = formState.value.maintenance_category_id;
   if (!catId) return [];
@@ -399,21 +410,58 @@ const categoryItems = computed(() => {
 const updatingItems = ref<Record<string, boolean>>({});
 const deletingItems = ref<Record<string, boolean>>({});
 
-async function updateCategoryItem(item: MaintenanceItemOption): Promise<void> {
+function addCategoryItemRow(): void {
+  const catId = formState.value.maintenance_category_id;
+  if (!catId) return;
+
+  const tempId = `temp_${generateKey()}`;
+  const newItem: MaintenanceItemOption = {
+    id: tempId,
+    name: '',
+    description: '',
+    maintenance_category_id: catId,
+    user_ids: [],
+  };
+  maintenanceItems.value.push(newItem);
+}
+
+function removeTempCategoryItem(tempId: string): void {
+  maintenanceItems.value = maintenanceItems.value.filter((i) => i.id !== tempId);
+}
+
+async function saveCategoryItem(item: MaintenanceItemOption): Promise<void> {
   const name = item.name.trim();
   if (!name) {
     message.error($t('page.ops.itemNameRequired'));
     return;
   }
+  const catId = formState.value.maintenance_category_id;
+  if (!catId) return;
+
   updatingItems.value[item.id] = true;
   try {
-    await updateMaintenanceItemApi(item.id, {
-      name,
-      description: item.description?.trim() || null,
-      maintenance_category_id: item.maintenance_category_id,
-      user_ids: item.user_ids,
-    });
-    message.success($t('page.ops.updateItemSuccess'));
+    if (item.id.startsWith('temp_')) {
+      const created = await createMaintenanceItemApi({
+        name,
+        description: item.description?.trim() || null,
+        maintenance_category_id: catId,
+        user_ids: item.user_ids ?? [],
+      });
+      const idx = maintenanceItems.value.findIndex(i => i.id === item.id);
+      if (idx !== -1) {
+        maintenanceItems.value[idx] = created;
+      }
+      setItemUserIds(created.id, item.user_ids ?? []);
+      message.success($t('page.ops.addItemSuccess'));
+    } else {
+      await updateMaintenanceItemApi(item.id, {
+        name,
+        description: item.description?.trim() || null,
+        maintenance_category_id: item.maintenance_category_id,
+        user_ids: item.user_ids ?? [],
+      });
+      message.success($t('page.ops.updateItemSuccess'));
+    }
     if (isEditing.value) {
       await handleSubmit();
     }
@@ -486,12 +534,6 @@ onMounted(async () => {
           class="flex items-center gap-1.5"
           @click="activeView = activeView === 'form' ? 'calendar' : 'form'"
         >
-          <svg v-if="activeView === 'form'" xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
-          </svg>
-          <svg v-else xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
-          </svg>
           {{ activeView === 'form' ? $t('page.ops.btnCalendarView') : $t('page.ops.btnListView') }}
         </Button>
 
@@ -640,40 +682,44 @@ onMounted(async () => {
           <!-- ── Card 2 (Tách riêng div/card tách biệt ở trên): Applied Maintenance Items ── -->
           <Card
             v-if="formState.cycle_type"
-            :title="$t('page.ops.appliedItemsTitle')"
+            :title="appliedItemsCardTitle"
             class="!mt-6 rounded-xl shadow-sm"
             style="margin-top: 24px !important;"
           >
             <div class="space-y-4">
-              <!-- Danh sách items hiện có (UI design pattern cũ) -->
-              <div class="max-h-[340px] divide-y divide-border overflow-y-auto pr-1">
+              <!-- Danh sách items hiện có (UI design pattern inline giống maintenance-categories) -->
+              <div v-if="categoryItems.length === 0" class="py-6 flex justify-center">
+                <Empty :description="$t('page.ops.noItems')" />
+              </div>
+
+              <div v-else class="max-h-[360px] overflow-y-auto divide-y divide-border pr-2 scrollbar-thin">
                 <div
                   v-for="(item) in categoryItems"
                   :key="item.id"
                   class="flex flex-wrap items-end gap-3 py-3 first:pt-0 last:pb-0"
                 >
-                  <div class="flex-1 min-w-[180px]">
-                    <span class="text-xs text-gray-400 block mb-1">{{ $t('page.ops.colItemName') }}</span>
+                  <div class="flex-1 min-w-[200px]">
+                    <span class="text-xs text-gray-500 block mb-1 font-medium">{{ $t('page.ops.colItemName') }}</span>
                     <Input
                       v-model:value="item.name"
                       :placeholder="$t('page.ops.placeholderItemName')"
-                      @press-enter="updateCategoryItem(item)"
+                      @press-enter="saveCategoryItem(item)"
                     />
                   </div>
-                  <div class="flex-1 min-w-[180px]">
-                    <span class="text-xs text-gray-400 block mb-1">{{ $t('page.ops.colItemDesc') }}</span>
+                  <div class="flex-1 min-w-[250px]">
+                    <span class="text-xs text-gray-500 block mb-1 font-medium">{{ $t('page.ops.colItemDesc') }}</span>
                     <Input
                       :value="item.description ?? ''"
                       @update:value="(val) => item.description = val || null"
                       :placeholder="$t('page.ops.placeholderItemDesc')"
-                      @press-enter="updateCategoryItem(item)"
+                      @press-enter="saveCategoryItem(item)"
                     />
                   </div>
                   <div class="flex-1 min-w-[200px]">
-                    <span class="text-xs text-gray-400 block mb-1">{{ $t('page.ops.colAssignedUsers') }}</span>
+                    <span class="text-xs text-gray-500 block mb-1 font-medium">{{ $t('page.ops.assignedTechnicians') }}</span>
                     <Select
                       :value="item.user_ids"
-                      @update:value="(val: any) => { item.user_ids = val; setItemUserIds(item.id, val); }"
+                      @update:value="(val: unknown) => { const userIds = Array.isArray(val) ? (val as string[]) : []; item.user_ids = userIds; setItemUserIds(item.id, userIds); }"
                       :options="userOptions"
                       :placeholder="$t('page.ops.placeholderAssignedUsers')"
                       mode="multiple"
@@ -688,11 +734,12 @@ onMounted(async () => {
                       type="default"
                       :loading="updatingItems[item.id]"
                       :disabled="!item.name.trim()"
-                      @click="updateCategoryItem(item)"
+                      @click="saveCategoryItem(item)"
                     >
-                      {{ $t('page.ops.btnUpdate') }}
+                      {{ item.id.startsWith('temp_') ? $t('page.ops.btnSave') : $t('page.ops.btnUpdate') }}
                     </Button>
                     <Popconfirm
+                      v-if="!item.id.startsWith('temp_')"
                       :title="$t('page.ops.deleteMaintenanceItemConfirm')"
                       :ok-text="$t('page.ops.btnDelete')"
                       :cancel-text="$t('page.ops.btnCancel')"
@@ -705,12 +752,16 @@ onMounted(async () => {
                         {{ $t('page.ops.btnDelete') }}
                       </Button>
                     </Popconfirm>
+                    <Button
+                      v-else
+                      type="text"
+                      danger
+                      class="shrink-0 px-2"
+                      @click="removeTempCategoryItem(item.id)"
+                    >
+                      {{ $t('page.company.btnDelete') }}
+                    </Button>
                   </div>
-                </div>
-
-                <!-- Empty state (khi chưa có item nào) -->
-                <div v-if="categoryItems.length === 0" class="py-6 flex justify-center">
-                  <Empty :description="$t('page.ops.noItems')" />
                 </div>
               </div>
 
@@ -719,7 +770,7 @@ onMounted(async () => {
                 block
                 class="mt-3"
                 :disabled="!formState.maintenance_category_id"
-                @click="showAddItemModal"
+                @click="addCategoryItemRow"
               >
                 + {{ $t('page.ops.btnAddShort') }}
               </Button>
@@ -828,14 +879,6 @@ onMounted(async () => {
             :equipments="equipments"
           />
         </Card>
-
-        <!-- Modal Thêm Hạng Mục Bảo Trì -->
-        <AddMaintenanceItemModal
-          v-model:open="isAddItemModalOpen"
-          :category-id="formState.maintenance_category_id"
-          :user-options="userOptions"
-          @success="handleAddItemSuccess"
-        />
       </Form>
     </Spin>
   </div>
@@ -846,3 +889,4 @@ onMounted(async () => {
   margin-top: 24px !important;
 }
 </style>
+

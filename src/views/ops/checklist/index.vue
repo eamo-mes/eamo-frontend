@@ -9,12 +9,10 @@ import {
   Popconfirm,
   message,
   Spin,
-  Modal,
   Select,
   Space,
   DatePicker,
   Tag,
-  Empty,
 } from 'ant-design-vue';
 import axios from 'axios';
 import { useAccessStore } from '@vben/stores';
@@ -79,19 +77,8 @@ const currentPage = ref(1);
 const pageSize = ref(10);
 const total = ref(0);
 
-
-
-// ECharts Refs
-// (Moved to ChecklistCharts component)
-
-// Judge Modal State
-const isJudgeModalOpen = ref(false);
-const submittingJudge = ref(false);
-const selectedSession = ref<ChecklistSession | null>(null);
-const judgeDetails = ref<any[]>([]);
-
 const showCharts = ref(false);
-const chartStats = ref<any>(null);
+const chartStats = ref<unknown>(null);
 const chartsLoading = ref(false);
 
 async function loadChartData() {
@@ -170,8 +157,9 @@ async function loadSessions(page = currentPage.value, size = pageSize.value) {
     if (showCharts.value) {
       loadChartData();
     }
-  } catch (err: any) {
-    message.error(err?.response?.data?.message || $t('page.ops.loadChecklistListError'));
+  } catch (err: unknown) {
+    const apiError = axios.isAxiosError(err) ? err.response?.data?.message : null;
+    message.error(apiError || $t('page.ops.loadChecklistListError'));
   } finally {
     loading.value = false;
   }
@@ -187,8 +175,6 @@ function handleEquipmentFilter(val: unknown) {
   currentPage.value = 1;
   loadSessions(1);
 }
-
-
 
 function handleSearch() {
   activeSearch.value = searchVal.value;
@@ -206,16 +192,23 @@ function handleReset() {
   loadSessions(1);
 }
 
-function handleTableChange(pagination: any) {
-  currentPage.value = pagination.current;
-  pageSize.value = pagination.pageSize;
-  loadSessions(pagination.current, pagination.pageSize);
+function handleTableChange(pagination: { current?: number; pageSize?: number }) {
+  const current = pagination.current ?? 1;
+  const size = pagination.pageSize ?? 10;
+  currentPage.value = current;
+  pageSize.value = size;
+  loadSessions(current, size);
 }
 
 // With server-side search, just use sessions directly
 const filteredSessions = computed(() => sortBySoftDeleted(sessions.value));
 
 const columns = computed(() => [
+  {
+    title: $t('page.ops.colName'),
+    dataIndex: 'name',
+    key: 'name',
+  },
   {
     title: $t('page.ops.colEquipment'),
     dataIndex: 'equipment_id',
@@ -225,7 +218,7 @@ const columns = computed(() => [
     title: $t('page.ops.colDate'),
     dataIndex: 'session_date',
     key: 'session_date',
-    sorter: (a: any, b: any) => {
+    sorter: (a: ChecklistSession, b: ChecklistSession) => {
       const timeA = a.session_date ? new Date(a.session_date).getTime() : 0;
       const timeB = b.session_date ? new Date(b.session_date).getTime() : 0;
       return timeA - timeB;
@@ -239,7 +232,7 @@ const columns = computed(() => [
   {
     title: $t('page.ops.colActions'),
     key: 'actions',
-    width: 260,
+    width: 200,
     align: 'right' as const,
     fixed: 'right' as const,
   },
@@ -249,7 +242,7 @@ function openAddPage() {
   router.push({ name: 'OpsCheckListDetail' });
 }
 
-function openEditPage(record: any) {
+function openEditPage(record: ChecklistSession) {
   router.push({
     name: 'OpsCheckListDetail',
     query: {
@@ -268,52 +261,11 @@ async function handleDelete(id: string) {
     });
     message.success('Xóa phiên kiểm tra thành công');
     await loadSessions();
-  } catch (err: any) {
-    message.error(err?.response?.data?.message || $t('page.ops.deleteChecklistError'));
+  } catch (err: unknown) {
+    const apiError = axios.isAxiosError(err) ? err.response?.data?.message : null;
+    message.error(apiError || $t('page.ops.deleteChecklistError'));
   } finally {
     loading.value = false;
-  }
-}
-
-function openJudgeModal(record: ChecklistSession) {
-  selectedSession.value = record;
-  judgeDetails.value = record.details?.map((detail) => {
-    const latestLog = getLatestCompletedLog(detail);
-    return {
-      checklist_id: detail.checklist_id,
-      description: detail.description || '',
-      result: latestLog?.result || 'fail',
-    };
-  }) || [];
-  isJudgeModalOpen.value = true;
-}
-
-async function handleJudgeOk() {
-  try {
-    if (!selectedSession.value) return;
-    submittingJudge.value = true;
-
-    const payload = {
-      session_id: selectedSession.value.id,
-      results: judgeDetails.value.map(item => ({
-        checklist_id: item.checklist_id,
-        result: item.result,
-        description: item.description,
-      })),
-      timestamp: selectedSession.value.session_date || undefined,
-    };
-
-    await axios.post(`${API_BASE_URL}/v1/checklist-sessions/judge`, payload, {
-      headers: getAuthHeaders(),
-    });
-
-    message.success('Đánh giá phiên kiểm tra thành công');
-    isJudgeModalOpen.value = false;
-    await loadSessions();
-  } catch (err: any) {
-    message.error(err?.response?.data?.message || $t('page.ops.judgeError'));
-  } finally {
-    submittingJudge.value = false;
   }
 }
 
@@ -327,35 +279,6 @@ function formatDate(dateStr: string | null) {
     return dateStr;
   }
 }
-
-function getLatestCompletedLog(detail: ChecklistDetailItem): ChecklistLog | undefined {
-  return detail.logs
-    ?.filter(log => log.status === 'completed')
-    .sort((left, right) => (left.checked_at ?? '').localeCompare(right.checked_at ?? ''))
-    .at(-1);
-}
-
-function getSessionStatusText(record: ChecklistSession): 'Failed' | 'Passed' | 'Pending' {
-  if (!record.details || record.details.length === 0) return 'Pending';
-
-  let hasFail = false;
-  for (const detail of record.details) {
-    const log = getLatestCompletedLog(detail);
-    if (!log) {
-      return 'Pending';
-    }
-    if (log.result === 'fail') {
-      hasFail = true;
-    }
-  }
-
-  if (hasFail) return 'Failed';
-  return 'Passed';
-}
-
-
-
-// (Charts rendering moved to ChecklistCharts component)
 
 onMounted(() => {
   loadEquipments();
@@ -446,18 +369,24 @@ onMounted(() => {
           @change="handleTableChange"
         >
           <template #bodyCell="{ column, record }">
-            <template v-if="column.key === 'equipment'">
-              <span v-if="record.equipment">
-                {{ record.equipment.name }} ({{ record.equipment.code }})
+            <template v-if="column.key === 'name'">
+              <span class="text-foreground">
+                {{ (record as ChecklistSession).name || '—' }}
               </span>
-              <span v-else-if="record.equipment_id">
-                {{ record.equipment_id }}
+            </template>
+
+            <template v-else-if="column.key === 'equipment'">
+              <span v-if="(record as ChecklistSession).equipment">
+                {{ (record as ChecklistSession).equipment?.name }} ({{ (record as ChecklistSession).equipment?.code }})
+              </span>
+              <span v-else-if="(record as ChecklistSession).equipment_id">
+                {{ (record as ChecklistSession).equipment_id }}
               </span>
               <span v-else class="text-gray-400">—</span>
             </template>
 
             <template v-else-if="column.key === 'session_date'">
-              <span>{{ formatDate(record.session_date) }}</span>
+              <span>{{ formatDate((record as ChecklistSession).session_date) }}</span>
             </template>
 
             <template v-else-if="column.key === 'created_by'">
@@ -471,19 +400,10 @@ onMounted(() => {
             <template v-else-if="column.key === 'actions'">
               <Space>
                 <Button
-                  v-if="getSessionStatusText(record as ChecklistSession) === 'Pending'"
-                  size="small"
-                  :disabled="isSoftDeleted(record as ChecklistSession)"
-                  class="rounded border-green-500 text-green-600 hover:border-green-600 hover:text-green-700"
-                  @click="openJudgeModal(record as ChecklistSession)"
-                >
-                  {{ $t('page.ops.btnJudge') }}
-                </Button>
-                <Button
                   size="small"
                   :disabled="isSoftDeleted(record as ChecklistSession)"
                   class="rounded hover:border-primary hover:text-primary"
-                  @click="openEditPage(record)"
+                  @click="openEditPage(record as ChecklistSession)"
                 >
                   {{ $t('page.company.btnEdit') }}
                 </Button>
@@ -491,7 +411,7 @@ onMounted(() => {
                   :title="$t('page.ops.deleteConfirm')"
                   :ok-text="$t('page.ops.btnConfirm')"
                   :cancel-text="$t('page.ops.btnCancel')"
-                  @confirm="handleDelete(record.id)"
+                  @confirm="handleDelete((record as ChecklistSession).id)"
                 >
                   <Button
                     size="small"
@@ -508,29 +428,6 @@ onMounted(() => {
         </Table>
       </Spin>
     </div>
-
-    <!-- Judge Modal -->
-    <Modal
-      v-model:open="isJudgeModalOpen"
-      :title="$t('page.ops.judgeModalTitle')"
-      :confirm-loading="submittingJudge"
-      :ok-text="$t('page.ops.btnConfirm')"
-      :cancel-text="$t('page.ops.btnCancel')"
-      width="600px"
-      @ok="handleJudgeOk"
-    >
-      <div v-if="judgeDetails.length === 0" class="py-6 flex justify-center">
-        <Empty :description="$t('page.ops.noItemsToJudge')" />
-      </div>
-      <div v-else class="space-y-4 py-4">
-        <div v-for="(item, index) in judgeDetails" :key="index" class="flex items-center justify-between p-2 bg-gray-50 rounded border border-gray-100">
-          <span class="font-medium text-gray-700">{{ item.description || $t('page.ops.judgeItemIndex', { index: index + 1 }) }}</span>
-          <Select v-model:value="item.result" style="width: 140px">
-            <Select.Option value="pass">{{ $t('page.ops.resultPass') }}</Select.Option>
-            <Select.Option value="fail">{{ $t('page.ops.resultFail') }}</Select.Option>
-          </Select>
-        </div>
-      </div>
-    </Modal>
   </div>
 </template>
+

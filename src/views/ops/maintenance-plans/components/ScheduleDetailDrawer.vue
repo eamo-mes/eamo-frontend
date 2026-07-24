@@ -11,8 +11,8 @@ const equipmentBannerInfo = computed(() => {
   const name = activeSchedule.value.equipment_name || eq?.name || '';
 
   let catName = activeSchedule.value.category_name || '';
-  if (!catName && activeSchedule.value.maintenance_category_id) {
-    const cat = props.categories.find((c) => c.id === activeSchedule.value?.maintenance_category_id);
+  if (!catName && activeSchedule.value.maintenance_item_id) {
+    const cat = props.categories.find((c) => c.id === activeSchedule.value?.maintenance_item_id);
     if (cat?.name) catName = cat.name;
   }
 
@@ -315,7 +315,7 @@ function goToPlan(): void {
     <Spin :spinning="loadingLog">
         <div v-if="activeSchedule" class="space-y-6 px-1 pb-4">
         <!-- Header Banner Card (Matching ChecklistJudgeDrawer layout) -->
-        <div v-if="equipmentBannerInfo" class="p-3 bg-muted/40 rounded-lg border border-border flex justify-between items-center">
+        <div v-if="equipmentBannerInfo" class="p-3 bg-muted/40 rounded-lg border border-border flex justify-between items-center" style="background-color: white !important;">
           <div>
             <div class="font-semibold text-sm text-foreground">
               {{ equipmentBannerInfo.title }}
