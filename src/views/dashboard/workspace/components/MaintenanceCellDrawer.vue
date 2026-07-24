@@ -659,20 +659,25 @@ function goToPlanDetail(): void {
               </Button>
             </div>
 
-            <div class="flex items-center justify-between pt-4 border-t border-border mt-4">
-              <div class="flex items-center gap-2">
-                <Button @click="activeMode = 'list'">{{ $t('page.ops.btnCancel') || 'Hủy' }}</Button>
-                <Button v-if="selectedPlanId" type="primary" @click="goToPlanDetail">
-                  {{ $t('page.ops.btnGoToPlan') || 'Đi tới Kế hoạch' }}
-                </Button>
-              </div>
-              <Button type="primary" :loading="submitting" @click="handleSavePlan">
-                {{ $t('page.ops.btnSave') || 'Lưu' }}
-              </Button>
-            </div>
           </Form>
         </div>
       </div>
     </Spin>
+
+    <template #footer>
+      <div class="flex items-center justify-between gap-2 py-1">
+        <div class="flex items-center gap-2">
+          <Button @click="activeMode === 'list' ? (visible = false) : (activeMode = 'list')">
+            {{ $t('page.ops.btnCancel') || 'Hủy' }}
+          </Button>
+          <Button v-if="selectedPlanId" type="primary" @click="goToPlanDetail">
+            {{ $t('page.ops.btnGoToPlan') || 'Đi tới Kế hoạch' }}
+          </Button>
+        </div>
+        <Button v-if="activeMode !== 'list'" type="primary" :loading="submitting" @click="handleSavePlan">
+          {{ $t('page.ops.btnSave') || 'Lưu' }}
+        </Button>
+      </div>
+    </template>
   </Drawer>
 </template>
