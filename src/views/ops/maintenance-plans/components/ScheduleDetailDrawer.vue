@@ -449,7 +449,6 @@ function goToPlan(): void {
           </Button>
         </div>
         <Button
-          v-if="!props.readOnly"
           type="primary"
           :loading="submitting"
           @click="handleSaveDrawer"
