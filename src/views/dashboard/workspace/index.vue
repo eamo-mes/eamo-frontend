@@ -6,6 +6,7 @@ import dayjs from 'dayjs';
 import { requestClient } from '#/api/request';
 import { listUsersApi } from '#/api/core/users';
 import { useUserStore } from '@vben/stores';
+import { Eye, EyeOff } from '@vben/icons';
 import { $t } from '#/locales';
 import ChecklistCalendar from './components/ChecklistCalendar.vue';
 import VisualMaintenanceCalendar from './components/VisualMaintenanceCalendar.vue';
@@ -33,6 +34,7 @@ const myErrorLogs = ref<ErrorLogItem[]>([]);
 const loadingSchedules = ref(false);
 const loadingErrorLogs = ref(false);
 const activeTab = ref<'maintenance' | 'checklist'>('maintenance');
+const showChartWidget = ref(false);
 const calendarRange = ref<{ start_date: string; end_date: string } | null>(null);
 const syncingId = ref<string | null>(null);
 
@@ -241,7 +243,7 @@ onMounted(() => {
     <!-- Top Completion Analytics Widget (Above Action Bar) -->
 
     <!-- Workspace Navigation Tab Bar (Pill Control) -->
-    <div class="w-full flex items-center justify-start gap-3">
+    <div class="w-full flex items-center justify-between gap-3">
       <!-- Segmented Pill Tab Bar Container (Equal Width 2-Tab Layout) -->
       <div class="grid grid-cols-2 p-1 bg-card border border-border rounded-xl shadow-sm gap-1 min-w-[320px] md:min-w-[400px]">
         <!-- Tab 1: Maintenance Plan -->
@@ -278,9 +280,22 @@ onMounted(() => {
           <span class="truncate">{{ $t('page.ops.checklistCalendarTitle') }}</span>
         </button>
       </div>
+
+      <!-- Toggle Chart Widget Button (Default Closed) -->
+      <Button
+        type="default"
+        class="flex items-center gap-2 font-medium rounded-xl border-border bg-card shadow-2xs h-10 px-3.5"
+        @click="showChartWidget = !showChartWidget"
+      >
+        <span class="text-sm text-foreground">
+          {{ showChartWidget ? ($t('page.ops.hideChartWidget')) : ($t('page.ops.showChartWidget')) }}
+        </span>
+      </Button>
     </div>
 
+    <!-- Analytics Chart Widget (Default Closed, Toggleable) -->
     <WorkspaceAnalyticsWidget
+      v-if="showChartWidget"
       :active-tab="activeTab"
       :schedules="allSchedules"
     />

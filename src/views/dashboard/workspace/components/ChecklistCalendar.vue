@@ -6,16 +6,11 @@ import { requestClient } from '#/api/request';
 import { listUsersApi } from '#/api/core/users';
 import { $t } from '#/locales';
 import type { EquipmentOption, ChecklistSession, ChecklistDetailItem, ChecklistLog, UserOption } from '../types';
-import ChecklistCellDrawer from './ChecklistCellDrawer.vue';
+import WorkspaceChecklistDrawer from './WorkspaceChecklistDrawer.vue';
 import ChecklistJudgeDrawer from '../../../ops/checklist/components/ChecklistJudgeDrawer.vue';
 
 const dateDetailVisible = ref(false);
 const selectedDate = ref<Dayjs | null>(null);
-
-function handleCellClick(date: Dayjs): void {
-  selectedDate.value = date;
-  dateDetailVisible.value = true;
-}
 
 function openCreateDrawer(date?: Dayjs): void {
   selectedDate.value = date || dayjs();
@@ -38,8 +33,8 @@ const emit = defineEmits<{
 const loading = ref(false);
 const filterFromCurrentWeek = ref(false);
 const calendarContainerRef = ref<HTMLDivElement | null>(null);
-const sessions = ref<ChecklistSession[]>([]);
 const calendarValue = ref<Dayjs>(dayjs());
+const sessions = ref<ChecklistSession[]>([]);
 
 const isModalOpen = ref(false);
 const selectedSession = ref<ChecklistSession | null>(null);
@@ -222,14 +217,6 @@ function getSessionsForDay(date: Dayjs): ChecklistSession[] {
   return [...dailySessions.values()];
 }
 
-function getCellCompletionStats(date: Dayjs) {
-  const daySessions = getSessionsForDay(date);
-  if (daySessions.length === 0) return null;
-  const completed = daySessions.filter((s) => getSessionStatus(s) === 'success').length;
-  const percent = Math.round((completed / daySessions.length) * 100);
-  return { completed, total: daySessions.length, percent };
-}
-
 function openJudgeModal(session: ChecklistSession): void {
   selectedSession.value = session;
   isModalOpen.value = true;
@@ -267,36 +254,33 @@ onMounted(() => {
         @select="onSelect"
       >
         <template #headerRender="{ value, type, onChange, onTypeChange }">
-          <div class="flex items-center justify-between pb-4">
+          <div class="flex items-center justify-between pb-3 border-b border-border mb-3">
             <div class="flex items-center gap-4">
               <h3 class="font-semibold text-foreground text-base m-0">
                 {{ value.format('MMMM YYYY') }}
               </h3>
-              <div class="flex items-center gap-1.5 h-6">
-                <Switch v-model:checked="filterFromCurrentWeek" size="small" />
+              <div class="flex items-center gap-2">
+                <Switch v-model:checked="filterFromCurrentWeek" />
                 <span class="text-xs font-medium text-foreground">{{ $t('page.ops.filterFromCurrentWeek') }}</span>
               </div>
             </div>
 
-            <div class="flex items-center gap-2">
+            <div class="flex items-center gap-2.5">
               <Select
-                size="small"
                 :value="value.year()"
                 :options="getYearOptions(value)"
-                class="w-24"
+                class="w-28"
                 @change="(y) => onChange(value.year(y as number))"
               />
 
               <Select
-                size="small"
                 :value="value.month()"
                 :options="monthOptions"
-                class="w-20"
+                class="w-24"
                 @change="(m) => onChange(value.month(m as number))"
               />
 
               <Radio.Group
-                size="small"
                 :value="type"
                 @change="(e) => onTypeChange(e.target.value)"
               >
@@ -306,11 +290,10 @@ onMounted(() => {
 
               <Button
                 type="primary"
-                size="small"
-                class="flex items-center gap-1 font-medium bg-emerald-600 hover:bg-emerald-700 border-emerald-600 shadow-xs"
+                class="bg-[#5c3e35] hover:bg-[#4b332b] border-[#5c3e35] rounded-md font-medium text-white px-3.5 flex items-center"
                 @click="openCreateDrawer()"
               >
-                + {{ $t('page.ops.checklistDrawer.btnCreateSession') }}
+                + {{ $t('page.ops.checklistDrawer.btnCreateSession') || 'Tạo phiên kiểm tra mới' }}
               </Button>
             </div>
           </div>
@@ -342,8 +325,8 @@ onMounted(() => {
       </Calendar>
     </Spin>
 
-    <!-- Checklist Cell Drawer (Manage eamo_checklist_sessions & eamo_checklist_details) -->
-    <ChecklistCellDrawer
+    <!-- Workspace Checklist Drawer (Manage eamo_checklist_sessions & eamo_checklist_details) -->
+    <WorkspaceChecklistDrawer
       v-model:open="dateDetailVisible"
       :date="selectedDate"
       :checklist-sessions="selectedDate ? getSessionsForDay(selectedDate) : []"

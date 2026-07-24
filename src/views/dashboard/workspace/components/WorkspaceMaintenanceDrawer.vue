@@ -2,7 +2,7 @@
 import { ref, computed, watch } from 'vue';
 import { useRouter } from 'vue-router';
 import {
-  Drawer, Tag, Button, Select, Form, FormItem, Input, InputNumber, Popconfirm, Spin, Divider, Empty, message,
+  Drawer, Tag, Button, Select, Form, FormItem, Input, InputNumber, Popconfirm, Spin, Divider, Empty, DatePicker, Table, message,
 } from 'ant-design-vue';
 import dayjs, { type Dayjs } from 'dayjs';
 import { $t } from '#/locales';
@@ -20,6 +20,7 @@ import {
   type MaintenanceItemOption,
   type ScheduleRow,
   type ScheduleUser,
+  type MaintenancePlanRawSchedule,
   type SaveScheduleItemPayload,
 } from '#/api/ops/maintenance-plans';
 import type { UserOption, UserSelectOption } from '../types';
@@ -125,7 +126,7 @@ const equipmentSelectOptions = computed(() =>
 
 const categorySelectOptions = computed(() => {
   const source = props.categories.length > 0 ? props.categories : localCategories.value;
-  return source.map((c) => ({
+  return source.map((c: MaintenanceCategoryOption) => ({
     label: c.name,
     value: c.id,
   }));
@@ -135,7 +136,7 @@ const selectedCategoryName = computed(() => {
   const catId = planForm.value.maintenance_category_id;
   if (!catId) return '';
   const source = props.categories.length > 0 ? props.categories : localCategories.value;
-  const found = source.find((c) => c.id === catId);
+  const found = source.find((c: MaintenanceCategoryOption) => c.id === catId);
   return found ? found.name : '';
 });
 
@@ -150,7 +151,7 @@ const appliedItemsCardTitle = computed(() => {
 const categoryItems = computed(() => {
   const catId = planForm.value.maintenance_category_id;
   if (!catId) return [];
-  return allMaintenanceItems.value.filter((item) => item.maintenance_category_id === catId);
+  return allMaintenanceItems.value.filter((item: MaintenanceItemOption) => item.maintenance_category_id === catId);
 });
 
 const userSelectOptions = computed(() =>
@@ -234,6 +235,47 @@ const dailyPlanNodes = computed<DrawerPlanNode[]>(() => {
   return Array.from(planMap.values());
 });
 
+const planTableColumns = computed(() => [
+  {
+    title: $t('page.ops.colPlanCode') || 'Mã kế hoạch',
+    dataIndex: 'plan_code',
+    key: 'plan_code',
+    width: 130,
+  },
+  {
+    title: $t('page.ops.colResult') || 'Trạng thái',
+    dataIndex: 'result',
+    key: 'result',
+    width: 130,
+    align: 'center' as const,
+  },
+  {
+    title: $t('page.ops.colMaintenanceType') || 'Loại bảo trì',
+    dataIndex: 'maintenance_type',
+    key: 'maintenance_type',
+    width: 150,
+    align: 'center' as const,
+  },
+  {
+    title: $t('page.ops.colEquipment') || 'Thiết bị',
+    dataIndex: 'equipment_code',
+    key: 'equipment',
+    width: 260,
+  },
+  {
+    title: $t('page.ops.maintenanceCategories') || 'Danh mục',
+    dataIndex: 'category_name',
+    key: 'category_name',
+    width: 200,
+  },
+  {
+    title: $t('page.ops.colActions') || 'Thao tác',
+    key: 'actions',
+    width: 110,
+    align: 'center' as const,
+  },
+]);
+
 function getResultTagColor(result?: string | null): string {
   if (result === 'Completed') return 'success';
   return 'processing';
@@ -250,18 +292,10 @@ function generateKey(): string {
   return Math.random().toString(36).slice(2) + Date.now().toString(36);
 }
 
-function getUserNames(userIds: string[] = []): string[] {
-  if (!userIds || userIds.length === 0) return [];
-  return userIds.map((id) => {
-    const found = userSelectOptions.value.find((u) => u.value === id);
-    return found ? found.label : id;
-  });
-}
-
 function setItemUserIds(itemId: string, userIds: string[]): void {
-  const matchingSchedules = planForm.value.schedules.filter((s) => s.maintenance_item_id === itemId);
+  const matchingSchedules = planForm.value.schedules.filter((s: ScheduleRow) => s.maintenance_item_id === itemId);
   if (matchingSchedules.length > 0) {
-    matchingSchedules.forEach((s) => {
+    matchingSchedules.forEach((s: ScheduleRow) => {
       s.user_ids = userIds;
     });
   } else {
@@ -283,10 +317,10 @@ function handleCategoryChange(): void {
     return;
   }
 
-  const catItems = allMaintenanceItems.value.filter(i => i.maintenance_category_id === catId);
+  const catItems = allMaintenanceItems.value.filter((i: MaintenanceItemOption) => i.maintenance_category_id === catId);
   const newSchedules: ScheduleRow[] = [];
   for (const item of catItems) {
-    const existing = planForm.value.schedules.find(s => s.maintenance_item_id === item.id);
+    const existing = planForm.value.schedules.find((s: ScheduleRow) => s.maintenance_item_id === item.id);
     if (existing) {
       newSchedules.push(existing);
     } else {
@@ -320,7 +354,7 @@ function addCategoryItemRow(): void {
 }
 
 function removeTempCategoryItem(tempId: string): void {
-  allMaintenanceItems.value = allMaintenanceItems.value.filter((i) => i.id !== tempId);
+  allMaintenanceItems.value = allMaintenanceItems.value.filter((i: MaintenanceItemOption) => i.id !== tempId);
 }
 
 async function saveCategoryItem(item: MaintenanceItemOption): Promise<void> {
@@ -341,7 +375,7 @@ async function saveCategoryItem(item: MaintenanceItemOption): Promise<void> {
         maintenance_category_id: catId,
         user_ids: item.user_ids ?? [],
       });
-      const idx = allMaintenanceItems.value.findIndex((i) => i.id === item.id);
+      const idx = allMaintenanceItems.value.findIndex((i: MaintenanceItemOption) => i.id === item.id);
       if (idx !== -1) {
         allMaintenanceItems.value[idx] = created;
       }
@@ -368,8 +402,8 @@ async function deleteCategoryItem(id: string): Promise<void> {
   deletingItems.value[id] = true;
   try {
     await deleteMaintenanceItemApi(id);
-    allMaintenanceItems.value = allMaintenanceItems.value.filter((i) => i.id !== id);
-    planForm.value.schedules = planForm.value.schedules.filter((s) => s.maintenance_item_id !== id);
+    allMaintenanceItems.value = allMaintenanceItems.value.filter((i: MaintenanceItemOption) => i.id !== id);
+    planForm.value.schedules = planForm.value.schedules.filter((s: ScheduleRow) => s.maintenance_item_id !== id);
     message.success($t('page.ops.deleteItemSuccess') || 'Xóa hạng mục thành công');
   } catch (err: unknown) {
     const apiError = (err as { response?: { data?: { message?: string } } })?.response?.data?.message;
@@ -432,9 +466,9 @@ async function openEditForm(planId: string): Promise<void> {
         occurrences: record.occurrences ?? undefined,
         notes: record.notes ?? '',
         schedules: (record.maintenance_schedule ?? [])
-          .filter((s) => s.maintenance_item_id || s.item_name || s.maintenance_item?.name)
-          .map((s) => {
-            const item = allMaintenanceItems.value.find((i) => i.id === s.maintenance_item_id);
+          .filter((s: MaintenancePlanRawSchedule) => s.maintenance_item_id || s.item_name || s.maintenance_item?.name)
+          .map((s: MaintenancePlanRawSchedule) => {
+            const item = allMaintenanceItems.value.find((i: MaintenanceItemOption) => i.id === s.maintenance_item_id);
             const textName = s.maintenance_item?.name || item?.name || s.item_name || '';
             return {
               id: s.id,
@@ -478,7 +512,7 @@ async function handleSavePlan(): Promise<void> {
             maintenance_category_id: planForm.value.maintenance_category_id!,
             user_ids: item.user_ids ?? [],
           });
-          const idx = allMaintenanceItems.value.findIndex((i) => i.id === item.id);
+          const idx = allMaintenanceItems.value.findIndex((i: MaintenanceItemOption) => i.id === item.id);
           if (idx !== -1) {
             allMaintenanceItems.value[idx] = created;
           }
@@ -497,7 +531,7 @@ async function handleSavePlan(): Promise<void> {
       if (textName) {
         const catId = planForm.value.maintenance_category_id || '';
         const existing = allMaintenanceItems.value.find(
-          (mi) => mi.name.toLowerCase() === textName.toLowerCase() && (!catId || mi.maintenance_category_id === catId)
+          (mi: MaintenanceItemOption) => mi.name.toLowerCase() === textName.toLowerCase() && (!catId || mi.maintenance_category_id === catId)
         );
         if (existing) {
           itemId = existing.id;
@@ -614,17 +648,21 @@ function goToPlanDetail(): void {
       <div v-if="date" class="space-y-5 px-1">
         <div v-if="activeMode === 'list'" class="space-y-4">
           <!-- Last Maintenance Events -->
-          <div v-if="lastMaintenances.length > 0" class="space-y-1.5 mb-3">
-            <div class="text-[10px] font-bold text-foreground uppercase tracking-wider">
+          <div v-if="lastMaintenances.length > 0" class="space-y-2 mb-4">
+            <div class="text-xs font-bold text-foreground uppercase tracking-wider">
               {{ $t('page.ops.lastMaintenance') || 'Bảo trì lần cuối' }}
             </div>
-            <div
-              v-for="lm in lastMaintenances"
-              :key="lm.equipmentId + '-' + lm.datetime"
-              class="p-3 bg-teal-50 dark:bg-teal-950/30 border border-teal-200 dark:border-teal-800 rounded-lg flex items-center justify-between"
-            >
-              <span class="font-medium text-teal-800 dark:text-teal-200 text-sm">{{ lm.label }}</span>
-              <Tag color="teal">{{ dayjs(lm.datetime).format('HH:mm DD/MM/YYYY') }}</Tag>
+            <div class="space-y-2">
+              <div
+                v-for="lm in lastMaintenances"
+                :key="lm.equipmentId + '-' + lm.datetime"
+                class="p-3.5 bg-teal-50/60 dark:bg-teal-950/30 border border-teal-200 dark:border-teal-800 rounded-xl flex items-center justify-between shadow-2xs"
+              >
+                <span class="font-semibold text-teal-900 dark:text-teal-200 text-sm">{{ lm.label }}</span>
+                <Tag color="teal" class="m-0 font-medium px-2.5 py-0.5 rounded-md">
+                  {{ dayjs(lm.datetime).format('HH:mm DD/MM/YYYY') }}
+                </Tag>
+              </div>
             </div>
             <Divider class="my-3" />
           </div>
@@ -635,45 +673,79 @@ function goToPlanDetail(): void {
               {{ $t('page.ops.schedulesTitle') || 'Lịch trình bảo trì' }}
             </div>
 
-            <div v-if="dailyPlanNodes.length > 0" class="space-y-2.5">
-              <div
-                v-for="planNode in dailyPlanNodes"
-                :key="planNode.key"
-                class="p-3.5 bg-card border border-border rounded-xl hover:border-primary/50 transition-all flex items-center justify-between gap-3 shadow-2xs"
+            <div v-if="dailyPlanNodes.length > 0" class="bg-card overflow-hidden">
+              <Table
+                :columns="planTableColumns"
+                :data-source="dailyPlanNodes"
+                row-key="key"
+                size="middle"
+                :pagination="false"
+                :bordered="false"
+                :scroll="{ x: 'max-content' }"
+                class="w-full vben-thick-table vben-noborder-table"
               >
-                <div class="min-w-0 flex-1">
-                  <div class="text-foreground text-sm flex items-center gap-2">
-                    <Tag :color="getResultTagColor(planNode.result)" class="m-0 font-medium text-xs">
-                      {{ getResultLabel(planNode.result) }}
-                    </Tag>
-                    <span class="font-semibold truncate">{{ planNode.plan_code }}</span>
-                  </div>
-                  <div class="text-xs text-muted-foreground flex items-center gap-1.5 mt-1 ml-0.5 truncate">
-                    <span class="font-medium text-foreground/80">{{ planNode.equipment_code }}</span>
-                    <span v-if="planNode.category_name" class="text-muted-foreground/60">· {{ planNode.category_name }}</span>
-                    <span v-if="planNode.maintenance_type" class="text-muted-foreground/60">· {{ planNode.maintenance_type }}</span>
-                  </div>
-                </div>
+                <template #bodyCell="{ column, record }">
+                  <template v-if="column.key === 'plan_code'">
+                    <span class="font-medium text-foreground text-sm">
+                      {{ (record as DrawerPlanNode).plan_code }}
+                    </span>
+                  </template>
 
-                <div class="flex items-center gap-2 shrink-0">
-                  <Button
-                    size="small"
-                    type="link"
-                    class="px-0 font-medium"
-                    @click="openEditForm(planNode.plan_id)"
-                  >
-                    {{ $t('page.ops.checklistDrawer.btnDetail') || 'Chi tiết' }} &rarr;
-                  </Button>
-                </div>
-              </div>
+                  <template v-else-if="column.key === 'result'">
+                    <Tag :color="getResultTagColor((record as DrawerPlanNode).result)" class="m-0 font-medium text-xs rounded-md">
+                      {{ getResultLabel((record as DrawerPlanNode).result) }}
+                    </Tag>
+                  </template>
+
+                  <template v-else-if="column.key === 'maintenance_type'">
+                    <Tag v-if="(record as DrawerPlanNode).maintenance_type" color="blue" class="m-0 font-medium text-xs rounded-md">
+                      {{ (record as DrawerPlanNode).maintenance_type }}
+                    </Tag>
+                    <span v-else class="text-muted-foreground">—</span>
+                  </template>
+
+                  <template v-else-if="column.key === 'equipment'">
+                    <span class="text-sm text-foreground font-normal">
+                      <template v-if="(record as DrawerPlanNode).equipment_name">
+                        {{ (record as DrawerPlanNode).equipment_name }} ({{ (record as DrawerPlanNode).equipment_code }})
+                      </template>
+                      <template v-else-if="(record as DrawerPlanNode).equipment_code">
+                        {{ (record as DrawerPlanNode).equipment_code }}
+                      </template>
+                      <template v-else>—</template>
+                    </span>
+                  </template>
+
+                  <template v-else-if="column.key === 'category_name'">
+                    <span class="text-sm text-foreground/90 font-normal">
+                      {{ (record as DrawerPlanNode).category_name || '—' }}
+                    </span>
+                  </template>
+
+                  <template v-else-if="column.key === 'actions'">
+                    <Button
+                      size="small"
+                      class="rounded border border-border hover:border-primary hover:text-primary font-medium px-3 shadow-2xs"
+                      @click="openEditForm((record as DrawerPlanNode).plan_id)"
+                    >
+                      {{ $t('page.ops.checklistDrawer.btnDetail') || 'Chi tiết' }}
+                    </Button>
+                  </template>
+                </template>
+              </Table>
             </div>
 
-            <div v-else class="py-10 flex justify-center">
+            <div v-else class="py-10 flex justify-center border border-dashed border-border rounded-xl bg-muted/20">
               <Empty :description="$t('page.ops.noSchedules') || 'Chưa có lịch bảo trì cho ngày này.'" />
             </div>
 
-            <Button type="dashed" block class="mt-3" @click="openCreateForm">
-              + {{ $t('page.ops.btnAddPlanShort') || 'Tạo kế hoạch bảo trì mới' }}
+            <Button
+              type="primary"
+              block
+              class="mt-4 bg-[#5c3e35] hover:bg-[#4b332b] border-[#5c3e35] rounded-md text-white font-medium h-10 text-sm"
+              @click="openCreateForm"
+            >
+              {{ $t('page.ops.btnAddPlan')}}
             </Button>
           </div>
         </div>
@@ -1008,6 +1080,15 @@ function goToPlanDetail(): void {
 </template>
 
 <style scoped>
+.vben-thick-table :deep(.ant-table-cell) {
+  padding-top: 14px !important;
+  padding-bottom: 14px !important;
+}
+.vben-noborder-table :deep(.ant-table),
+.vben-noborder-table :deep(.ant-table-container),
+.vben-noborder-table :deep(.ant-table-content) {
+  border: none !important;
+}
 .vben-custom-scrollbar::-webkit-scrollbar {
   width: 6px;
   height: 6px;

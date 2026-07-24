@@ -143,10 +143,13 @@ const chartData = computed(() => {
     todaySubtext: `${dayPrefix} ${now.format('D')}`,
   };
 });
-
 async function updateCharts(): Promise<void> {
+  loading.value = true;
   await nextTick();
-  if (!lineChartRef.value || !donutChartRef.value) return;
+  if (!lineChartRef.value || !donutChartRef.value) {
+    loading.value = false;
+    return;
+  }
 
   const data = chartData.value;
   const dayText = $t('page.ops.todayCompletionTitle') || 'Ngày';
@@ -229,18 +232,31 @@ async function updateCharts(): Promise<void> {
 
   // 2. Donut Pie Chart following Vben & Rule 6 Standard Radius (['55%', '78%'])
   renderDonutChart({
+    color: ['#1890ff', '#cbd5e1'],
     textStyle: {
       fontFamily: 'system-ui, -apple-system, sans-serif',
+      color: '#4b5563',
     },
     tooltip: {
       trigger: 'item',
       formatter: '{b}: {c}%',
+    },
+    legend: {
+      show: true,
+      bottom: '0',
+      left: 'center',
+      icon: 'circle',
+      textStyle: {
+        color: '#64748b',
+        fontSize: 11,
+      },
     },
     series: [
       {
         name: completedText,
         type: 'pie',
         radius: ['55%', '78%'],
+        center: ['50%', '42%'],
         avoidLabelOverlap: false,
         itemStyle: {
           borderRadius: 8,
@@ -253,14 +269,15 @@ async function updateCharts(): Promise<void> {
           formatter: `{val|${data.todayRate}%}\n{sub|${data.todaySubtext}}`,
           rich: {
             val: {
-              fontSize: 22,
+              fontSize: 26,
               fontWeight: 'bold',
-              color: '#1890ff',
-              lineHeight: 28,
+              color: '#111827',
+              lineHeight: 32,
             },
             sub: {
-              fontSize: 11,
+              fontSize: 12,
               color: '#64748b',
+              fontWeight: '500',
             },
           },
         },
@@ -282,6 +299,8 @@ async function updateCharts(): Promise<void> {
       },
     ],
   });
+
+  loading.value = false;
 }
 
 watch(
@@ -322,7 +341,7 @@ onMounted(() => {
           <div class="text-xs font-bold text-foreground uppercase tracking-wider mb-1">
             {{ $t('page.ops.dailyCompletionChartTitle') || 'BIỂU ĐỒ HOÀN THÀNH THEO NGÀY (%)' }}
           </div>
-          <EchartsUI ref="lineChartRef" height="200px" />
+          <EchartsUI ref="lineChartRef" height="280px" />
         </div>
 
         <!-- Right 1 col: Donut Pie Chart -->
@@ -330,7 +349,7 @@ onMounted(() => {
           <div class="text-xs font-bold text-foreground uppercase tracking-wider mb-1 text-center">
             {{ chartData.todayLabel }}
           </div>
-          <EchartsUI ref="donutChartRef" height="200px" />
+          <EchartsUI ref="donutChartRef" height="280px" />
         </div>
       </div>
     </Spin>

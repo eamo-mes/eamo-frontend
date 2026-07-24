@@ -10,7 +10,7 @@ import type {
   MaintenanceItemOption,
 } from '../types';
 import ScheduleDetailDrawer from '#/views/ops/maintenance-plans/components/ScheduleDetailDrawer.vue';
-import MaintenanceCellDrawer from './MaintenanceCellDrawer.vue';
+import WorkspaceMaintenanceDrawer from './WorkspaceMaintenanceDrawer.vue';
 
 interface UserSelectOption {
   label: string;
@@ -69,11 +69,6 @@ const selectedDate = ref<Dayjs | null>(null);
 
 const drawerVisible = ref(false);
 const selectedSchedule = ref<ScheduleRow | null>(null);
-
-function handleCellClick(date: Dayjs): void {
-  selectedDate.value = date;
-  dateDetailVisible.value = true;
-}
 
 function openCreateDrawer(date?: Dayjs): void {
   selectedDate.value = date || dayjs();
@@ -224,14 +219,6 @@ function getDailyPlanNodes(date: Dayjs): DailyPlanNode[] {
   return Array.from(planMap.values());
 }
 
-function getCellCompletionStats(date: Dayjs) {
-  const daySchedules = getSchedulesForDay(date);
-  if (daySchedules.length === 0) return null;
-  const completed = daySchedules.filter((s) => s.result === 'Completed').length;
-  const percent = Math.round((completed / daySchedules.length) * 100);
-  return { completed, total: daySchedules.length, percent };
-}
-
 function getScheduleClass(result: string | undefined | null): string {
   switch (result) {
     case 'Completed':
@@ -335,36 +322,33 @@ function onSelect(date: Dayjs | string): void {
         @select="onSelect"
       >
         <template #headerRender="{ value, type, onChange, onTypeChange }">
-          <div class="flex items-center justify-between pb-4">
+          <div class="flex items-center justify-between pb-3 border-b border-border mb-3">
             <div class="flex items-center gap-4">
               <h3 class="font-semibold text-foreground text-base m-0">
                 {{ value.format('MMMM YYYY') }}
               </h3>
-              <div class="flex items-center gap-1.5 h-6">
-                <Switch v-model:checked="filterFromCurrentWeek" size="small" />
+              <div class="flex items-center gap-2">
+                <Switch v-model:checked="filterFromCurrentWeek" />
                 <span class="text-xs font-medium text-foreground">{{ $t('page.ops.filterFromCurrentWeek') }}</span>
               </div>
             </div>
 
-            <div class="flex items-center gap-2">
+            <div class="flex items-center gap-2.5">
               <Select
-                size="small"
                 :value="value.year()"
                 :options="getYearOptions(value)"
-                class="w-24"
+                class="w-28"
                 @change="(y) => onChange(value.year(y as number))"
               />
 
               <Select
-                size="small"
                 :value="value.month()"
                 :options="monthOptions"
-                class="w-20"
+                class="w-24"
                 @change="(m) => onChange(value.month(m as number))"
               />
 
               <Radio.Group
-                size="small"
                 :value="type"
                 @change="(e) => onTypeChange(e.target.value)"
               >
@@ -374,11 +358,10 @@ function onSelect(date: Dayjs | string): void {
 
               <Button
                 type="primary"
-                size="small"
-                class="flex items-center gap-1 font-medium shadow-xs"
+                class="bg-[#5c3e35] hover:bg-[#4b332b] border-[#5c3e35] rounded-md font-medium text-white px-3.5 flex items-center"
                 @click="openCreateDrawer()"
               >
-                + {{ $t('page.ops.btnAddPlanShort') }}
+                {{ $t('page.ops.btnAddPlanShort') || 'Add Maintenance Plan' }}
               </Button>
             </div>
           </div>
@@ -424,8 +407,8 @@ function onSelect(date: Dayjs | string): void {
       @update:schedules="handleUpdateSchedules"
     />
 
-    <!-- Maintenance Cell Drawer -->
-    <MaintenanceCellDrawer
+    <!-- Workspace Maintenance Drawer -->
+    <WorkspaceMaintenanceDrawer
       v-model:open="dateDetailVisible"
       :date="selectedDate"
       :schedules="selectedDate ? getSchedulesForDay(selectedDate) : []"

@@ -3,9 +3,9 @@ import { ref, computed, watch } from 'vue';
 import { useRouter } from 'vue-router';
 import {
   Drawer, Tag, Button, Empty, Select, Input, Form, FormItem,
-  Popconfirm, Spin, message, InputNumber,
+  Popconfirm, Spin, message, InputNumber, DatePicker, Table,
 } from 'ant-design-vue';
-import type { Dayjs } from 'dayjs';
+import dayjs, { type Dayjs } from 'dayjs';
 import { $t } from '#/locales';
 import {
   createChecklistSessionApi,
@@ -85,6 +85,7 @@ const sessionForm = ref({
   id: undefined as string | undefined,
   name: '',
   equipment_id: undefined as string | undefined,
+  session_date: '' as string,
   user_ids: [] as string[],
   cycle_type: 'daily' as string,
   cycle_interval: 1 as number,
@@ -107,11 +108,47 @@ function getSessionStatusTag(session: ChecklistSession) {
     : { color: 'red', label: $t('page.ops.statusFailed') };
 }
 
+const sessionTableColumns = computed(() => [
+  {
+    title: $t('page.ops.checklistDrawer.fieldName') || 'Tên phiên kiểm tra',
+    dataIndex: 'name',
+    key: 'name',
+    width: 200,
+  },
+  {
+    title: $t('page.ops.colResult') || 'Trạng thái',
+    dataIndex: 'status',
+    key: 'status',
+    width: 130,
+    align: 'center' as const,
+  },
+  {
+    title: $t('page.ops.colEquipment') || 'Thiết bị',
+    dataIndex: 'equipment',
+    key: 'equipment',
+    width: 260,
+  },
+  {
+    title: $t('page.ops.colDate') || 'Ngày kiểm tra',
+    dataIndex: 'session_date',
+    key: 'session_date',
+    width: 160,
+  },
+  {
+    title: $t('page.ops.colActions') || 'Thao tác',
+    key: 'actions',
+    width: 110,
+    align: 'center' as const,
+  },
+]);
+
 const formRef = ref();
 
 const rules = computed(() => ({
   name: [{ required: true, message: $t('page.ops.checklistDrawer.validationName') }],
   equipment_id: [{ required: true, message: $t('page.ops.checklistDrawer.validationEquipment') }],
+  session_date: [{ required: true, message: $t('page.ops.validationDate') }],
+  cycle_interval: [{ required: true, type: 'number' as const, min: 1, message: 'Vui lòng nhập khoảng chu kỳ lặp hợp lệ' }],
 }));
 
 function addDetailRow() {
@@ -147,6 +184,7 @@ function openCreateForm() {
     id: undefined,
     name: '',
     equipment_id: undefined,
+    session_date: props.date ? props.date.format('YYYY-MM-DD HH:mm') : dayjs().format('YYYY-MM-DD HH:mm'),
     user_ids: [],
     cycle_type: 'daily',
     cycle_interval: 1,
@@ -175,6 +213,7 @@ function openEditForm(session: ChecklistSession) {
     id: session.id,
     name: session.name || session.equipment?.name || '',
     equipment_id: session.equipment_id || session.equipment?.id || undefined,
+    session_date: session.session_date ? dayjs(session.session_date).format('YYYY-MM-DD HH:mm') : (props.date ? props.date.format('YYYY-MM-DD HH:mm') : dayjs().format('YYYY-MM-DD HH:mm')),
     user_ids: session.users?.map((u) => u.id) || [],
     cycle_type: session.cycle_type || 'daily',
     cycle_interval: session.cycle_interval || 1,
@@ -194,11 +233,10 @@ async function handleSaveSession() {
     message.warning($t('page.ops.checklistDrawer.msgValidationAtLeastOneItem'));
     return;
   }
-  if (!props.date) return;
 
   submitting.value = true;
   try {
-    const sessionDateStr = props.date.format('YYYY-MM-DD HH:mm');
+    const sessionDateStr = sessionForm.value.session_date || (props.date ? props.date.format('YYYY-MM-DD HH:mm') : dayjs().format('YYYY-MM-DD HH:mm'));
 
     if (activeMode.value === 'create') {
       // 1. Create eamo_checklist_session + eamo_checklist_details
@@ -245,7 +283,7 @@ async function handleSaveSession() {
           description: item.description,
         })),
         user_ids: sessionForm.value.user_ids,
-        timestamp: props.date.format('YYYY-MM-DD HH:mm:ss'),
+        timestamp: `${sessionDateStr}:00`,
       });
 
       message.success($t('page.ops.checklistDrawer.msgUpdateSuccess'));
@@ -296,39 +334,75 @@ function goToChecklistDetail(): void {
         <!-- MODE 1: LIST OF SESSIONS (eamo_checklist_sessions) -->
         <div v-if="activeMode === 'list'" class="space-y-3">
           <div class="text-xs font-bold text-foreground uppercase tracking-wider">
-            {{ $t('page.ops.checklistDrawer.checklistSessionList', { count: checklistSessions.length }) }}
+            {{ $t('page.ops.checklistDrawer.checklistSessionList') }}
           </div>
 
-          <div v-if="checklistSessions.length > 0" class="space-y-3">
-            <div
-              v-for="session in checklistSessions"
-              :key="session.id"
-              class="p-4 bg-card border border-border rounded-xl hover:border-primary/50 transition-all flex items-center justify-between gap-4"
+          <div v-if="checklistSessions.length > 0" class="bg-card overflow-hidden">
+            <Table
+              :columns="sessionTableColumns"
+              :data-source="checklistSessions"
+              row-key="id"
+              size="middle"
+              :pagination="false"
+              :bordered="false"
+              :scroll="{ x: 'max-content' }"
+              class="w-full vben-thick-table vben-noborder-table"
             >
-              <div class="min-w-0 flex-1">
-                <div class="text-foreground text-sm flex items-center gap-2">
-                  <Tag :color="getSessionStatusTag(session).color" class="m-0 font-medium">
-                  {{ getSessionStatusTag(session).label }}
+              <template #bodyCell="{ column, record }">
+                <template v-if="column.key === 'name'">
+                  <span class="font-medium text-foreground text-sm">
+                    {{ (record as ChecklistSession).name || (record as ChecklistSession).equipment?.name || $t('page.ops.checklistDrawer.sessionText') }}
+                  </span>
+                </template>
+
+                <template v-else-if="column.key === 'status'">
+                  <Tag :color="getSessionStatusTag(record as ChecklistSession).color" class="m-0 font-medium text-xs rounded-md">
+                    {{ getSessionStatusTag(record as ChecklistSession).label }}
                   </Tag>
-                  <span class="font-semibold">{{ session.name || session.equipment?.name || $t('page.ops.checklistDrawer.sessionText') }}</span>
-                </div>
+                </template>
 
-              </div>
+                <template v-else-if="column.key === 'equipment'">
+                  <span class="text-sm text-foreground font-normal">
+                    <template v-if="(record as ChecklistSession).equipment">
+                      {{ (record as ChecklistSession).equipment?.name }} <br> ({{ (record as ChecklistSession).equipment?.code }})
+                    </template>
+                    <template v-else-if="(record as ChecklistSession).equipment_id">
+                      {{ (record as ChecklistSession).equipment_id }}
+                    </template>
+                    <template v-else>—</template>
+                  </span>
+                </template>
 
-              <div class="flex items-center gap-2 shrink-0">
-                <Button size="small" type="link" @click="openEditForm(session)">
-                  {{ $t('page.ops.checklistDrawer.btnDetail') }} &rarr;
-                </Button>
-              </div>
-            </div>
+                <template v-else-if="column.key === 'session_date'">
+                  <span class="text-sm text-foreground/90 font-normal">
+                    {{ (record as ChecklistSession).session_date ? dayjs((record as ChecklistSession).session_date).format('YYYY-MM-DD HH:mm') : '—' }}
+                  </span>
+                </template>
+
+                <template v-else-if="column.key === 'actions'">
+                  <Button
+                    size="small"
+                    class="rounded border border-border hover:border-primary hover:text-primary font-medium px-3 shadow-2xs"
+                    @click="openEditForm(record as ChecklistSession)"
+                  >
+                    {{ $t('page.ops.checklistDrawer.btnDetail') || 'Chi tiết' }}
+                  </Button>
+                </template>
+              </template>
+            </Table>
           </div>
 
-          <div v-else class="py-12 flex justify-center">
+          <div v-else class="py-10 flex justify-center border border-dashed border-border rounded-xl bg-muted/20">
             <Empty :description="$t('page.ops.checklistDrawer.emptySessions')" />
           </div>
 
-          <Button type="dashed" block class="mt-3" @click="openCreateForm">
-            + {{ $t('page.ops.checklistDrawer.btnCreateSession') || 'Tạo phiên kiểm tra mới' }}
+          <Button
+            type="primary"
+            block
+            class="mt-4 bg-[#5c3e35] hover:bg-[#4b332b] border-[#5c3e35] rounded-md text-white font-medium h-10 text-sm"
+            @click="openCreateForm"
+          >
+            {{ $t('page.ops.checklistDrawer.btnCreateSession') }}
           </Button>
         </div>
 
@@ -359,6 +433,18 @@ function goToChecklistDetail(): void {
               />
             </FormItem>
 
+            <FormItem :label="$t('page.ops.colDate')" name="session_date" class="mb-2">
+              <DatePicker
+                v-model:value="sessionForm.session_date"
+                show-time
+                value-format="YYYY-MM-DD HH:mm"
+                format="YYYY-MM-DD HH:mm"
+                class="w-full !w-full"
+                style="width: 100%"
+                :placeholder="$t('page.ops.placeholderDate')"
+              />
+            </FormItem>
+
             <div class="grid grid-cols-2 gap-3">
               <FormItem :label="$t('page.ops.colCycleType')" name="cycle_type" class="col-span-1 mb-2">
                 <Select v-model:value="sessionForm.cycle_type" :placeholder="$t('page.ops.placeholderCycleType')">
@@ -373,11 +459,13 @@ function goToChecklistDetail(): void {
                 <InputNumber
                   v-model:value="sessionForm.cycle_interval"
                   :min="1"
-                  class="w-full"
+                  class="w-full !w-full"
+                  style="width: 100%"
                   :placeholder="$t('page.ops.placeholderCycleInterval')"
                 />
               </FormItem>
             </div>
+
             <FormItem :label="$t('page.ops.checklistDrawer.fieldUsers')" name="user_ids" class="mb-2">
               <Select
                 v-model:value="sessionForm.user_ids"
@@ -401,11 +489,11 @@ function goToChecklistDetail(): void {
                 <Empty :description="$t('page.ops.checklistDrawer.emptyItems')" />
               </div>
 
-              <div v-else class="space-y-3 max-h-[350px] overflow-y-auto pr-1">
+              <div v-else class="max-h-[300px] overflow-y-auto divide-y divide-border pr-2 scrollbar-thin">
                 <div
                   v-for="(item, index) in sessionForm.checklist_details"
                   :key="item.checklist_id || index"
-                  class="flex items-center gap-2 pb-3 border-b border-border last:border-0 last:pb-0"
+                  class="flex items-center gap-3 py-2 first:pt-0 last:pb-0"
                 >
                   <Input
                     v-model:value="item.description"
@@ -433,7 +521,6 @@ function goToChecklistDetail(): void {
                 {{ $t('page.ops.checklistDrawer.btnAddItem') }}
               </Button>
             </div>
-
           </Form>
         </div>
       </div>
@@ -456,3 +543,29 @@ function goToChecklistDetail(): void {
     </template>
   </Drawer>
 </template>
+
+<style scoped>
+.vben-thick-table :deep(.ant-table-cell) {
+  padding-top: 14px !important;
+  padding-bottom: 14px !important;
+}
+.vben-noborder-table :deep(.ant-table),
+.vben-noborder-table :deep(.ant-table-container),
+.vben-noborder-table :deep(.ant-table-content) {
+  border: none !important;
+}
+.vben-custom-scrollbar::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+.vben-custom-scrollbar::-webkit-scrollbar-track {
+  background: transparent;
+}
+.vben-custom-scrollbar::-webkit-scrollbar-thumb {
+  background: rgba(156, 163, 175, 0.35);
+  border-radius: 9999px;
+}
+.vben-custom-scrollbar::-webkit-scrollbar-thumb:hover {
+  background: rgba(156, 163, 175, 0.65);
+}
+</style>
