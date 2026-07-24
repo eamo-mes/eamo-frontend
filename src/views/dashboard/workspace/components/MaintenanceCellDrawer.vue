@@ -8,10 +8,13 @@ import dayjs, { type Dayjs } from 'dayjs';
 import { $t } from '#/locales';
 import {
   listCategoriesApi,
+  listMaintenanceItemsApi,
   getMaintenancePlanDetailApi,
   createMaintenancePlanApi,
   updateMaintenancePlanApi,
   createMaintenanceItemApi,
+  updateMaintenanceItemApi,
+  deleteMaintenanceItemApi,
   type EquipmentOption,
   type MaintenanceCategoryOption,
   type MaintenanceItemOption,
@@ -75,6 +78,19 @@ const selectedPlanId = ref<string | null>(null);
 const loading = ref(false);
 const submitting = ref(false);
 const localCategories = ref<MaintenanceCategoryOption[]>([]);
+const allMaintenanceItems = ref<MaintenanceItemOption[]>([]);
+const updatingItems = ref<Record<string, boolean>>({});
+const deletingItems = ref<Record<string, boolean>>({});
+
+watch(
+  () => [props.maintenanceItems, props.open],
+  () => {
+    if (props.maintenanceItems && props.maintenanceItems.length > 0) {
+      allMaintenanceItems.value = [...props.maintenanceItems];
+    }
+  },
+  { immediate: true }
+);
 
 const formRef = ref();
 
@@ -115,6 +131,27 @@ const categorySelectOptions = computed(() => {
   }));
 });
 
+const selectedCategoryName = computed(() => {
+  const catId = planForm.value.maintenance_category_id;
+  if (!catId) return '';
+  const source = props.categories.length > 0 ? props.categories : localCategories.value;
+  const found = source.find((c) => c.id === catId);
+  return found ? found.name : '';
+});
+
+const appliedItemsCardTitle = computed(() => {
+  const baseTitle = $t('page.ops.appliedItemsTitle') || 'Danh sách hạng mục bảo trì áp dụng';
+  if (selectedCategoryName.value) {
+    return `${baseTitle} — ${selectedCategoryName.value}`;
+  }
+  return baseTitle;
+});
+
+const categoryItems = computed(() => {
+  const catId = planForm.value.maintenance_category_id;
+  if (!catId) return [];
+  return allMaintenanceItems.value.filter((item) => item.maintenance_category_id === catId);
+});
 
 const userSelectOptions = computed(() =>
   props.userOptions.map((u) => {
@@ -213,6 +250,135 @@ function generateKey(): string {
   return Math.random().toString(36).slice(2) + Date.now().toString(36);
 }
 
+function getUserNames(userIds: string[] = []): string[] {
+  if (!userIds || userIds.length === 0) return [];
+  return userIds.map((id) => {
+    const found = userSelectOptions.value.find((u) => u.value === id);
+    return found ? found.label : id;
+  });
+}
+
+function setItemUserIds(itemId: string, userIds: string[]): void {
+  const matchingSchedules = planForm.value.schedules.filter((s) => s.maintenance_item_id === itemId);
+  if (matchingSchedules.length > 0) {
+    matchingSchedules.forEach((s) => {
+      s.user_ids = userIds;
+    });
+  } else {
+    planForm.value.schedules.push({
+      maintenance_item_id: itemId,
+      date: (planForm.value.date || (props.date ? props.date.format('YYYY-MM-DD') : new Date().toISOString().split('T')[0])) as string,
+      user_ids: userIds,
+      equipment_id: planForm.value.equipment_id,
+      maintenance_plan_id: planForm.value.id,
+      _key: generateKey(),
+    });
+  }
+}
+
+function handleCategoryChange(): void {
+  const catId = planForm.value.maintenance_category_id;
+  if (!catId) {
+    planForm.value.schedules = [];
+    return;
+  }
+
+  const catItems = allMaintenanceItems.value.filter(i => i.maintenance_category_id === catId);
+  const newSchedules: ScheduleRow[] = [];
+  for (const item of catItems) {
+    const existing = planForm.value.schedules.find(s => s.maintenance_item_id === item.id);
+    if (existing) {
+      newSchedules.push(existing);
+    } else {
+      newSchedules.push({
+        maintenance_item_id: item.id,
+        item_name_text: item.name,
+        date: (planForm.value.date || (props.date ? props.date.format('YYYY-MM-DD') : new Date().toISOString().split('T')[0])) as string,
+        user_ids: item.user_ids ?? [],
+        equipment_id: planForm.value.equipment_id,
+        maintenance_plan_id: planForm.value.id,
+        _key: generateKey(),
+      });
+    }
+  }
+  planForm.value.schedules = newSchedules;
+}
+
+function addCategoryItemRow(): void {
+  const catId = planForm.value.maintenance_category_id;
+  if (!catId) return;
+
+  const tempId = `temp_${generateKey()}`;
+  const newItem: MaintenanceItemOption = {
+    id: tempId,
+    name: '',
+    description: '',
+    maintenance_category_id: catId,
+    user_ids: [],
+  };
+  allMaintenanceItems.value.push(newItem);
+}
+
+function removeTempCategoryItem(tempId: string): void {
+  allMaintenanceItems.value = allMaintenanceItems.value.filter((i) => i.id !== tempId);
+}
+
+async function saveCategoryItem(item: MaintenanceItemOption): Promise<void> {
+  const name = item.name.trim();
+  if (!name) {
+    message.error($t('page.ops.itemNameRequired') || 'Tên hạng mục không được để trống');
+    return;
+  }
+  const catId = planForm.value.maintenance_category_id;
+  if (!catId) return;
+
+  updatingItems.value[item.id] = true;
+  try {
+    if (item.id.startsWith('temp_')) {
+      const created = await createMaintenanceItemApi({
+        name,
+        description: item.description?.trim() || null,
+        maintenance_category_id: catId,
+        user_ids: item.user_ids ?? [],
+      });
+      const idx = allMaintenanceItems.value.findIndex((i) => i.id === item.id);
+      if (idx !== -1) {
+        allMaintenanceItems.value[idx] = created;
+      }
+      setItemUserIds(created.id, item.user_ids ?? []);
+      message.success($t('page.ops.addItemSuccess') || 'Thêm hạng mục thành công');
+    } else {
+      await updateMaintenanceItemApi(item.id, {
+        name,
+        description: item.description?.trim() || null,
+        maintenance_category_id: item.maintenance_category_id,
+        user_ids: item.user_ids ?? [],
+      });
+      message.success($t('page.ops.updateItemSuccess') || 'Cập nhật hạng mục thành công');
+    }
+  } catch (err: unknown) {
+    const apiError = (err as { response?: { data?: { message?: string } } })?.response?.data?.message;
+    message.error(apiError || $t('page.ops.updateItemError') || 'Cập nhật hạng mục thất bại');
+  } finally {
+    updatingItems.value[item.id] = false;
+  }
+}
+
+async function deleteCategoryItem(id: string): Promise<void> {
+  deletingItems.value[id] = true;
+  try {
+    await deleteMaintenanceItemApi(id);
+    allMaintenanceItems.value = allMaintenanceItems.value.filter((i) => i.id !== id);
+    planForm.value.schedules = planForm.value.schedules.filter((s) => s.maintenance_item_id !== id);
+    message.success($t('page.ops.deleteItemSuccess') || 'Xóa hạng mục thành công');
+  } catch (err: unknown) {
+    const apiError = (err as { response?: { data?: { message?: string } } })?.response?.data?.message;
+    message.error(apiError || $t('page.ops.deleteItemError') || 'Xóa hạng mục thất bại');
+  } finally {
+    deletingItems.value[id] = false;
+  }
+}
+
 function addScheduleRow(): void {
   planForm.value.schedules.push({
     maintenance_item_id: '',
@@ -268,7 +434,7 @@ async function openEditForm(planId: string): Promise<void> {
         schedules: (record.maintenance_schedule ?? [])
           .filter((s) => s.maintenance_item_id || s.item_name || s.maintenance_item?.name)
           .map((s) => {
-            const item = props.maintenanceItems.find((i) => i.id === s.maintenance_item_id);
+            const item = allMaintenanceItems.value.find((i) => i.id === s.maintenance_item_id);
             const textName = s.maintenance_item?.name || item?.name || s.item_name || '';
             return {
               id: s.id,
@@ -302,6 +468,27 @@ async function handleSavePlan(): Promise<void> {
 
   submitting.value = true;
   try {
+    // Automatically persist unsaved temp items in categoryItems
+    for (const item of categoryItems.value) {
+      if (item.id.startsWith('temp_') && item.name.trim()) {
+        try {
+          const created = await createMaintenanceItemApi({
+            name: item.name.trim(),
+            description: item.description?.trim() || null,
+            maintenance_category_id: planForm.value.maintenance_category_id!,
+            user_ids: item.user_ids ?? [],
+          });
+          const idx = allMaintenanceItems.value.findIndex((i) => i.id === item.id);
+          if (idx !== -1) {
+            allMaintenanceItems.value[idx] = created;
+          }
+          setItemUserIds(created.id, item.user_ids ?? []);
+        } catch {
+          // ignore
+        }
+      }
+    }
+
     const saveSchedules: SaveScheduleItemPayload[] = [];
     for (const s of planForm.value.schedules) {
       let itemId = s.maintenance_item_id;
@@ -309,7 +496,7 @@ async function handleSavePlan(): Promise<void> {
 
       if (textName) {
         const catId = planForm.value.maintenance_category_id || '';
-        const existing = props.maintenanceItems.find(
+        const existing = allMaintenanceItems.value.find(
           (mi) => mi.name.toLowerCase() === textName.toLowerCase() && (!catId || mi.maintenance_category_id === catId)
         );
         if (existing) {
@@ -382,12 +569,23 @@ async function fetchCategoriesIfNeeded() {
   }
 }
 
+async function fetchMaintenanceItemsIfNeeded() {
+  if (allMaintenanceItems.value.length === 0) {
+    try {
+      allMaintenanceItems.value = await listMaintenanceItemsApi();
+    } catch {
+      // ignore
+    }
+  }
+}
+
 watch(
   () => props.open,
   (isOpen) => {
     if (isOpen) {
       activeMode.value = 'list';
       fetchCategoriesIfNeeded();
+      fetchMaintenanceItemsIfNeeded();
     }
   }
 );
@@ -519,6 +717,7 @@ function goToPlanDetail(): void {
                   show-search
                   option-filter-prop="label"
                   allow-clear
+                  @change="handleCategoryChange"
                 />
               </FormItem>
 
@@ -594,15 +793,118 @@ function goToPlanDetail(): void {
               />
             </FormItem>
 
-            <!-- DYNAMIC SCHEDULES LIST -->
-            <div class="mt-4 pt-4 border-t border-border">
+            <!-- DYNAMIC APPLIED ITEMS / SCHEDULES LIST -->
+            <div v-if="planForm.cycle_type" class="mt-4 pt-4 border-t border-border">
+              <div class="flex items-center justify-between mb-3">
+                <div class="font-semibold text-foreground text-sm">
+                  {{ appliedItemsCardTitle }}
+                </div>
+                <span class="text-xs text-muted-foreground">
+                  ({{ categoryItems.length }} {{ $t('page.ops.colScheduleDate') || 'hạng mục' }})
+                </span>
+              </div>
+
+              <div v-if="categoryItems.length === 0" class="py-6 flex justify-center">
+                <Empty :description="$t('page.ops.noItems')" />
+              </div>
+
+              <div v-else class="max-h-[340px] overflow-x-auto overflow-y-auto pr-2 pb-3 vben-custom-scrollbar">
+                <div class="min-w-[650px] divide-y divide-border pb-1">
+                  <div
+                    v-for="(item) in categoryItems"
+                    :key="item.id"
+                    class="flex items-end gap-3 py-3 first:pt-0 last:pb-2"
+                  >
+                    <div class="flex-1 min-w-[180px]">
+                      <span class="text-xs text-gray-500 block mb-1 font-medium">{{ $t('page.ops.colItemName') || 'Tên hạng mục' }}</span>
+                      <Input
+                        v-model:value="item.name"
+                        :placeholder="$t('page.ops.placeholderItemName') || 'Nhập tên hạng mục...'"
+                        @press-enter="saveCategoryItem(item)"
+                      />
+                    </div>
+
+                    <div class="flex-1 min-w-[200px]">
+                      <span class="text-xs text-gray-500 block mb-1 font-medium">{{ $t('page.ops.colItemDesc') || 'Mô tả' }}</span>
+                      <Input
+                        :value="item.description ?? ''"
+                        @update:value="(val) => item.description = val || null"
+                        :placeholder="$t('page.ops.placeholderItemDesc') || 'Nhập mô tả...'"
+                        @press-enter="saveCategoryItem(item)"
+                      />
+                    </div>
+
+                    <div class="flex-1 min-w-[180px]">
+                      <span class="text-xs text-gray-500 block mb-1 font-medium">{{ $t('page.ops.assignedTechnicians') || 'Người thực hiện' }}</span>
+                      <Select
+                        :value="item.user_ids"
+                        @update:value="(val: unknown) => { const userIds = Array.isArray(val) ? (val as string[]) : []; item.user_ids = userIds; setItemUserIds(item.id, userIds); }"
+                        :options="userSelectOptions"
+                        :placeholder="$t('page.ops.placeholderAssignedUsers') || 'Chọn người...'"
+                        mode="multiple"
+                        option-filter-prop="label"
+                        show-search
+                        allow-clear
+                        class="w-full"
+                      />
+                    </div>
+
+                    <div class="flex gap-2 h-[32px] items-center shrink-0">
+                      <Button
+                        type="default"
+                        class="h-[32px]"
+                        :loading="updatingItems[item.id]"
+                        :disabled="!item.name.trim()"
+                        @click="saveCategoryItem(item)"
+                      >
+                        {{ item.id.startsWith('temp_') ? ($t('page.ops.btnSave') || 'Lưu') : ($t('page.ops.btnUpdate') || 'Cập nhật') }}
+                      </Button>
+                      <Popconfirm
+                        v-if="!item.id.startsWith('temp_')"
+                        :title="$t('page.ops.deleteMaintenanceItemConfirm') || 'Bạn có chắc chắn muốn xóa hạng mục này?'"
+                        :ok-text="$t('page.ops.btnDelete') || 'Xóa'"
+                        :cancel-text="$t('page.ops.btnCancel') || 'Hủy'"
+                        @confirm="deleteCategoryItem(item.id)"
+                      >
+                        <Button
+                          danger
+                          class="h-[32px]"
+                          :loading="deletingItems[item.id]"
+                        >
+                          {{ $t('page.ops.btnDelete') || 'Xóa' }}
+                        </Button>
+                      </Popconfirm>
+                      <Button
+                        v-else
+                        type="text"
+                        danger
+                        class="shrink-0 px-2 h-[32px]"
+                        @click="removeTempCategoryItem(item.id)"
+                      >
+                        {{ $t('page.ops.btnDelete') || 'Xóa' }}
+                      </Button>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              <Button
+                type="dashed"
+                block
+                class="mt-3"
+                :disabled="!planForm.maintenance_category_id"
+                @click="addCategoryItemRow"
+              >
+                + {{ $t('page.ops.btnAddShort') || 'Thêm hạng mục' }}
+              </Button>
+            </div>
+
+            <!-- MANUAL SCHEDULES LIST (When cycle_type is NOT set) -->
+            <div v-else class="mt-4 pt-4 border-t border-border">
               <div class="flex items-center justify-between mb-3">
                 <div class="font-semibold text-foreground text-sm">
                   {{ $t('page.ops.schedulesTitle') || 'Danh sách lịch bảo trì' }}
                 </div>
-                <span class="text-xs text-muted-foreground">
-                  ({{ planForm.schedules.length }} {{ $t('page.ops.colScheduleDate') || 'mục' }})
-                </span>
               </div>
 
               <div v-if="planForm.schedules.length === 0" class="py-6 flex justify-center">
@@ -704,3 +1006,20 @@ function goToPlanDetail(): void {
     </template>
   </Drawer>
 </template>
+
+<style scoped>
+.vben-custom-scrollbar::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+.vben-custom-scrollbar::-webkit-scrollbar-track {
+  background: transparent;
+}
+.vben-custom-scrollbar::-webkit-scrollbar-thumb {
+  background: rgba(156, 163, 175, 0.35);
+  border-radius: 9999px;
+}
+.vben-custom-scrollbar::-webkit-scrollbar-thumb:hover {
+  background: rgba(156, 163, 175, 0.65);
+}
+</style>

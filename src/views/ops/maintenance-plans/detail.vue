@@ -16,6 +16,7 @@ import {
   Breadcrumb,
   Popconfirm,
   Empty,
+  Tag,
 } from 'ant-design-vue';
 import VisualMaintenanceCalendar from '../../dashboard/workspace/components/VisualMaintenanceCalendar.vue';
 import { ChevronLeft } from '@vben/icons';
@@ -168,12 +169,30 @@ async function loadCategories(): Promise<void> {
 
 function handleCategoryChange(): void {
   const catId = formState.value.maintenance_category_id;
-  formState.value.schedules.forEach(schedule => {
-    const item = maintenanceItems.value.find(i => i.id === schedule.maintenance_item_id);
-    if (!item || item.maintenance_category_id !== catId) {
-      schedule.maintenance_item_id = '';
+  if (!catId) {
+    formState.value.schedules = [];
+    return;
+  }
+
+  const catItems = maintenanceItems.value.filter(i => i.maintenance_category_id === catId);
+  const newSchedules: ScheduleRow[] = [];
+  for (const item of catItems) {
+    const existing = formState.value.schedules.find(s => s.maintenance_item_id === item.id);
+    if (existing) {
+      newSchedules.push(existing);
+    } else {
+      newSchedules.push({
+        maintenance_item_id: item.id,
+        item_name_text: item.name,
+        date: (formState.value.date || new Date().toISOString().split('T')[0]) as string,
+        user_ids: item.user_ids ?? [],
+        equipment_id: formState.value.equipment_id,
+        maintenance_plan_id: editId.value,
+        _key: generateKey(),
+      });
     }
-  });
+  }
+  formState.value.schedules = newSchedules;
 }
 
 async function loadUsers(): Promise<void> {
@@ -182,6 +201,14 @@ async function loadUsers(): Promise<void> {
   } catch {
     // silently fail
   }
+}
+
+function getUserNames(userIds: string[] = []): string[] {
+  if (!userIds || userIds.length === 0) return [];
+  return userIds.map((id) => {
+    const found = users.value.find((u) => u.id === id);
+    return found ? found.name : id;
+  });
 }
 
 function generateKey(): string {
@@ -692,75 +719,79 @@ onMounted(async () => {
                 <Empty :description="$t('page.ops.noItems')" />
               </div>
 
-              <div v-else class="max-h-[360px] overflow-y-auto divide-y divide-border pr-2 scrollbar-thin">
-                <div
-                  v-for="(item) in categoryItems"
-                  :key="item.id"
-                  class="flex flex-wrap items-end gap-3 py-3 first:pt-0 last:pb-0"
-                >
-                  <div class="flex-1 min-w-[200px]">
-                    <span class="text-xs text-gray-500 block mb-1 font-medium">{{ $t('page.ops.colItemName') }}</span>
-                    <Input
-                      v-model:value="item.name"
-                      :placeholder="$t('page.ops.placeholderItemName')"
-                      @press-enter="saveCategoryItem(item)"
-                    />
-                  </div>
-                  <div class="flex-1 min-w-[250px]">
-                    <span class="text-xs text-gray-500 block mb-1 font-medium">{{ $t('page.ops.colItemDesc') }}</span>
-                    <Input
-                      :value="item.description ?? ''"
-                      @update:value="(val) => item.description = val || null"
-                      :placeholder="$t('page.ops.placeholderItemDesc')"
-                      @press-enter="saveCategoryItem(item)"
-                    />
-                  </div>
-                  <div class="flex-1 min-w-[200px]">
-                    <span class="text-xs text-gray-500 block mb-1 font-medium">{{ $t('page.ops.assignedTechnicians') }}</span>
-                    <Select
-                      :value="item.user_ids"
-                      @update:value="(val: unknown) => { const userIds = Array.isArray(val) ? (val as string[]) : []; item.user_ids = userIds; setItemUserIds(item.id, userIds); }"
-                      :options="userOptions"
-                      :placeholder="$t('page.ops.placeholderAssignedUsers')"
-                      mode="multiple"
-                      option-filter-prop="label"
-                      show-search
-                      allow-clear
-                      class="w-full"
-                    />
-                  </div>
-                  <div class="flex gap-2 pb-0">
-                    <Button
-                      type="default"
-                      :loading="updatingItems[item.id]"
-                      :disabled="!item.name.trim()"
-                      @click="saveCategoryItem(item)"
-                    >
-                      {{ item.id.startsWith('temp_') ? $t('page.ops.btnSave') : $t('page.ops.btnUpdate') }}
-                    </Button>
-                    <Popconfirm
-                      v-if="!item.id.startsWith('temp_')"
-                      :title="$t('page.ops.deleteMaintenanceItemConfirm')"
-                      :ok-text="$t('page.ops.btnDelete')"
-                      :cancel-text="$t('page.ops.btnCancel')"
-                      @confirm="deleteCategoryItem(item.id)"
-                    >
+              <div v-else class="max-h-[360px] overflow-x-auto overflow-y-auto pr-2 pb-3 vben-custom-scrollbar">
+                <div class="min-w-[650px] divide-y divide-border pb-1">
+                  <div
+                    v-for="(item) in categoryItems"
+                    :key="item.id"
+                    class="flex items-end gap-3 py-3 first:pt-0 last:pb-2"
+                  >
+                    <div class="flex-1 min-w-[200px]">
+                      <span class="text-xs text-gray-500 block mb-1 font-medium">{{ $t('page.ops.colItemName') }}</span>
+                      <Input
+                        v-model:value="item.name"
+                        :placeholder="$t('page.ops.placeholderItemName')"
+                        @press-enter="saveCategoryItem(item)"
+                      />
+                    </div>
+                    <div class="flex-1 min-w-[250px]">
+                      <span class="text-xs text-gray-500 block mb-1 font-medium">{{ $t('page.ops.colItemDesc') }}</span>
+                      <Input
+                        :value="item.description ?? ''"
+                        @update:value="(val) => item.description = val || null"
+                        :placeholder="$t('page.ops.placeholderItemDesc')"
+                        @press-enter="saveCategoryItem(item)"
+                      />
+                    </div>
+                    <div class="flex-1 min-w-[200px]">
+                      <span class="text-xs text-gray-500 block mb-1 font-medium">{{ $t('page.ops.assignedTechnicians') }}</span>
+                      <Select
+                        :value="item.user_ids"
+                        @update:value="(val: unknown) => { const userIds = Array.isArray(val) ? (val as string[]) : []; item.user_ids = userIds; setItemUserIds(item.id, userIds); }"
+                        :options="userOptions"
+                        :placeholder="$t('page.ops.placeholderAssignedUsers')"
+                        mode="multiple"
+                        option-filter-prop="label"
+                        show-search
+                        allow-clear
+                        class="w-full"
+                      />
+                    </div>
+                    <div class="flex gap-2 h-[32px] items-center shrink-0">
                       <Button
-                        danger
-                        :loading="deletingItems[item.id]"
+                        type="default"
+                        class="h-[32px]"
+                        :loading="updatingItems[item.id]"
+                        :disabled="!item.name.trim()"
+                        @click="saveCategoryItem(item)"
                       >
-                        {{ $t('page.ops.btnDelete') }}
+                        {{ item.id.startsWith('temp_') ? $t('page.ops.btnSave') : $t('page.ops.btnUpdate') }}
                       </Button>
-                    </Popconfirm>
-                    <Button
-                      v-else
-                      type="text"
-                      danger
-                      class="shrink-0 px-2"
-                      @click="removeTempCategoryItem(item.id)"
-                    >
-                      {{ $t('page.company.btnDelete') }}
-                    </Button>
+                      <Popconfirm
+                        v-if="!item.id.startsWith('temp_')"
+                        :title="$t('page.ops.deleteMaintenanceItemConfirm')"
+                        :ok-text="$t('page.ops.btnDelete')"
+                        :cancel-text="$t('page.ops.btnCancel')"
+                        @confirm="deleteCategoryItem(item.id)"
+                      >
+                        <Button
+                          danger
+                          class="h-[32px]"
+                          :loading="deletingItems[item.id]"
+                        >
+                          {{ $t('page.ops.btnDelete') }}
+                        </Button>
+                      </Popconfirm>
+                      <Button
+                        v-else
+                        type="text"
+                        danger
+                        class="shrink-0 px-2 h-[32px]"
+                        @click="removeTempCategoryItem(item.id)"
+                      >
+                        {{ $t('page.company.btnDelete') }}
+                      </Button>
+                    </div>
                   </div>
                 </div>
               </div>
@@ -887,6 +918,21 @@ onMounted(async () => {
 <style scoped>
 :deep(.ant-card + .ant-card) {
   margin-top: 24px !important;
+}
+
+.vben-custom-scrollbar::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+.vben-custom-scrollbar::-webkit-scrollbar-track {
+  background: transparent;
+}
+.vben-custom-scrollbar::-webkit-scrollbar-thumb {
+  background: rgba(156, 163, 175, 0.35);
+  border-radius: 9999px;
+}
+.vben-custom-scrollbar::-webkit-scrollbar-thumb:hover {
+  background: rgba(156, 163, 175, 0.65);
 }
 </style>
 

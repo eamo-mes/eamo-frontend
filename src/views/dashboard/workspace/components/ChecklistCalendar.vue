@@ -310,7 +310,7 @@ onMounted(() => {
                 class="flex items-center gap-1 font-medium bg-emerald-600 hover:bg-emerald-700 border-emerald-600 shadow-xs"
                 @click="openCreateDrawer()"
               >
-                {{ $t('page.ops.checklistDrawer.btnCreateSession') }}
+                + {{ $t('page.ops.checklistDrawer.btnCreateSession') }}
               </Button>
             </div>
           </div>

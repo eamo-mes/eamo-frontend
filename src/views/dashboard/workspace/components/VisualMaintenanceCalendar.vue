@@ -378,7 +378,7 @@ function onSelect(date: Dayjs | string): void {
                 class="flex items-center gap-1 font-medium shadow-xs"
                 @click="openCreateDrawer()"
               >
-                {{ $t('page.ops.btnAddPlanShort') }}
+                + {{ $t('page.ops.btnAddPlanShort') }}
               </Button>
             </div>
           </div>
