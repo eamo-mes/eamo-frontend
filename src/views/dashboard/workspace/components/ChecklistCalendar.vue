@@ -303,6 +303,15 @@ onMounted(() => {
                 <Radio.Button value="month">Month</Radio.Button>
                 <Radio.Button value="year">Year</Radio.Button>
               </Radio.Group>
+
+              <Button
+                type="primary"
+                size="small"
+                class="flex items-center gap-1 font-medium bg-emerald-600 hover:bg-emerald-700 border-emerald-600 shadow-xs"
+                @click="openCreateDrawer()"
+              >
+                {{ $t('page.ops.checklistDrawer.btnCreateSession') }}
+              </Button>
             </div>
           </div>
         </template>
@@ -311,18 +320,6 @@ onMounted(() => {
           <div class="cell-content flex flex-col justify-between h-full min-h-[85px]">
             <div>
               <!-- Progress bar at top of cell -->
-              <div
-                v-if="getCellCompletionStats(current)"
-                class="cell-progress-strip-top"
-                :title="`${getCellCompletionStats(current)?.completed}/${getCellCompletionStats(current)?.total} — ${getCellCompletionStats(current)?.percent}%`"
-              >
-                <div
-                  class="cell-progress-fill"
-                  :class="getCellCompletionStats(current)?.percent === 100 ? 'fill-done' : 'fill-wip'"
-                  :style="{ width: `${getCellCompletionStats(current)?.percent}%` }"
-                />
-              </div>
-
               <!-- Checklist Sessions -->
               <div
                 v-for="session in getSessionsForDay(current)"

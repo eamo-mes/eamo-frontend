@@ -446,7 +446,7 @@ function goToPlanDetail(): void {
               <Empty :description="$t('page.ops.noSchedules') || 'Chưa có lịch bảo trì cho ngày này.'" />
             </div>
 
-            <Button v-if="!readOnly" type="dashed" block class="mt-3" @click="openCreateForm">
+            <Button type="dashed" block class="mt-3" @click="openCreateForm">
               + {{ $t('page.ops.btnAddPlanShort') || 'Tạo kế hoạch bảo trì mới' }}
             </Button>
           </div>

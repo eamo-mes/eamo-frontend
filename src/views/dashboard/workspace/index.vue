@@ -9,6 +9,7 @@ import { useUserStore } from '@vben/stores';
 import { $t } from '#/locales';
 import ChecklistCalendar from './components/ChecklistCalendar.vue';
 import VisualMaintenanceCalendar from './components/VisualMaintenanceCalendar.vue';
+import WorkspaceAnalyticsWidget from './components/WorkspaceAnalyticsWidget.vue';
 import type {
   EquipmentOption,
   MaintenanceCategoryOption,
@@ -31,7 +32,7 @@ const myErrorLogs = ref<ErrorLogItem[]>([]);
 
 const loadingSchedules = ref(false);
 const loadingErrorLogs = ref(false);
-const activeTab = ref<'maintenance' | 'checklist' | 'error-monitoring'>('maintenance');
+const activeTab = ref<'maintenance' | 'checklist'>('maintenance');
 const calendarRange = ref<{ start_date: string; end_date: string } | null>(null);
 const syncingId = ref<string | null>(null);
 
@@ -237,66 +238,49 @@ onMounted(() => {
 
 <template>
   <div class="p-6 space-y-6">
-    <!-- Workspace Navigation & Action Bar -->
-    <div class="w-full flex items-center justify-between py-2 px-4 rounded-xl border border-border bg-card shadow-sm gap-4">
-      <!-- Tabs aligned to the left corner -->
-      <div class="min-w-0 flex-1">
-        <Tabs v-model:activeKey="activeTab" class="vben-workspace-tabs !mb-0">
-          <TabPane key="maintenance">
-            <template #tab>
-              <span class="inline-flex items-center gap-2 px-2 py-0.5 text-sm font-medium">
-                <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4 text-blue-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
-                </svg>
-                {{ $t('page.ops.visualScheduleTitle') }}
-              </span>
-            </template>
-          </TabPane>
+    <!-- Top Completion Analytics Widget (Above Action Bar) -->
+    <WorkspaceAnalyticsWidget
+      :active-tab="activeTab"
+      :schedules="allSchedules"
+    />
 
-          <TabPane key="checklist">
-            <template #tab>
-              <span class="inline-flex items-center gap-2 px-2 py-0.5 text-sm font-medium">
-                <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4 text-emerald-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
-                </svg>
-                {{ $t('page.ops.checklistCalendarTitle') }}
-              </span>
-            </template>
-          </TabPane>
-
-          <TabPane key="error-monitoring">
-            <template #tab>
-              <span class="inline-flex items-center gap-2 px-2 py-0.5 text-sm font-medium">
-                <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4 text-rose-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
-                </svg>
-                {{ $t('page.dashboard.errorMonitoringTab') }}
-                <Badge v-if="pendingErrorCount > 0" :count="pendingErrorCount" :overflow-count="99" class="ml-1" />
-              </span>
-            </template>
-          </TabPane>
-        </Tabs>
-      </div>
-
-      <!-- Action Button on top right corner -->
-      <div class="shrink-0">
-        <Button
-          v-if="activeTab === 'maintenance'"
-          type="primary"
-          class="flex items-center gap-1.5 font-medium"
-          @click="handleTopActionClick"
+    <!-- Workspace Navigation Tab Bar (Pill Control) -->
+    <div class="w-full flex items-center justify-start gap-3">
+      <!-- Segmented Pill Tab Bar Container -->
+      <div class="inline-flex items-center p-1 bg-card border border-border rounded-xl shadow-sm gap-1 shrink-0">
+        <!-- Tab 1: Maintenance Plan -->
+        <button
+          type="button"
+          :class="[
+            'inline-flex items-center gap-2 px-4 py-2 text-sm font-semibold rounded-lg transition-all cursor-pointer border-0',
+            activeTab === 'maintenance'
+              ? 'bg-primary/10 text-primary font-bold shadow-xs'
+              : 'bg-transparent text-muted-foreground hover:text-foreground hover:bg-muted/50'
+          ]"
+          @click="activeTab = 'maintenance'"
         >
-          <span> {{ $t('page.ops.btnAddPlanShort') }}</span>
-        </Button>
+          <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4 text-blue-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
+          </svg>
+          <span>{{ $t('page.ops.visualScheduleTitle') }}</span>
+        </button>
 
-        <Button
-          v-else-if="activeTab === 'checklist'"
-          type="primary"
-          class="flex items-center gap-1.5 font-medium bg-emerald-600 hover:bg-emerald-700 border-emerald-600"
-          @click="handleTopActionClick"
+        <!-- Tab 2: Checklist -->
+        <button
+          type="button"
+          :class="[
+            'inline-flex items-center gap-2 px-4 py-2 text-sm font-semibold rounded-lg transition-all cursor-pointer border-0',
+            activeTab === 'checklist'
+              ? 'bg-emerald-500/10 text-emerald-600 font-bold shadow-xs'
+              : 'bg-transparent text-muted-foreground hover:text-foreground hover:bg-muted/50'
+          ]"
+          @click="activeTab = 'checklist'"
         >
-          <span>{{ $t('page.ops.checklistDrawer.btnCreateSession') || 'Thêm phiên kiểm tra' }}</span>
-        </Button>
+          <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4 text-emerald-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+          </svg>
+          <span>{{ $t('page.ops.checklistCalendarTitle') }}</span>
+        </button>
       </div>
     </div>
 
@@ -327,92 +311,6 @@ onMounted(() => {
           :equipments="equipments"
           @refresh-list="handleChecklistRefresh"
         />
-      </div>
-    </div>
-
-    <!-- Tab Content: Error Monitoring -->
-    <div v-else-if="activeTab === 'error-monitoring'">
-      <div class="bg-card border border-border rounded-xl shadow-sm overflow-hidden p-4">
-        <div class="flex items-center justify-between mb-4">
-          <h3 class="text-base font-semibold text-foreground m-0">
-            {{ $t('page.dashboard.todayErrorList') }}
-          </h3>
-          <Button
-            type="primary"
-            @click="router.push('/maintenance/error-monitoring')"
-          >
-            {{ $t('page.dashboard.viewErrorMonitoring') }}
-          </Button>
-        </div>
-
-        <Spin :spinning="loadingErrorLogs">
-          <Table
-            :columns="errorColumns"
-            :data-source="myErrorLogs"
-            row-key="id"
-            :scroll="{ x: 'max-content' }"
-            :pagination="{
-              pageSize: 10,
-              showSizeChanger: true,
-              showTotal: (tot: number) => `Tổng ${tot} bản ghi`,
-            }"
-            class="w-full"
-          >
-            <template #bodyCell="{ column, record }">
-              <template v-if="column.key === 'equipment'">
-                <span class="text-foreground">
-                  {{ record.equipment ? `${record.equipment.name} (${record.equipment.code})` : record.equipment_id }}
-                </span>
-              </template>
-              <template v-else-if="column.key === 'error'">
-                <Tag
-                  color="red"
-                  class="cursor-pointer hover:opacity-80 transition-opacity font-medium m-0"
-                  @click="goToErrorDetail(record.equipment_error_id || record.equipment_error?.id)"
-                >
-                  {{ record.equipment_error?.name || record.equipment_error_id }}
-                </Tag>
-              </template>
-              <template v-else-if="column.key === 'status'">
-                <Tag v-if="record.handled_at" color="green">{{ $t('page.dashboard.statusCompleted') }}</Tag>
-                <Tag v-else-if="record.restarted_at" color="orange">Restarted</Tag>
-                <Tag v-else color="red">Active Error</Tag>
-              </template>
-              <template v-else-if="column.key === 'occurred_at'">
-                <span>{{ record.occurred_at ? dayjs(record.occurred_at).format('YYYY-MM-DD HH:mm:ss') : '-' }}</span>
-              </template>
-              <template v-else-if="column.key === 'handled_at'">
-                <span>{{ record.handled_at ? dayjs(record.handled_at).format('YYYY-MM-DD HH:mm:ss') : '-' }}</span>
-              </template>
-              <template v-else-if="column.key === 'actions'">
-                <div class="flex items-center justify-center gap-2">
-                  <Popconfirm
-                    :title="$t('page.ops.syncConfirmOne')"
-                    ok-text="Yes"
-                    cancel-text="No"
-                    @confirm="handleSyncResolvedOne(record.id)"
-                  >
-                    <Button
-                      size="small"
-                      :disabled="record.is_synced"
-                      :loading="syncingId === record.id"
-                      class="rounded border-blue-400 text-blue-600 hover:bg-blue-50"
-                    >
-                      {{ $t('page.ops.syncResolvedOne') }}
-                    </Button>
-                  </Popconfirm>
-                  <Button
-                    size="small"
-                    class="rounded hover:border-primary hover:text-primary"
-                    @click="router.push('/maintenance/error-monitoring')"
-                  >
-                    {{ $t('page.dashboard.viewTask') }}
-                  </Button>
-                </div>
-              </template>
-            </template>
-          </Table>
-        </Spin>
       </div>
     </div>
   </div>

@@ -371,6 +371,15 @@ function onSelect(date: Dayjs | string): void {
                 <Radio.Button value="month">Month</Radio.Button>
                 <Radio.Button value="year">Year</Radio.Button>
               </Radio.Group>
+
+              <Button
+                type="primary"
+                size="small"
+                class="flex items-center gap-1 font-medium shadow-xs"
+                @click="openCreateDrawer()"
+              >
+                {{ $t('page.ops.btnAddPlanShort') }}
+              </Button>
             </div>
           </div>
         </template>

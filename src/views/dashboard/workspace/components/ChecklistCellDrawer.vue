@@ -327,8 +327,8 @@ function goToChecklistDetail(): void {
             <Empty :description="$t('page.ops.checklistDrawer.emptySessions')" />
           </div>
 
-          <Button v-if="!readOnly" type="dashed" block class="mt-3" @click="openCreateForm">
-            {{ $t('page.ops.checklistDrawer.btnCreateSession') }}
+          <Button type="dashed" block class="mt-3" @click="openCreateForm">
+            + {{ $t('page.ops.checklistDrawer.btnCreateSession') || 'Tạo phiên kiểm tra mới' }}
           </Button>
         </div>
 
