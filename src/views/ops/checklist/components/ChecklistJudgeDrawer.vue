@@ -206,7 +206,7 @@ function goToChecklistDetail(): void {
     :open="props.open"
     :title="$t('page.ops.judgeChecklistTitle', { name: props.session?.equipment?.name || '' })"
     placement="right"
-    :width="600"
+    width="800px"
     @close="handleClose"
   >
     <div v-if="props.session" class="space-y-6 px-1">

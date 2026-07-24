@@ -395,9 +395,6 @@ function goToChecklistDetail(): void {
                 <div class="font-semibold text-foreground text-sm">
                   {{ $t('page.ops.checklistDrawer.checkItemsHeader') }}
                 </div>
-                <span class="text-xs text-muted-foreground">
-                  {{ $t('page.ops.checklistDrawer.checkItemsCountHeader', { count: sessionForm.checklist_details.length }) }}
-                </span>
               </div>
 
               <div v-if="sessionForm.checklist_details.length === 0" class="py-6 flex justify-center">

@@ -239,50 +239,51 @@ onMounted(() => {
 <template>
   <div class="p-6 space-y-6">
     <!-- Top Completion Analytics Widget (Above Action Bar) -->
-    <WorkspaceAnalyticsWidget
-      :active-tab="activeTab"
-      :schedules="allSchedules"
-    />
 
     <!-- Workspace Navigation Tab Bar (Pill Control) -->
     <div class="w-full flex items-center justify-start gap-3">
-      <!-- Segmented Pill Tab Bar Container -->
-      <div class="inline-flex items-center p-1 bg-card border border-border rounded-xl shadow-sm gap-1 shrink-0">
+      <!-- Segmented Pill Tab Bar Container (Equal Width 2-Tab Layout) -->
+      <div class="grid grid-cols-2 p-1 bg-card border border-border rounded-xl shadow-sm gap-1 min-w-[320px] md:min-w-[400px]">
         <!-- Tab 1: Maintenance Plan -->
         <button
           type="button"
           :class="[
-            'inline-flex items-center gap-2 px-4 py-2 text-sm font-semibold rounded-lg transition-all cursor-pointer border-0',
+            'inline-flex items-center justify-center gap-2 px-4 py-2 text-sm font-semibold rounded-lg transition-all cursor-pointer border-0 w-full',
             activeTab === 'maintenance'
               ? 'bg-primary/10 text-primary font-bold shadow-xs'
               : 'bg-transparent text-muted-foreground hover:text-foreground hover:bg-muted/50'
           ]"
           @click="activeTab = 'maintenance'"
         >
-          <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4 text-blue-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+          <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4 text-blue-500 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
           </svg>
-          <span>{{ $t('page.ops.visualScheduleTitle') }}</span>
+          <span class="truncate">{{ $t('page.ops.visualScheduleTitle') }}</span>
         </button>
 
         <!-- Tab 2: Checklist -->
         <button
           type="button"
           :class="[
-            'inline-flex items-center gap-2 px-4 py-2 text-sm font-semibold rounded-lg transition-all cursor-pointer border-0',
+            'inline-flex items-center justify-center gap-2 px-4 py-2 text-sm font-semibold rounded-lg transition-all cursor-pointer border-0 w-full',
             activeTab === 'checklist'
               ? 'bg-emerald-500/10 text-emerald-600 font-bold shadow-xs'
               : 'bg-transparent text-muted-foreground hover:text-foreground hover:bg-muted/50'
           ]"
           @click="activeTab = 'checklist'"
         >
-          <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4 text-emerald-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+          <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4 text-emerald-500 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
           </svg>
-          <span>{{ $t('page.ops.checklistCalendarTitle') }}</span>
+          <span class="truncate">{{ $t('page.ops.checklistCalendarTitle') }}</span>
         </button>
       </div>
     </div>
+
+    <WorkspaceAnalyticsWidget
+      :active-tab="activeTab"
+      :schedules="allSchedules"
+    />
 
     <!-- Tab Content: Maintenance Calendar -->
     <div v-if="activeTab === 'maintenance'">

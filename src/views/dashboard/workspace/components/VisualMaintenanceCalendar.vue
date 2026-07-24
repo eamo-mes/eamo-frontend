@@ -387,19 +387,7 @@ function onSelect(date: Dayjs | string): void {
         <template #dateCellRender="{ current }">
           <div class="cell-content flex flex-col justify-between h-full min-h-[85px]">
             <div>
-              <!-- Progress bar at top of cell -->
-              <div
-                v-if="getCellCompletionStats(current)"
-                class="cell-progress-strip-top"
-                :title="`${getCellCompletionStats(current)?.completed}/${getCellCompletionStats(current)?.total} — ${getCellCompletionStats(current)?.percent}%`"
-              >
-                <div
-                  class="cell-progress-fill"
-                  :class="getCellCompletionStats(current)?.percent === 100 ? 'fill-done' : 'fill-wip'"
-                  :style="{ width: `${getCellCompletionStats(current)?.percent}%` }"
-                />
-              </div>
-
+              
               <!-- Maintenance Plan Nodes (Grouped uniquely by eamo_maintenance_plans per Date) -->
               <div
                 v-for="planNode in getDailyPlanNodes(current)"

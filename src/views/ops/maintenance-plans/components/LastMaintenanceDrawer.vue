@@ -68,7 +68,7 @@ function handleClose(): void {
     :open="props.open"
     :title="$t('page.ops.lastMaintenanceDeviceTitle')"
     placement="right"
-    :width="690"
+    width="800px"
     @close="handleClose"
   >
     <div class="space-y-6 px-2">

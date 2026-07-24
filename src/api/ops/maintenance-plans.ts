@@ -38,6 +38,7 @@ export interface MaintenanceLog {
 export interface ScheduleRow {
   id?: string;
   maintenance_item_id: string;
+  item_name_text?: string;
   date: string;
   user_ids: string[];
   users?: ScheduleUser[];
@@ -69,6 +70,11 @@ export interface ScheduleRow {
 export interface MaintenancePlanRawSchedule {
   id: string;
   maintenance_item_id: string;
+  item_name?: string;
+  maintenance_item?: {
+    name?: string;
+    description?: string;
+  };
   date: string;
   users?: ScheduleUser[];
   maintenance_logs?: MaintenanceLog[];

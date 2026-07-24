@@ -30,6 +30,7 @@ import {
   getMaintenancePlanDetailApi,
   createMaintenancePlanApi,
   updateMaintenancePlanApi,
+  createMaintenanceItemApi,
   type EquipmentOption,
   type MaintenanceCategoryOption,
   type MaintenanceItemOption,
@@ -212,17 +213,22 @@ function setFormStateFromRecord(record: MaintenancePlanRecord): void {
     occurrences: record.occurrences ?? undefined,
     notes: record.notes ?? '',
     schedules: (record.maintenance_schedule ?? [])
-      .filter((s) => s.maintenance_item_id)
-      .map((s) => ({
-        id: s.id,
-        maintenance_item_id: s.maintenance_item_id,
-        date: s.date,
-        user_ids: (s.users ?? []).map((u: ScheduleUser) => u.id),
-        result: s.maintenance_logs?.[0]?.result || null,
-        equipment_id: s.equipment_id || record.equipment_id,
-        maintenance_plan_id: s.maintenance_plan_id || record.id,
-        _key: generateKey(),
-      })),
+      .filter((s) => s.maintenance_item_id || s.item_name || s.maintenance_item?.name)
+      .map((s) => {
+        const item = maintenanceItems.value.find((i) => i.id === s.maintenance_item_id);
+        const textName = s.maintenance_item?.name || item?.name || s.item_name || '';
+        return {
+          id: s.id,
+          maintenance_item_id: s.maintenance_item_id,
+          item_name_text: textName,
+          date: s.date,
+          user_ids: (s.users ?? []).map((u: ScheduleUser) => u.id),
+          result: s.maintenance_logs?.[0]?.result || null,
+          equipment_id: s.equipment_id || record.equipment_id,
+          maintenance_plan_id: s.maintenance_plan_id || record.id,
+          _key: generateKey(),
+        };
+      }),
   };
 }
 
@@ -249,6 +255,7 @@ function removeScheduleRow(index: number): void {
 function addScheduleRow(): void {
   formState.value.schedules.push({
     maintenance_item_id: '',
+    item_name_text: '',
     date: formState.value.date || new Date().toISOString().split('T')[0] as string,
     user_ids: [],
     equipment_id: formState.value.equipment_id,
@@ -264,6 +271,43 @@ async function handleSubmit(): Promise<void> {
     await formRef.value.validateFields();
     submitting.value = true;
 
+    const saveSchedules: SaveScheduleItemPayload[] = [];
+    for (const s of formState.value.schedules) {
+      let itemId = s.maintenance_item_id;
+      const textName = (s.item_name_text || '').trim();
+
+      if (textName) {
+        const catId = formState.value.maintenance_category_id || '';
+        const existing = maintenanceItems.value.find(
+          (mi) => mi.name.toLowerCase() === textName.toLowerCase() && (!catId || mi.maintenance_category_id === catId)
+        );
+        if (existing) {
+          itemId = existing.id;
+        } else {
+          try {
+            const newItem = await createMaintenanceItemApi({
+              name: textName,
+              maintenance_category_id: catId,
+              user_ids: s.user_ids,
+            });
+            itemId = newItem.id;
+            maintenanceItems.value.push(newItem);
+          } catch {
+            // ignore
+          }
+        }
+      }
+
+      if (itemId) {
+        saveSchedules.push({
+          id: s.id,
+          maintenance_item_id: itemId,
+          date: typeof s.date === 'string' ? s.date : dayjs(s.date).format('YYYY-MM-DD'),
+          user_ids: s.user_ids,
+        });
+      }
+    }
+
     const payload = {
       plan_code: formState.value.plan_code || null,
       equipment_id: formState.value.equipment_id,
@@ -276,12 +320,7 @@ async function handleSubmit(): Promise<void> {
       cycle_interval: formState.value.cycle_interval ?? null,
       occurrences: formState.value.occurrences ?? null,
       notes: formState.value.notes || null,
-      schedules: formState.value.schedules.map((s): SaveScheduleItemPayload => ({
-        id: s.id,
-        maintenance_item_id: s.maintenance_item_id,
-        date: s.date,
-        user_ids: s.user_ids,
-      })),
+      schedules: saveSchedules,
     };
 
     if (isEditing.value && editId.value) {
@@ -708,13 +747,9 @@ onMounted(async () => {
                   <!-- Hạng mục bảo trì -->
                   <div class="flex-1 min-w-[200px]">
                     <span class="text-xs text-gray-400 block mb-1 font-medium">{{ $t('page.ops.colMaintenanceItem') }}</span>
-                    <Select
-                      v-model:value="schedule.maintenance_item_id"
-                      :options="maintenanceItemOptions"
-                      :placeholder="$t('page.ops.placeholderMaintenanceItem')"
-                      show-search
-                      option-filter-prop="label"
-                      allow-clear
+                    <Input
+                      v-model:value="schedule.item_name_text"
+                      :placeholder="$t('page.ops.placeholderMaintenanceItem') || 'Nhập tên hạng mục bảo trì...'"
                       class="w-full"
                     />
                   </div>

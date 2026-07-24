@@ -103,17 +103,19 @@ const chartData = computed(() => {
             if (details.length > 0) {
               for (const detail of details) {
                 totalItemsOnDay++;
-                const logs = detail.logs ?? [];
+                const logs = (detail as { logs?: Array<{ status?: string; result?: string }> }).logs ?? [];
                 const hasCompletedLog = logs.some(
                   (l) => l.status === 'completed' || l.result === 'pass'
                 );
-                if (hasCompletedLog || detail.result === 'pass') {
+                const detailObj = detail as { result?: string };
+                if (hasCompletedLog || detailObj.result === 'pass') {
                   completedItemsOnDay++;
                 }
               }
             } else {
               totalItemsOnDay++;
-              if (session.logs && session.logs.length > 0) {
+              const sessionObj = session as { logs?: Array<unknown> };
+              if (sessionObj.logs && sessionObj.logs.length > 0) {
                 completedItemsOnDay++;
               }
             }
@@ -259,7 +261,6 @@ async function updateCharts(): Promise<void> {
             sub: {
               fontSize: 11,
               color: '#64748b',
-              textTransform: 'uppercase',
             },
           },
         },

@@ -309,7 +309,7 @@ function goToPlan(): void {
     :open="props.open"
     :title="drawerTitle"
     placement="right"
-    :width="600"
+    width="800px"
     @close="handleCancelDrawer"
   >
     <Spin :spinning="loadingLog">

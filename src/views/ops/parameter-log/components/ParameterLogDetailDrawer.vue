@@ -60,7 +60,7 @@ function handleClose() {
   <Drawer
     :open="props.open"
     :title="$t('page.ops.detailTitle')"
-    width="560px"
+    width="800px"
     placement="right"
     @close="handleClose"
   >
