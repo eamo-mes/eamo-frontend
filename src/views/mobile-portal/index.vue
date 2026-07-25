@@ -1,15 +1,36 @@
 <script lang="ts" setup>
-import { ref, onMounted, onUnmounted } from 'vue';
+import { ref, computed, onMounted, onUnmounted } from 'vue';
 import { useRouter } from 'vue-router';
 import { Card, Row, Col, message } from 'ant-design-vue';
+import { useI18n, loadLocaleMessages } from '@vben/locales';
+import { updatePreferences } from '@vben/preferences';
 
 const router = useRouter();
+const { locale, t } = useI18n();
 const currentTime = ref('');
 let timerId: any = null;
 
 function updateTime() {
   const now = new Date();
-  currentTime.value = now.toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+  currentTime.value = now.toLocaleTimeString(locale.value === 'zh-CN' ? 'vi-VN' : 'en-US', { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+}
+
+async function changeLang(lang: 'zh-CN' | 'en-US') {
+  if (locale.value === lang) return;
+  const hide = message.loading({ content: lang === 'zh-CN' ? 'Đang chuyển ngôn ngữ...' : 'Switching language...', key: 'lang', duration: 0 });
+  try {
+    updatePreferences({
+      app: {
+        locale: lang,
+      },
+    });
+    await loadLocaleMessages(lang);
+    updateTime();
+  } catch (error) {
+    console.error('Failed to change language:', error);
+  } finally {
+    hide();
+  }
 }
 
 onMounted(() => {
@@ -21,11 +42,10 @@ onUnmounted(() => {
   if (timerId) clearInterval(timerId);
 });
 
-const menuItems = [
+const menuItems = computed(() => [
   {
-    title: 'Checklist',
-    subtitle: 'Kiểm tra định kỳ',
-    desc: 'Cập nhật danh sách kiểm tra & tình trạng thiết bị hàng ngày.',
+    title: t('page.portal.checklist'),
+    subtitle: t('page.portal.checklistSub'),
     path: '/maintenance/checklist',
     iconClass: 'bg-blue-50/80 text-blue-600 dark:bg-blue-950/40 dark:text-blue-400',
     hoverClass: 'hover:border-blue-400/80 dark:hover:border-blue-500/40 hover:shadow-[0_12px_30px_rgba(59,130,246,0.08)]',
@@ -33,9 +53,8 @@ const menuItems = [
     iconSvg: `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-clipboard-check"><rect width="8" height="4" x="8" y="2" rx="1" ry="1"/><path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2"/><path d="m9 14 2 2 4-4"/></svg>`
   },
   {
-    title: 'Kế hoạch bảo trì',
-    subtitle: 'Bảo dưỡng định kỳ',
-    desc: 'Lịch bảo trì phòng ngừa và quản lý công việc bảo dưỡng thiết bị.',
+    title: t('page.portal.mPlans'),
+    subtitle: t('page.portal.mPlansSub'),
     path: '/maintenance/maintenance-plans',
     iconClass: 'bg-emerald-50/80 text-emerald-600 dark:bg-emerald-950/40 dark:text-emerald-400',
     hoverClass: 'hover:border-emerald-400/80 dark:hover:border-emerald-500/40 hover:shadow-[0_12px_30px_rgba(16,185,129,0.08)]',
@@ -43,9 +62,8 @@ const menuItems = [
     iconSvg: `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-calendar-clock"><path d="M21 7.5V6a2 2 0 0 0-2-2H5a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h3.5"/><path d="M16 2v4"/><path d="M8 2v4"/><path d="M3 10h18"/><path d="M12 14v4h4"/><circle cx="18" cy="18" r="4"/></svg>`
   },
   {
-    title: 'Theo dõi lỗi',
-    subtitle: 'Quản lý sự cố',
-    desc: 'Phát hiện, báo cáo sự cố thiết bị và cập nhật tiến trình sửa chữa.',
+    title: t('page.portal.errLog'),
+    subtitle: t('page.portal.errLogSub'),
     path: '/maintenance/error-monitoring',
     iconClass: 'bg-rose-50/80 text-rose-600 dark:bg-rose-950/40 dark:text-rose-400',
     hoverClass: 'hover:border-rose-400/80 dark:hover:border-rose-500/40 hover:shadow-[0_12px_30px_rgba(244,63,94,0.08)]',
@@ -53,19 +71,18 @@ const menuItems = [
     iconSvg: `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-alert-triangle"><path d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3Z"/><line x1="12" y1="9" x2="12" y2="13"/><circle cx="12" cy="17" r="1"/></svg>`
   },
   {
-    title: 'Dashboard',
-    subtitle: 'Thống kê vận hành',
-    desc: 'Biểu đồ phân tích hiệu suất, báo cáo OEE và trạng thái nhà máy.',
+    title: t('page.portal.dashboard'),
+    subtitle: t('page.portal.dashboardSub'),
     path: '/dashboard/workspace',
     iconClass: 'bg-violet-50/80 text-violet-600 dark:bg-violet-950/40 dark:text-violet-400',
     hoverClass: 'hover:border-violet-400/80 dark:hover:border-violet-500/40 hover:shadow-[0_12px_30px_rgba(139,92,246,0.08)]',
     activeGlow: 'bg-violet-500',
     iconSvg: `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-layout-dashboard"><rect width="7" height="9" x="3" y="3" rx="1"/><rect width="7" height="5" x="14" y="3" rx="1"/><rect width="7" height="9" x="14" y="10" rx="1"/><rect width="7" height="5" x="3" y="14" rx="1"/></svg>`
   }
-];
+]);
 
 function handleNavigate(path: string) {
-  message.loading({ content: 'Đang mở trang...', key: 'nav', duration: 0.5 });
+  message.loading({ content: t('page.portal.loading'), key: 'nav', duration: 0.5 });
   setTimeout(() => {
     router.push(path);
   }, 300);
@@ -75,6 +92,24 @@ function handleNavigate(path: string) {
 <template>
   <div class="portal-container min-h-[85vh] bg-gradient-to-br from-slate-50 via-slate-100 to-indigo-50/40 dark:from-zinc-950 dark:via-zinc-900 dark:to-indigo-950/20 flex flex-col justify-center transition-colors duration-300 relative overflow-hidden">
     
+    <!-- Language Switcher Pill (Floating Top-Right) -->
+    <div class="absolute top-4 right-4 z-20 flex items-center gap-1 p-1 bg-white/80 dark:bg-zinc-900/80 backdrop-blur-md rounded-full border border-slate-100/85 dark:border-zinc-800/85 shadow-[0_4px_12px_rgba(0,0,0,0.03)]">
+      <button 
+        @click="changeLang('zh-CN')" 
+        :class="[locale === 'zh-CN' ? 'bg-indigo-600 text-white shadow-xs font-bold' : 'text-slate-500 dark:text-zinc-400 hover:text-slate-700 dark:hover:text-zinc-200 font-semibold']"
+        class="px-3 py-1 rounded-full text-[10px] tracking-wide transition-all duration-200 cursor-pointer border-0 outline-none"
+      >
+        VI
+      </button>
+      <button 
+        @click="changeLang('en-US')" 
+        :class="[locale === 'en-US' ? 'bg-indigo-600 text-white shadow-xs font-bold' : 'text-slate-500 dark:text-zinc-400 hover:text-slate-700 dark:hover:text-zinc-200 font-semibold']"
+        class="px-3 py-1 rounded-full text-[10px] tracking-wide transition-all duration-200 cursor-pointer border-0 outline-none"
+      >
+        EN
+      </button>
+    </div>
+
     <!-- Premium background glowing spots (ambient mesh) -->
     <div class="absolute top-[-10%] left-[-10%] w-[50%] h-[50%] bg-indigo-200/20 dark:bg-indigo-900/10 rounded-full blur-[120px] pointer-events-none"></div>
     <div class="absolute bottom-[-10%] right-[-10%] w-[50%] h-[50%] bg-emerald-200/10 dark:bg-emerald-950/5 rounded-full blur-[120px] pointer-events-none"></div>
@@ -90,10 +125,10 @@ function handleNavigate(path: string) {
 
         <!-- Premium text-gradient title -->
         <h1 class="text-xl sm:text-2xl font-extrabold tracking-tight bg-clip-text text-transparent bg-gradient-to-r from-slate-800 via-slate-900 to-indigo-950 dark:from-white dark:via-zinc-200 dark:to-indigo-300">
-          Hệ thống Quản lý Vận hành
+          {{ t('page.portal.title') }}
         </h1>
         <p class="mt-1 text-xs sm:text-sm font-medium text-slate-500 dark:text-zinc-400 max-w-md mx-auto">
-          Giải pháp số hóa giám sát thiết bị và bảo trì toàn diện
+          {{ t('page.portal.subtitle') }}
         </p>
 
         <!-- Current Time Badge (Floating Glassmorphic Pill) -->
