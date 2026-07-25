@@ -796,6 +796,8 @@
     "btnViewDetail": "Xem chi tiết"
   },
   "portal": {
+    "menuTitle": "Portal Vận hành",
+    "mobileTitle": "Portal Mobile",
     "title": "Hệ thống Quản lý Vận hành",
     "subtitle": "Giải pháp số hóa giám sát thiết bị và bảo trì toàn diện",
     "loading": "Đang mở trang...",

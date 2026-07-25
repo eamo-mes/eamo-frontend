@@ -803,6 +803,8 @@
     "btnViewDetail": "View Details"
   },
   "portal": {
+    "menuTitle": "Operations Portal",
+    "mobileTitle": "Mobile Portal",
     "title": "Operations Management System",
     "subtitle": "Digital solution for equipment monitoring & comprehensive maintenance",
     "loading": "Opening page...",

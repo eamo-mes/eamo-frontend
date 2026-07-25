@@ -1,9 +1,11 @@
 import type { RouteRecordRaw } from 'vue-router';
 
+import { $t } from '#/locales';
+
 const routes: RouteRecordRaw[] = [
   {
     meta: {
-      title: 'Portal Vận hành',
+      title: $t('page.portal.menuTitle'),
       icon: 'lucide:smartphone',
       order: 10,
     },
@@ -15,7 +17,7 @@ const routes: RouteRecordRaw[] = [
         path: '/portal',
         component: () => import('#/views/mobile-portal/index.vue'),
         meta: {
-          title: 'Portal Mobile',
+          title: $t('page.portal.mobileTitle'),
           icon: 'lucide:smartphone',
           ignoreAccess: true,
         },
