@@ -1,29 +1,7 @@
 import type { RouteRecordRaw } from 'vue-router';
 
-import { $t } from '#/locales';
-
-const routes: RouteRecordRaw[] = [
-  {
-    meta: {
-      title: $t('page.portal.menuTitle'),
-      icon: 'lucide:smartphone',
-      order: 10,
-    },
-    name: 'MobilePortalGroup',
-    path: '/portal-group',
-    children: [
-      {
-        name: 'MobilePortal',
-        path: '/portal',
-        component: () => import('#/views/mobile-portal/index.vue'),
-        meta: {
-          title: $t('page.portal.mobileTitle'),
-          icon: 'lucide:smartphone',
-          ignoreAccess: true,
-        },
-      },
-    ],
-  },
-];
+// Route for Mobile Portal is registered in coreRoutes (src/router/routes/core.ts)
+// as a standalone top-level route with MobileLayout, bypassing BasicLayout & Multitab bar.
+const routes: RouteRecordRaw[] = [];
 
 export default routes;

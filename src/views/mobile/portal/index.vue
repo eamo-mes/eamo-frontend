@@ -77,7 +77,7 @@ const menuItems = computed(() => [
     iconClass: 'bg-violet-50/80 text-violet-600 dark:bg-violet-950/40 dark:text-violet-400',
     hoverClass: 'hover:border-violet-400/80 dark:hover:border-violet-500/40 hover:shadow-[0_12px_30px_rgba(139,92,246,0.08)]',
     activeGlow: 'bg-violet-500',
-    iconSvg: `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-layout-dashboard"><rect width="7" height="9" x="3" y="3" rx="1"/><rect width="7" height="5" x="14" y="3" rx="1"/><rect width="7" height="9" x="14" y="10" rx="1"/><rect width="7" height="5" x="3" y="14" rx="1"/></svg>`
+    iconSvg: `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-layout-dashboard"><rect width="7" height="9" x="3" y="3" rx="1"/><rect width="7" height="5" x="14" y="3" rx="1"/><rect width="7" height="5" x="14" y="10" rx="1"/><rect width="7" height="5" x="3" y="14" rx="1"/></svg>`
   }
 ]);
 
@@ -115,29 +115,7 @@ function handleNavigate(path: string) {
     <div class="absolute bottom-[-10%] right-[-10%] w-[50%] h-[50%] bg-emerald-200/10 dark:bg-emerald-950/5 rounded-full blur-[120px] pointer-events-none"></div>
 
     <div class="max-w-4xl mx-auto w-full flex flex-col gap-6 sm:gap-8 relative z-10">
-      
-      <!-- Top App Header Section -->
-      <div class="text-center flex flex-col items-center">
-        <!-- Logo Container with soft shadow glow -->
-        <div class="relative mb-2.5 sm:mb-4 hover:scale-105 transition-transform duration-300 drop-shadow-[0_4px_12px_rgba(92,62,53,0.06)]">
-          <img src="/logo-eamo.jpg" alt="Eamo Logo" class="eamo-logo" />
-        </div>
-
-        <!-- Premium text-gradient title -->
-        <h1 class="text-xl sm:text-2xl font-extrabold tracking-tight bg-clip-text text-transparent bg-gradient-to-r from-slate-800 via-slate-900 to-indigo-950 dark:from-white dark:via-zinc-200 dark:to-indigo-300">
-          {{ t('page.portal.title') }}
-        </h1>
-        <p class="mt-1 text-xs sm:text-sm font-medium text-slate-500 dark:text-zinc-400 max-w-md mx-auto">
-          {{ t('page.portal.subtitle') }}
-        </p>
-
-        <!-- Current Time Badge (Floating Glassmorphic Pill) -->
-        <div class="mt-3 inline-flex items-center gap-1.5 px-3.5 py-1 bg-white/70 dark:bg-zinc-900/80 backdrop-blur-xs rounded-full border border-slate-100 dark:border-zinc-800/80 text-[11px] sm:text-xs font-semibold text-slate-600 dark:text-zinc-300 shadow-[0_4px_12px_rgba(0,0,0,0.02)]">
-          <span class="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
-          {{ currentTime || '00:00:00' }}
-        </div>
-      </div>
-
+    
       <!-- 4 Grid Buttons Portal Section (Using Ant Design Row/Col Grid) -->
       <div class="w-full">
         <Row :gutter="[16, 16]">
@@ -158,9 +136,6 @@ function handleNavigate(path: string) {
                   class="portal-icon-wrapper rounded-xl flex items-center justify-center transition-transform duration-300 group-hover:scale-110 shadow-3xs"
                   v-html="item.iconSvg"
                 ></div>
-                <div class="opacity-0 group-hover:opacity-100 transition-all duration-300 transform translate-x-1 group-hover:translate-x-0">
-                  <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="text-slate-400 dark:text-zinc-500"><line x1="5" y1="12" x2="19" y2="12"/><polyline points="12 5 19 12 12 19"/></svg>
-                </div>
               </div>
 
               <!-- Content details -->

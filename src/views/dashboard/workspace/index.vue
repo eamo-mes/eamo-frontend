@@ -1,7 +1,7 @@
 <script lang="ts" setup>
 import { ref, computed, onMounted } from 'vue';
 import { useRouter } from 'vue-router';
-import { Button, Spin, Tabs, Table, Tag, Badge, Popconfirm, message } from 'ant-design-vue';
+import { Spin, Tabs, Table, Tag, Badge, Popconfirm, message } from 'ant-design-vue';
 import dayjs from 'dayjs';
 import { requestClient } from '#/api/request';
 import { listUsersApi } from '#/api/core/users';
@@ -10,7 +10,6 @@ import { Eye, EyeOff } from '@vben/icons';
 import { $t } from '#/locales';
 import ChecklistCalendar from './components/ChecklistCalendar.vue';
 import VisualMaintenanceCalendar from './components/VisualMaintenanceCalendar.vue';
-import WorkspaceAnalyticsWidget from './components/WorkspaceAnalyticsWidget.vue';
 import type {
   EquipmentOption,
   MaintenanceCategoryOption,
@@ -34,7 +33,6 @@ const myErrorLogs = ref<ErrorLogItem[]>([]);
 const loadingSchedules = ref(false);
 const loadingErrorLogs = ref(false);
 const activeTab = ref<'maintenance' | 'checklist'>('maintenance');
-const showChartWidget = ref(false);
 const calendarRange = ref<{ start_date: string; end_date: string } | null>(null);
 const syncingId = ref<string | null>(null);
 
@@ -280,25 +278,7 @@ onMounted(() => {
           <span class="truncate">{{ $t('page.ops.checklistCalendarTitle') }}</span>
         </button>
       </div>
-
-      <!-- Toggle Chart Widget Button (Default Closed) -->
-      <Button
-        type="default"
-        class="flex items-center gap-2 font-medium rounded-xl border-border bg-card shadow-2xs h-10 px-3.5"
-        @click="showChartWidget = !showChartWidget"
-      >
-        <span class="text-sm text-foreground">
-          {{ showChartWidget ? ($t('page.ops.hideChartWidget')) : ($t('page.ops.showChartWidget')) }}
-        </span>
-      </Button>
     </div>
-
-    <!-- Analytics Chart Widget (Default Closed, Toggleable) -->
-    <WorkspaceAnalyticsWidget
-      v-if="showChartWidget"
-      :active-tab="activeTab"
-      :schedules="allSchedules"
-    />
 
     <!-- Tab Content: Maintenance Calendar -->
     <div v-if="activeTab === 'maintenance'">

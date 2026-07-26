@@ -293,7 +293,7 @@ onMounted(() => {
                 class="bg-[#5c3e35] hover:bg-[#4b332b] border-[#5c3e35] rounded-md font-medium text-white px-3.5 flex items-center"
                 @click="openCreateDrawer()"
               >
-                + {{ $t('page.ops.checklistDrawer.btnCreateSession') || 'Tạo phiên kiểm tra mới' }}
+                {{ $t('page.ops.checklistDrawer.btnCreateSession') || 'Tạo phiên kiểm tra mới' }}
               </Button>
             </div>
           </div>

@@ -7,6 +7,8 @@ import { $t } from '#/locales';
 
 const BasicLayout = () => import('#/layouts/basic.vue');
 const AuthPageLayout = () => import('#/layouts/auth.vue');
+const MobileLayout = () => import('#/layouts/mobile.vue');
+
 /** 全局404页面 */
 const fallbackNotFoundRoute: RouteRecordRaw = {
   component: () => import('#/views/_core/fallback/not-found.vue'),
@@ -89,6 +91,30 @@ const coreRoutes: RouteRecordRaw[] = [
         component: () => import('#/views/_core/authentication/register.vue'),
         meta: {
           title: $t('page.auth.register'),
+        },
+      },
+    ],
+  },
+  {
+    component: MobileLayout,
+    meta: {
+      hideInBreadcrumb: true,
+      hideInMenu: true,
+      hideInTab: true,
+      title: 'Mobile Portal',
+    },
+    name: 'MobilePortalGroup',
+    path: '/portal-group',
+    children: [
+      {
+        name: 'MobilePortal',
+        path: '/portal',
+        component: () => import('#/views/mobile/portal/index.vue'),
+        meta: {
+          title: $t('page.portal.mobileTitle'),
+          ignoreAccess: true,
+          hideInMenu: true,
+          hideInTab: true,
         },
       },
     ],
