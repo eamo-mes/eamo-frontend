@@ -801,5 +801,20 @@
     "btnMarkRead": "Mark as Read",
     "btnMarkAllRead": "Mark All as Read",
     "btnViewDetail": "View Details"
+  },
+  "portal": {
+    "menuTitle": "Operations Portal",
+    "mobileTitle": "Mobile Portal",
+    "title": "Operations Management System",
+    "subtitle": "Digital solution for equipment monitoring & comprehensive maintenance",
+    "loading": "Opening page...",
+    "checklist": "Checklist",
+    "checklistSub": "Routine inspection",
+    "mPlans": "Maintenance Plans",
+    "mPlansSub": "Periodic maintenance",
+    "errLog": "Error Tracking",
+    "errLogSub": "Incident management",
+    "dashboard": "Dashboard",
+    "dashboardSub": "Operational analytics"
   }
 }

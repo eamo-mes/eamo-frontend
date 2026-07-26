@@ -794,5 +794,20 @@
     "btnMarkRead": "Đánh dấu đã đọc",
     "btnMarkAllRead": "Đánh dấu tất cả đã đọc",
     "btnViewDetail": "Xem chi tiết"
+  },
+  "portal": {
+    "menuTitle": "Portal Vận hành",
+    "mobileTitle": "Portal Mobile",
+    "title": "Hệ thống Quản lý Vận hành",
+    "subtitle": "Giải pháp số hóa giám sát thiết bị và bảo trì toàn diện",
+    "loading": "Đang mở trang...",
+    "checklist": "Checklist",
+    "checklistSub": "Kiểm tra định kỳ",
+    "mPlans": "Kế hoạch bảo trì",
+    "mPlansSub": "Bảo dưỡng định kỳ",
+    "errLog": "Theo dõi lỗi",
+    "errLogSub": "Quản lý sự cố",
+    "dashboard": "Dashboard",
+    "dashboardSub": "Thống kê vận hành"
   }
 }
