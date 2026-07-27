@@ -1,18 +1,22 @@
 <script lang="ts" setup>
 import type { NotificationItem } from '@vben/layouts';
-import { computed, ref, watch, onUnmounted } from 'vue';
+import { computed, ref, watch, onMounted, onUnmounted } from 'vue';
 import { useRouter, useRoute } from 'vue-router';
 import { 
   Drawer, 
   Modal, 
   Input, 
-  message 
+  message,
+  Avatar
 } from 'ant-design-vue';
 import { useUserStore, useAccessStore } from '@vben/stores';
 import { preferences, usePreferences, updatePreferences } from '@vben/preferences';
-import { Notification, UserDropdown } from '@vben/layouts';
+import { Notification } from '@vben/layouts';
+import MobileUserDropdown from '#/views/mobile/components/MobileUserDropdown.vue';
+import { VbenIconButton } from '@vben/common-ui';
 import { IconifyIcon } from '@vben/icons';
 import { $t } from '#/locales';
+import { useI18n, loadLocaleMessages } from '@vben/locales';
 import { useAuthStore } from '#/store';
 import {
   getUserNotificationsApi,
@@ -26,6 +30,20 @@ const userStore = useUserStore();
 const accessStore = useAccessStore();
 const authStore = useAuthStore();
 const { isDark } = usePreferences();
+const { locale, t } = useI18n();
+
+async function changeLang(lang: 'zh-CN' | 'en-US') {
+  if (locale.value === lang) return;
+  const hide = message.loading({ content: lang === 'zh-CN' ? 'Đang chuyển ngôn ngữ...' : 'Switching language...', key: 'lang', duration: 0 });
+  try {
+    updatePreferences({ app: { locale: lang } });
+    await loadLocaleMessages(lang);
+  } catch (e) {
+    console.error('Failed to change language:', e);
+  } finally {
+    hide();
+  }
+}
 
 // Helper functions for Vben Menu Record properties compatibility
 function getMenuTitle(item: any): string {
@@ -81,19 +99,7 @@ const unreadCount = ref(0);
 let pollInterval: any = null;
 
 function mapNotification(item: any): NotificationItem {
-  let avatar = '/avatar.png';
-  const entityType = item.data?.entity_type;
-  
-  if (entityType === 'checklist_session') {
-    avatar = 'https://avatar.vercel.sh/checklist.svg?text=CL';
-  } else if (entityType === 'maintenance_schedule') {
-    avatar = 'https://avatar.vercel.sh/maintenance.svg?text=MS';
-  } else if (entityType === 'error_log') {
-    avatar = 'https://avatar.vercel.sh/error.svg?text=EL';
-  } else if (entityType === 'maintenance_item') {
-    avatar = 'https://avatar.vercel.sh/item.svg?text=MI';
-  }
-
+  const avatar = '/avatar.png';
   const dateStr = item.created_at ? new Date(item.created_at).toLocaleString() : '';
 
   return {
@@ -146,10 +152,16 @@ onUnmounted(() => {
   }
 });
 
+onMounted(() => {
+  if (!userStore.userInfo?.realName && !userStore.userInfo?.username) {
+    authStore.fetchUserInfo().catch(() => {});
+  }
+});
+
 const showDot = computed(() => unreadCount.value > 0);
 
 const avatar = computed(() => {
-  return userStore.userInfo?.avatar ?? preferences.app.defaultAvatar;
+  return '/avatar.png';
 });
 
 const userMenus = computed(() => [
@@ -188,6 +200,14 @@ function handleNavigate(path: string) {
   drawerVisible.value = false;
   searchModalVisible.value = false;
   router.push(path);
+}
+
+function handleBack() {
+  if (window.history.state?.back) {
+    router.back();
+  } else {
+    router.push('/portal');
+  }
 }
 
 // Search System Pages dynamically built from webAdminMenus
@@ -275,31 +295,35 @@ function handleNotificationClick(item: NotificationItem) {
     <!-- Top Mobile Header Navigation -->
     <header class="sticky top-0 z-40 h-14 bg-white/80 dark:bg-zinc-900/80 backdrop-blur-md border-b border-slate-200/80 dark:border-zinc-800/80 px-3 flex items-center justify-between shadow-2xs">
       
-      <!-- Left: Open Sidebar Drawer Button & Logo -->
-      <div class="flex items-center gap-2.5">
-        <button 
-          @click="drawerVisible = true"
-          class="p-2 rounded-xl text-slate-700 dark:text-zinc-200 hover:bg-slate-100 dark:hover:bg-zinc-800 transition-colors cursor-pointer border-0 bg-transparent flex items-center justify-center"
-          aria-label="Open Sidebar"
+      <!-- Left: Back Button & Open Sidebar Drawer Button -->
+      <div class="flex items-center gap-1">
+        <VbenIconButton 
+          v-if="route.path !== '/portal'"
+          class="text-foreground"
+          tooltip="Quay lại"
+          @click="handleBack"
         >
-          <svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-menu">
-            <line x1="4" x2="20" y1="12" y2="12"/><line x1="4" x2="20" y1="6" y2="6"/><line x1="4" x2="20" y1="18" y2="18"/>
-          </svg>
-        </button>
+          <IconifyIcon icon="lucide:arrow-left" class="size-4" />
+        </VbenIconButton>
+
+        <VbenIconButton 
+          class="text-foreground"
+          @click="drawerVisible = true"
+        >
+          <IconifyIcon icon="lucide:menu" class="size-4" />
+        </VbenIconButton>
       </div>
 
       <!-- Right Action Icons -->
       <div class="flex items-center gap-1 sm:gap-2">
         
         <!-- Search Button -->
-        <button 
+        <VbenIconButton 
+          class="text-foreground"
           @click="searchModalVisible = true"
-          class="p-2 rounded-xl text-slate-600 dark:text-zinc-300 hover:bg-slate-100 dark:hover:bg-zinc-800 transition-colors cursor-pointer border-0 bg-transparent flex items-center justify-center"
         >
-          <svg xmlns="http://www.w3.org/2000/svg" width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-search">
-            <circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/>
-          </svg>
-        </button>
+          <IconifyIcon icon="lucide:search" class="size-4" />
+        </VbenIconButton>
 
         <!-- Notification -->
         <Notification
@@ -314,25 +338,18 @@ function handleNotificationClick(item: NotificationItem) {
         />
 
         <!-- Reload / Refresh Page Button -->
-        <button 
-          @click="handleReload"
+        <VbenIconButton 
+          class="text-foreground"
           :class="{ 'animate-spin': isRefreshing }"
-          class="p-2 rounded-xl text-slate-600 dark:text-zinc-300 hover:bg-slate-100 dark:hover:bg-zinc-800 transition-colors cursor-pointer border-0 bg-transparent flex items-center justify-center"
+          @click="handleReload"
         >
-          <svg xmlns="http://www.w3.org/2000/svg" width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-rotate-cw">
-            <path d="M21 12a9 9 0 1 1-9-9c2.52 0 4.93 1 6.74 2.74L21 8"/><path d="M21 3v5h-5"/>
-          </svg>
-        </button>
+          <IconifyIcon icon="lucide:rotate-cw" class="size-4" />
+        </VbenIconButton>
 
-        <!-- UserDropdown -->
-        <UserDropdown
+        <!-- MobileUserDropdown -->
+        <MobileUserDropdown
           :avatar="avatar"
-          :menus="userMenus"
-          :text="userStore.userInfo?.realName"
-          :description="userStore.userInfo?.username"
-          :tag-text="userStore.userInfo?.roles?.[0]?.toUpperCase()"
           @logout="handleLogout"
-          @clear-preferences-and-logout="handleLogout"
         />
 
       </div>
@@ -355,7 +372,7 @@ function handleNotificationClick(item: NotificationItem) {
         
         <!-- User Info Header -->
         <div class="flex items-center gap-3 p-3 bg-slate-800/80 rounded-2xl border border-slate-700/50 mb-4">
-          <Avatar :src="avatar" :size="42" class="border border-indigo-400/40" />
+          <Avatar src="/avatar.png" :size="42" class="border border-indigo-400/40" />
           <div class="flex flex-col min-w-0">
             <span class="font-bold text-sm text-slate-100 truncate">{{ userStore.userInfo?.realName || userStore.userInfo?.username }}</span>
             <span class="text-[11px] text-slate-400 truncate">{{ userStore.userInfo?.roles?.[0] || 'User' }}</span>
@@ -364,25 +381,75 @@ function handleNotificationClick(item: NotificationItem) {
 
         <!-- Mobile Sidebar Navigation Items -->
         <div class="flex-1 flex flex-col gap-1 overflow-y-auto pr-1">
-          
-          <!-- Home Mobile Portal Link -->
-          <button 
+
+          <!-- Section Label: Mobile Portal -->
+          <div class="px-1 mb-1 text-[10px] font-bold uppercase tracking-widest text-slate-500">
+            {{ t('page.portal.mobileTitle') || 'Mobile Portal' }}
+          </div>
+
+          <!-- 1. Home / Portal Landing -->
+          <button
             @click="handleNavigate('/portal')"
             :class="[route.path === '/portal' ? 'bg-indigo-600 text-white font-bold shadow-xs' : 'text-slate-300 hover:bg-slate-800/80']"
-            class="w-full flex items-center gap-3 px-3.5 py-2.5 rounded-xl text-xs transition-all cursor-pointer border-0 text-left mb-1"
+            class="w-full flex items-center gap-3 px-3.5 py-2.5 rounded-xl text-xs transition-all cursor-pointer border-0 text-left"
           >
-            <IconifyIcon icon="lucide:smartphone" class="text-base flex-shrink-0" />
-            <span class="flex-1 truncate">Trang chủ Mobile</span>
+            <IconifyIcon icon="lucide:home" class="text-base flex-shrink-0" />
+            <span class="flex-1 truncate">{{ t('page.portal.title') }}</span>
           </button>
 
-          <div class="my-1 border-t border-slate-800/80"></div>
+          <!-- 2. Equipment -->
+          <button
+            @click="handleNavigate('/portal/equipment')"
+            :class="[route.path.startsWith('/portal/equipment') ? 'bg-amber-600 text-white font-bold shadow-xs' : 'text-slate-300 hover:bg-slate-800/80']"
+            class="w-full flex items-center gap-3 px-3.5 py-2.5 rounded-xl text-xs transition-all cursor-pointer border-0 text-left"
+          >
+            <IconifyIcon icon="lucide:wrench" class="text-base flex-shrink-0" />
+            <span class="flex-1 truncate">{{ t('page.portal.equipment') }}</span>
+          </button>
+
+          <!-- 3. Notifications (Dashboard) -->
+          <button
+            @click="handleNavigate('/portal/dashboard')"
+            :class="[route.path.startsWith('/portal/dashboard') ? 'bg-purple-600 text-white font-bold shadow-xs' : 'text-slate-300 hover:bg-slate-800/80']"
+            class="w-full flex items-center gap-3 px-3.5 py-2.5 rounded-xl text-xs transition-all cursor-pointer border-0 text-left"
+          >
+            <IconifyIcon icon="lucide:bell" class="text-base flex-shrink-0" />
+            <span class="flex-1 truncate">{{ t('page.portal.notifications') }}</span>
+          </button>
+
+          <!-- 4. Checklist -->
+          <button
+            @click="handleNavigate('/portal/checklist')"
+            :class="[route.path.startsWith('/portal/checklist') ? 'bg-blue-600 text-white font-bold shadow-xs' : 'text-slate-300 hover:bg-slate-800/80']"
+            class="w-full flex items-center gap-3 px-3.5 py-2.5 rounded-xl text-xs transition-all cursor-pointer border-0 text-left"
+          >
+            <IconifyIcon icon="lucide:clipboard-check" class="text-base flex-shrink-0" />
+            <span class="flex-1 truncate">{{ t('page.portal.checklist') || 'Checklist' }}</span>
+          </button>
+
+          <!-- 5. Maintenance Plans -->
+          <button
+            @click="handleNavigate('/portal/maintain-plan')"
+            :class="[route.path.startsWith('/portal/maintain-plan') ? 'bg-emerald-600 text-white font-bold shadow-xs' : 'text-slate-300 hover:bg-slate-800/80']"
+            class="w-full flex items-center gap-3 px-3.5 py-2.5 rounded-xl text-xs transition-all cursor-pointer border-0 text-left"
+          >
+            <IconifyIcon icon="lucide:calendar-clock" class="text-base flex-shrink-0" />
+            <span class="flex-1 truncate">{{ t('page.portal.mPlans') || 'Kế hoạch bảo trì' }}</span>
+          </button>
+
+          <div class="my-2 border-t border-slate-800/80"></div>
+
+          <!-- Section Label: Web Admin -->
+          <div class="px-1 mb-1 text-[10px] font-bold uppercase tracking-widest text-slate-500">
+            {{ t('page.portal.menuTitle') || 'Web Admin' }}
+          </div>
 
           <!-- Dynamic Web Admin Menus -->
           <div v-for="menu in webAdminMenus" :key="menu.path" class="flex flex-col gap-0.5">
-            
+
             <!-- Parent Menu with Children -->
             <template v-if="menu.children && menu.children.length > 0">
-              <div 
+              <div
                 @click="toggleExpand(menu.path)"
                 class="w-full flex items-center justify-between px-3.5 py-2.5 rounded-xl text-xs font-semibold text-slate-400 hover:text-slate-200 hover:bg-slate-800/60 cursor-pointer transition-colors"
               >
@@ -390,8 +457,8 @@ function handleNotificationClick(item: NotificationItem) {
                   <IconifyIcon :icon="getMenuIcon(menu, 'lucide:folder')" class="text-base flex-shrink-0 text-indigo-400" />
                   <span class="truncate">{{ getMenuTitle(menu) }}</span>
                 </div>
-                <IconifyIcon 
-                  icon="lucide:chevron-down" 
+                <IconifyIcon
+                  icon="lucide:chevron-down"
                   :class="{ 'rotate-180': expandedKeys[menu.path] }"
                   class="text-xs transition-transform duration-200 flex-shrink-0 opacity-70"
                 />
@@ -399,8 +466,8 @@ function handleNotificationClick(item: NotificationItem) {
 
               <!-- Collapsible Sub-menu items -->
               <div v-show="expandedKeys[menu.path]" class="flex flex-col gap-0.5 pl-3.5 ml-2 border-l border-slate-800 my-0.5">
-                <button 
-                  v-for="child in menu.children.filter((c: any) => !isHideInMenu(c))" 
+                <button
+                  v-for="child in menu.children.filter((c: any) => !isHideInMenu(c))"
                   :key="child.path"
                   @click="handleNavigate(child.path)"
                   :class="[route.path === child.path ? 'bg-indigo-600 text-white font-bold' : 'text-slate-300 hover:bg-slate-800/80']"
@@ -414,7 +481,7 @@ function handleNotificationClick(item: NotificationItem) {
 
             <!-- Single Menu Item (No Children) -->
             <template v-else>
-              <button 
+              <button
                 @click="handleNavigate(menu.path)"
                 :class="[route.path === menu.path ? 'bg-indigo-600 text-white font-bold' : 'text-slate-300 hover:bg-slate-800/80']"
                 class="w-full flex items-center gap-3 px-3.5 py-2.5 rounded-xl text-xs transition-all cursor-pointer border-0 text-left"
@@ -428,23 +495,44 @@ function handleNotificationClick(item: NotificationItem) {
 
         </div>
 
-        <!-- Sidebar Footer Controls (Theme & Logout) -->
-        <div class="pt-4 border-t border-slate-800 flex items-center justify-between gap-2">
-          <button 
-            @click="toggleTheme" 
-            class="flex-1 flex items-center justify-center gap-2 py-2 px-3 rounded-xl bg-slate-800 text-xs text-slate-300 hover:text-white transition-colors cursor-pointer border-0"
-          >
-            <svg v-if="isDark" xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="4"/><path d="M12 2v2"/><path d="M12 20v2"/><path d="m4.93 4.93 1.41 1.41"/><path d="m17.66 17.66 1.41 1.41"/><path d="M2 12h2"/><path d="M20 12h2"/><path d="m6.34 17.66-1.41 1.41"/><path d="m19.07 4.93-1.41 1.41"/></svg>
-            <svg v-else xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 3a6 6 0 0 0 9 9 9 9 0 1 1-9-9Z"/></svg>
-            <span>{{ isDark ? 'Giao diện Sáng' : 'Giao diện Tối' }}</span>
-          </button>
+        <!-- Sidebar Footer Controls (Language, Theme & Logout) -->
+        <div class="pt-4 border-t border-slate-800 flex flex-col gap-2">
 
-          <button 
-            @click="handleLogout" 
-            class="flex items-center justify-center p-2 rounded-xl bg-rose-500/20 text-rose-400 hover:bg-rose-500/30 transition-colors cursor-pointer border-0"
-          >
-            <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>
-          </button>
+          <!-- Language Switcher -->
+          <div class="flex items-center gap-1 p-1 bg-slate-800/80 rounded-xl">
+            <button
+              @click="changeLang('zh-CN')"
+              :class="[locale === 'zh-CN' ? 'bg-indigo-600 text-white font-bold shadow-xs' : 'text-slate-400 hover:text-slate-200']"
+              class="flex-1 py-1.5 rounded-lg text-[10px] uppercase tracking-wider font-bold transition-all cursor-pointer border-0 outline-none"
+            >
+              VI
+            </button>
+            <button
+              @click="changeLang('en-US')"
+              :class="[locale === 'en-US' ? 'bg-indigo-600 text-white font-bold shadow-xs' : 'text-slate-400 hover:text-slate-200']"
+              class="flex-1 py-1.5 rounded-lg text-[10px] uppercase tracking-wider font-bold transition-all cursor-pointer border-0 outline-none"
+            >
+              EN
+            </button>
+          </div>
+
+          <!-- Theme & Logout Row -->
+          <div class="flex items-center gap-2">
+            <button
+              @click="toggleTheme"
+              class="flex-1 flex items-center justify-center gap-2 py-2 px-3 rounded-xl bg-slate-800 text-xs text-slate-300 hover:text-white transition-colors cursor-pointer border-0"
+            >
+              <IconifyIcon :icon="isDark ? 'lucide:sun' : 'lucide:moon'" class="text-base" />
+              <span>{{ isDark ? (t('page.portal.lightMode') || 'Sáng') : (t('page.portal.darkMode') || 'Tối') }}</span>
+            </button>
+
+            <VbenIconButton
+              class="bg-rose-500/20 text-rose-400 hover:bg-rose-500/30"
+              @click="handleLogout"
+            >
+              <IconifyIcon icon="lucide:log-out" class="size-4" />
+            </VbenIconButton>
+          </div>
         </div>
 
       </div>

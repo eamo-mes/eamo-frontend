@@ -44,9 +44,27 @@ onUnmounted(() => {
 
 const menuItems = computed(() => [
   {
+    title: t('page.portal.equipment'),
+    subtitle: t('page.portal.equipmentSub'),
+    path: '/portal/equipment',
+    iconClass: 'bg-amber-50/80 text-amber-600 dark:bg-amber-950/40 dark:text-amber-400',
+    hoverClass: 'hover:border-amber-400/80 dark:hover:border-amber-500/40 hover:shadow-[0_12px_30px_rgba(245,158,11,0.08)]',
+    activeGlow: 'bg-amber-500',
+    iconSvg: `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-wrench"><path d="M14.7 6.3a1 1 0 0 0 0 1.4l1.6 1.6a1 1 0 0 0 1.4 0l3.77-3.77a6 6 0 0 1-7.94 7.94l-6.91 6.91a2.12 2.12 0 0 1-3-3l6.91-6.91a6 6 0 0 1 7.94-7.94l-3.76 3.76z"/></svg>`
+  },
+  {
+    title: t('page.portal.notifications') || 'Thông báo',
+    subtitle: t('page.portal.notificationsSub') || 'Thông tin & cảnh báo',
+    path: '/portal/dashboard',
+    iconClass: 'bg-purple-50/80 text-purple-600 dark:bg-purple-950/40 dark:text-purple-400',
+    hoverClass: 'hover:border-purple-400/80 dark:hover:border-purple-500/40 hover:shadow-[0_12px_30px_rgba(168,85,247,0.08)]',
+    activeGlow: 'bg-purple-500',
+    iconSvg: `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-bell"><path d="M6 8a6 6 0 0 1 12 0c0 7 3 9 3 9H3s3-2 3-9"/><path d="M10.3 21a1.94 1.94 0 0 0 3.4 0"/></svg>`
+  },
+  {
     title: t('page.portal.checklist'),
     subtitle: t('page.portal.checklistSub'),
-    path: '/maintenance/checklist',
+    path: '/portal/checklist',
     iconClass: 'bg-blue-50/80 text-blue-600 dark:bg-blue-950/40 dark:text-blue-400',
     hoverClass: 'hover:border-blue-400/80 dark:hover:border-blue-500/40 hover:shadow-[0_12px_30px_rgba(59,130,246,0.08)]',
     activeGlow: 'bg-blue-500',
@@ -55,29 +73,11 @@ const menuItems = computed(() => [
   {
     title: t('page.portal.mPlans'),
     subtitle: t('page.portal.mPlansSub'),
-    path: '/maintenance/maintenance-plans',
+    path: '/portal/maintain-plan',
     iconClass: 'bg-emerald-50/80 text-emerald-600 dark:bg-emerald-950/40 dark:text-emerald-400',
     hoverClass: 'hover:border-emerald-400/80 dark:hover:border-emerald-500/40 hover:shadow-[0_12px_30px_rgba(16,185,129,0.08)]',
     activeGlow: 'bg-emerald-500',
     iconSvg: `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-calendar-clock"><path d="M21 7.5V6a2 2 0 0 0-2-2H5a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h3.5"/><path d="M16 2v4"/><path d="M8 2v4"/><path d="M3 10h18"/><path d="M12 14v4h4"/><circle cx="18" cy="18" r="4"/></svg>`
-  },
-  {
-    title: t('page.portal.errLog'),
-    subtitle: t('page.portal.errLogSub'),
-    path: '/maintenance/error-monitoring',
-    iconClass: 'bg-rose-50/80 text-rose-600 dark:bg-rose-950/40 dark:text-rose-400',
-    hoverClass: 'hover:border-rose-400/80 dark:hover:border-rose-500/40 hover:shadow-[0_12px_30px_rgba(244,63,94,0.08)]',
-    activeGlow: 'bg-rose-500',
-    iconSvg: `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-alert-triangle"><path d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3Z"/><line x1="12" y1="9" x2="12" y2="13"/><circle cx="12" cy="17" r="1"/></svg>`
-  },
-  {
-    title: t('page.portal.dashboard'),
-    subtitle: t('page.portal.dashboardSub'),
-    path: '/dashboard/workspace',
-    iconClass: 'bg-violet-50/80 text-violet-600 dark:bg-violet-950/40 dark:text-violet-400',
-    hoverClass: 'hover:border-violet-400/80 dark:hover:border-violet-500/40 hover:shadow-[0_12px_30px_rgba(139,92,246,0.08)]',
-    activeGlow: 'bg-violet-500',
-    iconSvg: `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-layout-dashboard"><rect width="7" height="9" x="3" y="3" rx="1"/><rect width="7" height="5" x="14" y="3" rx="1"/><rect width="7" height="5" x="14" y="10" rx="1"/><rect width="7" height="5" x="3" y="14" rx="1"/></svg>`
   }
 ]);
 

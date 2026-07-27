@@ -393,9 +393,6 @@ watch(
             <Table :loading="true" :columns="[]" :data-source="[]" />
           </div>
           <div v-else-if="dailyChecklistData">
-            <div class="mb-2 text-sm font-semibold">
-              {{ dailyChecklistData.name }} ({{ dailyChecklistData.session_date }})
-            </div>
             <Table
               :columns="dailyColumns"
               :data-source="dailyChecklistData.details"

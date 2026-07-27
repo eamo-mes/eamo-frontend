@@ -100,8 +100,9 @@ function setupAccessGuard(router: Router) {
       }
     }
 
-
     // 是否已经生成过动态路由
+    // Even for ignoreAccess routes, if user is logged in but routes haven't been generated yet,
+    // we still generate them so the full app menu and access control work correctly.
     if (accessStore.isAccessChecked) {
       return true;
     }
@@ -133,13 +134,25 @@ function setupAccessGuard(router: Router) {
     accessStore.setAccessMenus(accessibleMenus);
     accessStore.setAccessRoutes(accessibleRoutes);
     accessStore.setIsAccessChecked(true);
-    const redirectPath = (from.query.redirect ??
-      (to.path === preferences.app.defaultHomePath
-        ? userInfo.homePath || preferences.app.defaultHomePath
-        : to.fullPath)) as string;
+
+    // Determine where to redirect after route generation.
+    // Priority: explicit ?redirect query param > current to.fullPath if it's a real destination > homePath
+    let redirectPath: string;
+    if (from.query.redirect) {
+      redirectPath = decodeURIComponent(from.query.redirect as string);
+    } else if (
+      to.fullPath &&
+      to.fullPath !== preferences.app.defaultHomePath &&
+      to.name !== 'AuthCallback'
+    ) {
+      // Preserve the originally-requested path (important for mobile /portal/* routes)
+      redirectPath = to.fullPath;
+    } else {
+      redirectPath = userInfo.homePath || preferences.app.defaultHomePath;
+    }
 
     return {
-      ...router.resolve(decodeURIComponent(redirectPath)),
+      ...router.resolve(redirectPath),
       replace: true,
     };
   });

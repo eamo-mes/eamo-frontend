@@ -35,19 +35,7 @@ const unreadCount = ref(0);
 let pollInterval: any = null;
 
 function mapNotification(item: any): NotificationItem {
-  let avatar = '/avatar.png';
-  const entityType = item.data?.entity_type;
-  
-  if (entityType === 'checklist_session') {
-    avatar = 'https://avatar.vercel.sh/checklist.svg?text=CL';
-  } else if (entityType === 'maintenance_schedule') {
-    avatar = 'https://avatar.vercel.sh/maintenance.svg?text=MS';
-  } else if (entityType === 'error_log') {
-    avatar = 'https://avatar.vercel.sh/error.svg?text=EL';
-  } else if (entityType === 'maintenance_item') {
-    avatar = 'https://avatar.vercel.sh/item.svg?text=MI';
-  }
-
+  const avatar = '/avatar.png';
   const dateStr = item.created_at ? new Date(item.created_at).toLocaleString() : '';
 
   return {
@@ -113,7 +101,7 @@ const menus = computed(() => [
 ]);
 
 const avatar = computed(() => {
-  return userStore.userInfo?.avatar ?? preferences.app.defaultAvatar;
+  return '/avatar.png';
 });
 
 async function handleLogout() {

@@ -117,6 +117,61 @@ const coreRoutes: RouteRecordRaw[] = [
           hideInTab: true,
         },
       },
+      {
+        name: 'MobilePortalEquipment',
+        path: '/portal/equipment',
+        component: () => import('#/views/mobile/portal/equipment/index.vue'),
+        meta: {
+          title: 'Equipment',
+          ignoreAccess: true,
+          hideInMenu: true,
+          hideInTab: true,
+        },
+      },
+      {
+        name: 'MobilePortalDashboard',
+        path: '/portal/dashboard',
+        component: () => import('#/views/mobile/portal/dashboard/index.vue'),
+        meta: {
+          title: 'Dashboard',
+          ignoreAccess: true,
+          hideInMenu: true,
+          hideInTab: true,
+        },
+      },
+      {
+        name: 'MobilePortalChecklist',
+        path: '/portal/checklist',
+        component: () => import('#/views/mobile/portal/checklist/index.vue'),
+        meta: {
+          title: 'Checklist',
+          ignoreAccess: true,
+          hideInMenu: true,
+          hideInTab: true,
+        },
+      },
+      {
+        name: 'MobilePortalMaintainPlan',
+        path: '/portal/maintain-plan',
+        component: () => import('#/views/mobile/portal/maintain-plan/index.vue'),
+        meta: {
+          title: 'Maintain Plan',
+          ignoreAccess: true,
+          hideInMenu: true,
+          hideInTab: true,
+        },
+      },
+      {
+        name: 'MobilePortalProfile',
+        path: '/portal/profile',
+        component: () => import('#/views/mobile/profile/index.vue'),
+        meta: {
+          title: 'Thông tin cá nhân',
+          ignoreAccess: true,
+          hideInMenu: true,
+          hideInTab: true,
+        },
+      },
     ],
   },
 ];

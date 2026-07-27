@@ -55,8 +55,22 @@ export async function redirectToLogin(redirectAfterLogin?: string) {
   const hashed = await sha256(verifier);
   const challenge = base64urlencode(hashed);
 
+  let targetPath = redirectAfterLogin;
+  if (!targetPath && typeof window !== 'undefined') {
+    const currentPath = window.location.pathname + window.location.search;
+    if (!currentPath.startsWith('/auth')) {
+      targetPath = currentPath;
+    }
+  }
+
+  if (targetPath?.startsWith('/portal')) {
+    localStorage.setItem('is_mobile_portal', 'true');
+  } else {
+    localStorage.removeItem('is_mobile_portal');
+  }
+
   // Encode the intended redirect path in the state parameter so callback.vue can restore it
-  const state = redirectAfterLogin ? encodeURIComponent(redirectAfterLogin) : '';
+  const state = targetPath ? encodeURIComponent(targetPath) : '';
 
   let url = `${AUTH_URL}?client_id=${CLIENT_ID}&redirect_uri=${encodeURIComponent(REDIRECT_URI)}&response_type=code&scope=&code_challenge=${challenge}&code_challenge_method=S256`;
   if (state) {

@@ -66,11 +66,20 @@ onMounted(async () => {
       duration: 3,
     });
 
-    // Lấy redirect path từ state param (được set bởi redirectToLogin), hoặc mặc định về homepage
+    // Lấy redirect path từ state param (được set bởi redirectToLogin), hoặc mặc định về portal / homepage
     const stateParam = route.query.state as string | undefined;
-    const redirectPath = stateParam
-      ? decodeURIComponent(stateParam)
-      : (userInfo.homePath || preferences.app.defaultHomePath);
+    const isMobilePortal = localStorage.getItem('is_mobile_portal') === 'true';
+    localStorage.removeItem('is_mobile_portal');
+
+    let redirectPath = stateParam ? decodeURIComponent(stateParam) : undefined;
+
+    if (!redirectPath) {
+      if (isMobilePortal) {
+        redirectPath = '/portal';
+      } else {
+        redirectPath = userInfo.homePath || preferences.app.defaultHomePath;
+      }
+    }
 
     await router.replace(redirectPath);
   } catch (err: unknown) {
