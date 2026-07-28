@@ -270,7 +270,7 @@ async function handleImageCaptured(event: Event) {
 
     const equipmentData = res.data?.data;
     if (equipmentData) {
-      message.success('Giải mã QR thành công!');
+      message.success(t('portal.qrDecodeSuccess'));
       
       // 1. Chuyển sang Tab danh sách (List)
       activeTabKey.value = 'list';
@@ -280,7 +280,7 @@ async function handleImageCaptured(event: Event) {
     }
   } catch (err: any) {
     console.error('QR decode error:', err);
-    const apiMsg = err?.response?.data?.message || 'Không thể giải mã QR từ ảnh chụp.';
+    const apiMsg = err?.response?.data?.message || t('portal.unableToDecodeQr');
     cameraError.value = apiMsg;
     message.error(apiMsg);
   } finally {
@@ -400,10 +400,10 @@ onMounted(() => {
                 <div class="text-center z-5">
                   <svg xmlns="http://www.w3.org/2000/svg" width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" class="text-slate-400 dark:text-zinc-600 mx-auto mb-2"><rect width="5" height="5" x="3" y="3" rx="1"/><rect width="5" height="5" x="16" y="3" rx="1"/><rect width="5" height="5" x="3" y="16" rx="1"/><path d="M21 16V21H16"/><path d="M21 12H21.01"/><path d="M12 21H12.01"/><path d="M12 12H12.01"/><path d="M16 16H16.01"/><path d="M16 12H16.01"/><path d="M12 16H12.01"/></svg>
                   <p class="text-xs font-semibold text-slate-500 dark:text-zinc-400 m-0">
-                    {{ uploading ? 'Đang gửi ảnh giải mã...' : 'Nhấn nút bên dưới để chụp ảnh QR' }}
+                    {{ uploading ? t('portal.sendingImageToDecode') : t('portal.pressButtonToCapture') }}
                   </p>
                   <p class="text-[10px] text-slate-400 dark:text-zinc-500 mt-1">
-                    Hệ thống sẽ mở camera chụp ảnh thiết bị và tự tìm kiếm
+                    {{ t('portal.systemWillOpenCamera') }}
                   </p>
                   <p v-if="cameraError" class="text-[11px] text-red-500 font-medium mt-3 bg-red-50 dark:bg-red-950/20 px-2 py-1.5 rounded-lg">
                     {{ cameraError }}
@@ -422,7 +422,7 @@ onMounted(() => {
                   @click="triggerCapture"
                 >
                   <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-camera"><path d="M14.5 4h-5L7 7H4a2 2 0 0 0-2 2v9a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2V9a2 2 0 0 0-2-2h-3l-2.5-3z"/><circle cx="12" cy="13" r="3"/></svg>
-                  Chụp ảnh quét mã QR
+                  {{ t('portal.captureAndScanQr') }}
                 </Button>
               </div>
 
@@ -434,7 +434,7 @@ onMounted(() => {
             <div class="space-y-4 pt-2">
               <Input
                 v-model:value="searchVal"
-                placeholder="Tìm kiếm mã hoặc tên thiết bị..."
+                :placeholder="t('portal.searchPlaceholder')"
                 class="rounded-xl border-slate-200/80 dark:border-zinc-800"
                 size="large"
                 allow-clear
@@ -455,7 +455,7 @@ onMounted(() => {
               </div>
 
               <div v-else class="py-10 flex justify-center">
-                <Empty description="Không tìm thấy thiết bị nào" />
+                <Empty :description="t('portal.noEquipmentFound')" />
               </div>
             </div>
           </TabPane>
