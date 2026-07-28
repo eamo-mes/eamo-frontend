@@ -6,7 +6,6 @@ import {
   Card,
   Tabs,
   TabPane,
-  Select,
   Button,
   Tag,
   Spin,
@@ -100,9 +99,10 @@ const loading = ref(false);
 const equipments = ref<EquipmentItem[]>([]);
 const searchVal = ref('');
 
-// QR Scanning Mockup State
-const selectedScanId = ref<string | undefined>(undefined);
-const isScanning = ref(false);
+// QR Scanning State (Backend Decoding)
+const uploading = ref(false);
+const cameraError = ref('');
+const fileInputRef = ref<HTMLInputElement | null>(null);
 
 // Active Details View State
 const activeEquipment = ref<EquipmentItem | null>(null);
@@ -237,25 +237,58 @@ async function loadDailyChecklist(equipmentId: string) {
   }
 }
 
-// ─── Scan Simulation ───
-function handleSimulateScan() {
-  if (!selectedScanId.value) {
-    message.warning(t('page.portal.selectEquipmentToScan'));
-    return;
-  }
-  isScanning.value = true;
-  setTimeout(async () => {
-    isScanning.value = false;
-    await selectEquipment(selectedScanId.value!);
-  }, 1200);
-}
-
 // ─── Actions ───
 function handleBack() {
   activeEquipment.value = null;
   dailyChecklistData.value = null;
-  selectedScanId.value = undefined;
   remainingHours.value = null;
+}
+
+// ─── Backend QR Decoding Logic ───
+function triggerCapture() {
+  fileInputRef.value?.click();
+}
+
+async function handleImageCaptured(event: Event) {
+  const target = event.target as HTMLInputElement;
+  const file = target.files?.[0];
+  if (!file) return;
+
+  const formData = new FormData();
+  formData.append('qr_image', file);
+
+  uploading.value = true;
+  cameraError.value = '';
+
+  try {
+    const res = await axios.post(`${API_BASE_URL}/v1/equipment/decode-qr`, formData, {
+      headers: {
+        ...getAuthHeaders(),
+        'Content-Type': 'multipart/form-data',
+      },
+    });
+
+    const equipmentData = res.data?.data;
+    if (equipmentData) {
+      message.success('Giải mã QR thành công!');
+      
+      // 1. Chuyển sang Tab danh sách (List)
+      activeTabKey.value = 'list';
+      
+      // 2. Điền mã thiết bị vào ô tìm kiếm để tự động lọc
+      searchVal.value = equipmentData.code;
+    }
+  } catch (err: any) {
+    console.error('QR decode error:', err);
+    const apiMsg = err?.response?.data?.message || 'Không thể giải mã QR từ ảnh chụp.';
+    cameraError.value = apiMsg;
+    message.error(apiMsg);
+  } finally {
+    uploading.value = false;
+    if (fileInputRef.value) {
+      fileInputRef.value.value = '';
+    }
+  }
 }
 
 function navigateToDetail(sessionId: string, equipmentId: string, date: string) {
@@ -276,7 +309,9 @@ const filteredEquipments = computed(() => {
   return equipments.value.filter(
     (e) =>
       e.code.toLowerCase().includes(q) ||
-      (e.name && e.name.toLowerCase().includes(q))
+      (e.name && e.name.toLowerCase().includes(q)) ||
+      e.id.toLowerCase().includes(q) ||
+      (e.device_id && e.device_id.toLowerCase().includes(q))
   );
 });
 
@@ -312,11 +347,6 @@ function getStatusColor(status: string) {
 onMounted(() => {
   loadEquipments();
 });
-
-// Dummy reference to satisfy TS unused checks
-if (false as boolean) {
-  console.log(Select, handleSimulateScan);
-}
 </script>
 
 <template>
@@ -348,24 +378,54 @@ if (false as boolean) {
     <div v-else-if="!activeEquipment">
       <Card class="rounded-2xl shadow-xs border-slate-200/80 dark:border-zinc-800/80 bg-white dark:bg-zinc-900/60 backdrop-blur-md overflow-hidden">
         <Tabs v-model:activeKey="activeTabKey" class="mobile-tabs w-full">
-          <!-- ─── TAB 1: QR CODE SCANNER MOCKUP ─── -->
+          <!-- ─── TAB 1: BACKEND QR CODE DECODER ─── -->
           <TabPane key="qrcode" :tab="t('page.portal.qrCodeTab')">
-            <div class="flex flex-col items-center pt-2 pb-4">
-              <!-- Scanner Frame Mockup -->
-              <div class="relative w-64 h-64 border-2 border-dashed border-indigo-400 dark:border-indigo-600 rounded-2xl flex flex-col items-center justify-center bg-slate-100/50 dark:bg-zinc-950/40 overflow-hidden shadow-inner">
-                <!-- Laser line scan animation -->
-                <div v-if="isScanning" class="scanline absolute left-0 right-0 h-0.5 bg-red-500 shadow-[0_0_8px_#ef4444] z-10"></div>
+            <div class="flex flex-col items-center pt-2 pb-6">
+              
+              <!-- Hidden File Input for Capture -->
+              <input
+                ref="fileInputRef"
+                type="file"
+                accept="image/*"
+                capture="environment"
+                class="hidden"
+                @change="handleImageCaptured"
+              />
+
+              <!-- Frame for instructions and errors -->
+              <div class="relative w-72 min-h-72 border-2 border-dashed border-indigo-400 dark:border-indigo-600 rounded-2xl flex flex-col items-center justify-center bg-slate-100/50 dark:bg-zinc-950/40 overflow-hidden shadow-inner p-4">
+                <!-- Laser line scan animation when uploading/processing -->
+                <div v-if="uploading" class="scanline absolute left-0 right-0 h-0.5 bg-red-500 shadow-[0_0_8px_#ef4444] z-10"></div>
                 
-                <div class="text-center px-4 z-5">
+                <div class="text-center z-5">
                   <svg xmlns="http://www.w3.org/2000/svg" width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" class="text-slate-400 dark:text-zinc-600 mx-auto mb-2"><rect width="5" height="5" x="3" y="3" rx="1"/><rect width="5" height="5" x="16" y="3" rx="1"/><rect width="5" height="5" x="3" y="16" rx="1"/><path d="M21 16V21H16"/><path d="M21 12H21.01"/><path d="M12 21H12.01"/><path d="M12 12H12.01"/><path d="M16 16H16.01"/><path d="M16 12H16.01"/><path d="M12 16H12.01"/></svg>
                   <p class="text-xs font-semibold text-slate-500 dark:text-zinc-400 m-0">
-                    {{ isScanning ? t('page.portal.loading') : t('page.portal.scanAreaPlaceholder') }}
+                    {{ uploading ? 'Đang gửi ảnh giải mã...' : 'Nhấn nút bên dưới để chụp ảnh QR' }}
                   </p>
                   <p class="text-[10px] text-slate-400 dark:text-zinc-500 mt-1">
-                    {{ t('page.portal.scanInstruction') }}
+                    Hệ thống sẽ mở camera chụp ảnh thiết bị và tự tìm kiếm
+                  </p>
+                  <p v-if="cameraError" class="text-[11px] text-red-500 font-medium mt-3 bg-red-50 dark:bg-red-950/20 px-2 py-1.5 rounded-lg">
+                    {{ cameraError }}
                   </p>
                 </div>
               </div>
+
+              <!-- Action Button -->
+              <div class="mt-5 w-full max-w-[288px]">
+                <Button 
+                  type="primary" 
+                  block 
+                  size="large" 
+                  :loading="uploading"
+                  class="bg-indigo-600 hover:bg-indigo-700 border-none rounded-xl font-bold flex items-center justify-center gap-1.5"
+                  @click="triggerCapture"
+                >
+                  <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-camera"><path d="M14.5 4h-5L7 7H4a2 2 0 0 0-2 2v9a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2V9a2 2 0 0 0-2-2h-3l-2.5-3z"/><circle cx="12" cy="13" r="3"/></svg>
+                  Chụp ảnh quét mã QR
+                </Button>
+              </div>
+
             </div>
           </TabPane>
 
