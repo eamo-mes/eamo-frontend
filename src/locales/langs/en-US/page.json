@@ -852,6 +852,7 @@
     "captureAndScanQr": "Capture & Scan QR Code",
     "unableToDecodeQr": "Unable to decode QR from captured image.",
     "searchPlaceholder": "Search by code or equipment name...",
-    "noEquipmentFound": "No equipment found"
+    "noEquipmentFound": "No equipment found",
+    "immediateMaintenanceRequired": "Immediate maintenance required (Overdue)!"
   }
 }

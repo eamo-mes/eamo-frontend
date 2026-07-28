@@ -845,6 +845,7 @@
     "captureAndScanQr": "Chụp ảnh quét mã QR",
     "unableToDecodeQr": "Không thể giải mã QR từ ảnh chụp.",
     "searchPlaceholder": "Tìm kiếm mã hoặc tên thiết bị...",
-    "noEquipmentFound": "Không tìm thấy thiết bị nào"
+    "noEquipmentFound": "Không tìm thấy thiết bị nào",
+    "immediateMaintenanceRequired": "Cần bảo trì ngay lập tức (Đã quá hạn)!"
   }
 }

@@ -598,7 +598,7 @@ onMounted(() => {
               />
               <div v-if="remainingHours <= 0" class="text-[10px] text-red-500 font-semibold mt-1.5 flex items-center gap-1">
                 <span>⚠️</span>
-                <span>Cần bảo trì ngay lập tức (Đã quá hạn)!</span>
+                <span>{{ t('page.portal.immediateMaintenanceRequired') }}</span>
               </div>
             </div>
           </div>
