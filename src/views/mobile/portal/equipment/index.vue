@@ -270,7 +270,7 @@ async function handleImageCaptured(event: Event) {
 
     const equipmentData = res.data?.data;
     if (equipmentData) {
-      message.success(t('portal.qrDecodeSuccess'));
+      message.success(t('page.portal.qrDecodeSuccess'));
       
       // 1. Chuyển sang Tab danh sách (List)
       activeTabKey.value = 'list';
@@ -280,7 +280,7 @@ async function handleImageCaptured(event: Event) {
     }
   } catch (err: any) {
     console.error('QR decode error:', err);
-    const apiMsg = err?.response?.data?.message || t('portal.unableToDecodeQr');
+    const apiMsg = err?.response?.data?.message || t('page.portal.unableToDecodeQr');
     cameraError.value = apiMsg;
     message.error(apiMsg);
   } finally {
@@ -393,19 +393,39 @@ onMounted(() => {
               />
 
               <!-- Frame for instructions and errors -->
-              <div class="relative w-72 min-h-72 border-2 border-dashed border-indigo-400 dark:border-indigo-600 rounded-2xl flex flex-col items-center justify-center bg-slate-100/50 dark:bg-zinc-950/40 overflow-hidden shadow-inner p-4">
+              <div class="relative w-72 h-72 border border-slate-200/80 dark:border-zinc-800 bg-slate-100/50 dark:bg-zinc-950/40 rounded-3xl flex flex-col items-center justify-center overflow-hidden shadow-inner p-4">
                 <!-- Laser line scan animation when uploading/processing -->
-                <div v-if="uploading" class="scanline absolute left-0 right-0 h-0.5 bg-red-500 shadow-[0_0_8px_#ef4444] z-10"></div>
+                <div v-if="uploading" class="scanline absolute left-0 right-0 h-0.5 bg-indigo-500 shadow-[0_0_8px_#6366f1] z-10"></div>
                 
-                <div class="text-center z-5">
-                  <svg xmlns="http://www.w3.org/2000/svg" width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" class="text-slate-400 dark:text-zinc-600 mx-auto mb-2"><rect width="5" height="5" x="3" y="3" rx="1"/><rect width="5" height="5" x="16" y="3" rx="1"/><rect width="5" height="5" x="3" y="16" rx="1"/><path d="M21 16V21H16"/><path d="M21 12H21.01"/><path d="M12 21H12.01"/><path d="M12 12H12.01"/><path d="M16 16H16.01"/><path d="M16 12H16.01"/><path d="M12 16H12.01"/></svg>
-                  <p class="text-xs font-semibold text-slate-500 dark:text-zinc-400 m-0">
-                    {{ uploading ? t('portal.sendingImageToDecode') : t('portal.pressButtonToCapture') }}
+                <!-- Viewfinder Corner Brackets -->
+                <div class="absolute top-4 left-4 w-6 h-6 border-t-4 border-l-4 border-indigo-500 rounded-tl-lg"></div>
+                <div class="absolute top-4 right-4 w-6 h-6 border-t-4 border-r-4 border-indigo-500 rounded-tr-lg"></div>
+                <div class="absolute bottom-4 left-4 w-6 h-6 border-b-4 border-l-4 border-indigo-500 rounded-bl-lg"></div>
+                <div class="absolute bottom-4 right-4 w-6 h-6 border-b-4 border-r-4 border-indigo-500 rounded-br-lg"></div>
+
+                <div class="text-center z-5 flex flex-col items-center justify-center">
+                  <!-- QR Code Icon Wrapper -->
+                  <div class="mb-3 p-3.5 bg-indigo-50 dark:bg-indigo-950/30 rounded-2xl text-indigo-600 dark:text-indigo-400">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="44" height="44" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+                      <rect width="5" height="5" x="3" y="3" rx="1"/>
+                      <rect width="5" height="5" x="16" y="3" rx="1"/>
+                      <rect width="5" height="5" x="3" y="16" rx="1"/>
+                      <path d="M21 16V21H16"/>
+                      <path d="M21 12H21.01"/>
+                      <path d="M12 21H12.01"/>
+                      <path d="M12 12H12.01"/>
+                      <path d="M16 16H16.01"/>
+                      <path d="M16 12H16.01"/>
+                      <path d="M12 16H12.01"/>
+                    </svg>
+                  </div>
+                  <p class="text-sm font-bold text-slate-700 dark:text-zinc-200 m-0">
+                    {{ uploading ? t('page.portal.sendingImageToDecode') : t('page.portal.pressButtonToCapture') }}
                   </p>
-                  <p class="text-[10px] text-slate-400 dark:text-zinc-500 mt-1">
-                    {{ t('portal.systemWillOpenCamera') }}
+                  <p class="text-xs text-slate-400 dark:text-zinc-500 mt-2 px-4 leading-normal">
+                    {{ t('page.portal.systemWillOpenCamera') }}
                   </p>
-                  <p v-if="cameraError" class="text-[11px] text-red-500 font-medium mt-3 bg-red-50 dark:bg-red-950/20 px-2 py-1.5 rounded-lg">
+                  <p v-if="cameraError" class="text-[11px] text-red-500 font-semibold mt-3 bg-red-50 dark:bg-red-950/20 px-2 py-1.5 rounded-lg">
                     {{ cameraError }}
                   </p>
                 </div>
@@ -422,7 +442,7 @@ onMounted(() => {
                   @click="triggerCapture"
                 >
                   <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-camera"><path d="M14.5 4h-5L7 7H4a2 2 0 0 0-2 2v9a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2V9a2 2 0 0 0-2-2h-3l-2.5-3z"/><circle cx="12" cy="13" r="3"/></svg>
-                  {{ t('portal.captureAndScanQr') }}
+                  {{ t('page.portal.captureAndScanQr') }}
                 </Button>
               </div>
 
@@ -434,7 +454,7 @@ onMounted(() => {
             <div class="space-y-4 pt-2">
               <Input
                 v-model:value="searchVal"
-                :placeholder="t('portal.searchPlaceholder')"
+                :placeholder="t('page.portal.searchPlaceholder')"
                 class="rounded-xl border-slate-200/80 dark:border-zinc-800"
                 size="large"
                 allow-clear
@@ -455,7 +475,7 @@ onMounted(() => {
               </div>
 
               <div v-else class="py-10 flex justify-center">
-                <Empty :description="t('portal.noEquipmentFound')" />
+                <Empty :description="t('page.portal.noEquipmentFound')" />
               </div>
             </div>
           </TabPane>
