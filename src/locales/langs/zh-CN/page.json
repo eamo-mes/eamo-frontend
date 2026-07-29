@@ -348,6 +348,12 @@
     "updateFailed": "Cập nhật thất bại"
   },
   "ops": {
+    "moreNodesCount": "+{count} xem thêm",
+    "dayNodesModalTitle": "Danh sách kế hoạch bảo trì — {date}",
+    "checklistModalTitle": "Danh sách phiên kiểm tra — {date}",
+    "viewDetail": "Xem chi tiết",
+    "judgeSession": "Đánh giá",
+    "noNodesForDate": "Không có bản ghi nào trong ngày này",
     "deadlineLabel": "Deadline",
     "placeholderSelectDeadline": "Select deadline",
     "deleteSchedule": "Xóa lịch trình",

@@ -355,6 +355,12 @@
     "updateFailed": "Profile update failed"
   },
   "ops": {
+    "moreNodesCount": "+{count} more",
+    "dayNodesModalTitle": "Maintenance Plans — {date}",
+    "checklistModalTitle": "Checklist Sessions — {date}",
+    "viewDetail": "View Detail",
+    "judgeSession": "Evaluate",
+    "noNodesForDate": "No items scheduled for this date",
     "title": "O&M",
     "maintenanceTitle": "Equipment Maintenance",
     "operationTitle": "Equipment Operation",

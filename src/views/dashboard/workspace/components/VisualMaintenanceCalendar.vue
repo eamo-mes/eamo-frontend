@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { ref, onMounted, watch, nextTick } from 'vue';
-import { Calendar, Spin, Switch, Select, Radio, Button, message } from 'ant-design-vue';
+import { Calendar, Spin, Switch, Select, Radio, Button, Modal, Tag, Badge, Empty, message } from 'ant-design-vue';
 import dayjs, { type Dayjs } from 'dayjs';
 import { $t } from '#/locales';
 import { listEquipmentsApi, listMaintenanceSchedulesApi, type ScheduleRow } from '#/api/ops/maintenance-plans';
@@ -69,6 +69,16 @@ const selectedDate = ref<Dayjs | null>(null);
 
 const drawerVisible = ref(false);
 const selectedSchedule = ref<ScheduleRow | null>(null);
+
+const dayNodesModalOpen = ref(false);
+const selectedNodesDate = ref<Dayjs | null>(null);
+const selectedNodes = ref<DailyPlanNode[]>([]);
+
+function openDayNodesModal(date: Dayjs): void {
+  selectedNodesDate.value = date;
+  selectedNodes.value = getDailyPlanNodes(date);
+  dayNodesModalOpen.value = true;
+}
 
 function openCreateDrawer(date?: Dayjs): void {
   selectedDate.value = date || dayjs();
@@ -368,14 +378,13 @@ function onSelect(date: Dayjs | string): void {
         </template>
 
         <template #dateCellRender="{ current }">
-          <div class="cell-content flex flex-col justify-between h-full min-h-[85px]">
-            <div>
-              
-              <!-- Maintenance Plan Nodes (Grouped uniquely by eamo_maintenance_plans per Date) -->
+          <div class="cell-content flex flex-col justify-between h-full">
+            <div class="flex-1 min-h-0 overflow-hidden space-y-1">
+              <!-- Maintenance Plan Nodes (Grouped uniquely by eamo_maintenance_plans per Date, limited to 2 max in cell) -->
               <div
-                v-for="planNode in getDailyPlanNodes(current)"
+                v-for="planNode in getDailyPlanNodes(current).slice(0, 2)"
                 :key="planNode.key"
-                class="mb-1 p-1.5 text-xs rounded border cursor-pointer transition-all duration-200 ease-in-out hover:-translate-y-[0.5px] hover:shadow-sm"
+                class="p-1 text-xs rounded border cursor-pointer transition-all duration-200 ease-in-out hover:-translate-y-[0.5px] hover:shadow-sm"
                 :class="getScheduleClass(planNode.result)"
                 :title="`${planNode.plan_code} (${planNode.completed_items}/${planNode.total_items})`"
                 @click.stop="planNode.schedules[0] && showScheduleDetail(planNode.schedules[0])"
@@ -389,10 +398,70 @@ function onSelect(date: Dayjs | string): void {
                 </div>
               </div>
             </div>
+
+            <!-- Bottom slot for More Nodes Button when count > 2 -->
+            <div class="h-6 shrink-0 flex items-end mt-1">
+              <button
+                v-if="getDailyPlanNodes(current).length > 2"
+                type="button"
+                class="w-full text-left py-0.5 px-1.5 text-[11px] font-semibold text-primary bg-primary/10 hover:bg-primary/20 rounded border border-primary/20 transition-colors flex items-center justify-between cursor-pointer"
+                @click.stop="openDayNodesModal(current)"
+              >
+                <span>{{ $t('page.ops.moreNodesCount', { count: getDailyPlanNodes(current).length - 2 }) }}</span>
+                <svg xmlns="http://www.w3.org/2000/svg" class="w-3 h-3 text-primary shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7" />
+                </svg>
+              </button>
+            </div>
           </div>
         </template>
       </Calendar>
     </Spin>
+
+    <!-- Modal listing all plan nodes for selected date in row format -->
+    <Modal
+      v-model:open="dayNodesModalOpen"
+      :title="$t('page.ops.dayNodesModalTitle', { date: selectedNodesDate ? selectedNodesDate.format('DD/MM/YYYY') : '' })"
+      width="800px"
+      :footer="null"
+      destroy-on-close
+    >
+      <div v-if="selectedNodes.length > 0" class="max-h-[500px] overflow-y-auto divide-y divide-border pr-2 scrollbar-thin">
+        <div
+          v-for="node in selectedNodes"
+          :key="node.key"
+          class="flex items-center justify-between gap-3 py-3 px-2 rounded-lg hover:bg-muted/50 transition-colors"
+        >
+          <div class="flex items-center gap-3 min-w-0">
+            <div class="w-2.5 h-2.5 rounded-full shrink-0" :class="node.result === 'Completed' ? 'bg-emerald-500' : 'bg-indigo-500'"></div>
+            <div class="min-w-0">
+              <div class="font-semibold text-sm text-foreground flex items-center gap-2">
+                <span>{{ node.plan_code }}</span>
+                <span class="text-xs font-normal text-muted-foreground">({{ node.completed_items }}/{{ node.total_items }})</span>
+              </div>
+              <div class="text-xs text-muted-foreground truncate mt-0.5">
+                <span class="font-medium text-foreground">{{ node.equipment_code }}</span>
+                <span class="ml-2 text-muted-foreground/80">({{ node.maintenance_type }})</span>
+              </div>
+            </div>
+          </div>
+          <div class="flex items-center gap-3 shrink-0">
+            <Tag :color="node.result === 'Completed' ? 'success' : 'processing'">
+              {{ node.result }}
+            </Tag>
+            <Button
+              type="primary"
+              size="small"
+              ghost
+              @click="node.schedules[0] && (showScheduleDetail(node.schedules[0]), dayNodesModalOpen = false)"
+            >
+              {{ $t('page.ops.viewDetail') }}
+            </Button>
+          </div>
+        </div>
+      </div>
+      <Empty v-else :description="$t('page.ops.noNodesForDate')" class="py-8" />
+    </Modal>
 
     <!-- Schedule Detail Drawer -->
     <ScheduleDetailDrawer
@@ -426,31 +495,32 @@ function onSelect(date: Dayjs | string): void {
 <style scoped>
 /* Expand calendar cell height so all cells in a row match the tallest cell */
 :deep(.ant-picker-cell) {
-  height: 100% !important;
+  height: 140px !important;
 }
 
 :deep(.ant-picker-cell-inner) {
-  height: 100% !important;
-  min-height: 120px !important;
+  height: 140px !important;
+  min-height: 140px !important;
+  max-height: 140px !important;
   display: flex !important;
   flex-direction: column !important;
   position: relative;
+  overflow: hidden !important;
 }
 
 :deep(.ant-picker-calendar-date) {
-  height: 100% !important;
-  min-height: 120px !important;
-  flex: 1 1 auto !important;
+  height: 140px !important;
+  min-height: 140px !important;
+  max-height: 140px !important;
   display: flex !important;
   flex-direction: column !important;
 }
 
 :deep(.ant-picker-calendar-date-content) {
   flex: 1 1 auto !important;
-  height: 100% !important;
-  max-height: none !important;
-  overflow: visible !important;
-  overflow-y: visible !important;
+  height: 106px !important;
+  max-height: 106px !important;
+  overflow: hidden !important;
 }
 
 :deep(.ant-picker-content) {
@@ -461,10 +531,10 @@ function onSelect(date: Dayjs | string): void {
 .cell-content {
   display: flex;
   flex-direction: column;
+  justify-content: space-between;
   height: 100%;
-  flex: 1 1 auto;
-  min-height: 100px;
-  padding-bottom: 4px;
+  overflow: hidden;
+  padding-bottom: 2px;
   position: relative;
 }
 
