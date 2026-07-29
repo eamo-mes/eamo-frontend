@@ -79,38 +79,53 @@ export async function redirectToLogin(redirectAfterLogin?: string) {
   window.location.href = url;
 }
 
+let exchangePromise: Promise<TokenResponse> | null = null;
+
 /**
  * Exchange authorization code for tokens (PKCE flow).
  * Returns both accessToken (short-lived, stored in RAM) and refreshToken (long-lived, stored encrypted).
  */
 export async function handleCallback(code: string): Promise<TokenResponse> {
+  if (exchangePromise) {
+    return exchangePromise;
+  }
+
   const verifier = localStorage.getItem('code_verifier');
   if (!verifier) {
     throw new Error('No code_verifier found in storage.');
   }
 
-  const response = await axios.post(TOKEN_URL, {
-    grant_type: 'authorization_code',
-    client_id: CLIENT_ID,
-    redirect_uri: REDIRECT_URI,
-    code_verifier: verifier,
-    code: code,
-  }, {
-    headers: {
-      'Content-Type': 'application/json',
-      'Accept': 'application/json',
-    }
-  });
-
-  // Clean up the verifier after use — it is single-use
+  // Clean up the verifier immediately so it can't be re-used, 
+  // but keep the promise active for any concurrent calls in Strict Mode!
   localStorage.removeItem('code_verifier');
 
-  const { access_token, refresh_token, expires_in } = response.data;
-  return {
-    accessToken: access_token,
-    refreshToken: refresh_token ?? null,
-    expiresIn: expires_in,
-  };
+  exchangePromise = (async () => {
+    try {
+      const response = await axios.post(TOKEN_URL, {
+        grant_type: 'authorization_code',
+        client_id: CLIENT_ID,
+        redirect_uri: REDIRECT_URI,
+        code_verifier: verifier,
+        code: code,
+      }, {
+        headers: {
+          'Content-Type': 'application/json',
+          'Accept': 'application/json',
+        }
+      });
+
+      const { access_token, refresh_token, expires_in } = response.data;
+      return {
+        accessToken: access_token,
+        refreshToken: refresh_token ?? null,
+        expiresIn: expires_in,
+      };
+    } finally {
+      exchangePromise = null;
+    }
+  })();
+
+  return exchangePromise;
 }
 
 /**

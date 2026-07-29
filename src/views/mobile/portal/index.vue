@@ -1,224 +1,396 @@
 <script lang="ts" setup>
-import { ref, computed, onMounted, onUnmounted } from 'vue';
+import { ref, computed, onMounted } from 'vue';
 import { useRouter } from 'vue-router';
-import { Card, Row, Col, message } from 'ant-design-vue';
-import { useI18n, loadLocaleMessages } from '@vben/locales';
-import { updatePreferences } from '@vben/preferences';
+import { 
+  Card,
+  Tag,
+  Spin, 
+  Empty,
+  Progress
+} from 'ant-design-vue';
+import { useI18n } from '@vben/locales';
+import { useUserStore } from '@vben/stores';
+import { getChecklistSessionsApi } from '#/api/ops/checklist';
+import { listMaintenanceSchedulesApi } from '#/api/ops/maintenance-plans';
+
+defineOptions({ name: 'MobilePortalHome' });
 
 const router = useRouter();
-const { locale, t } = useI18n();
-const currentTime = ref('');
-let timerId: any = null;
+const { t } = useI18n();
+const userStore = useUserStore();
 
-function updateTime() {
-  const now = new Date();
-  currentTime.value = now.toLocaleTimeString(locale.value === 'zh-CN' ? 'vi-VN' : 'en-US', { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+const activeTab = ref<'checklist' | 'maintenance'>('checklist');
+const loading = ref(false);
+
+const checklistSessions = ref<any[]>([]);
+const maintenanceSchedules = ref<any[]>([]);
+
+const currentUserId = computed(() => userStore.userInfo?.userId || (userStore.userInfo as { id?: string } | null)?.id || '');
+
+// ─── Fetch Checklist Sessions (All of them) ───
+async function fetchChecklists() {
+  try {
+    const raw = await getChecklistSessionsApi({
+      include_details: true,
+      per_page: 1000,
+    });
+    const responseData = (raw as any)?.data ?? (raw as any)?.items ?? (Array.isArray(raw) ? raw : []);
+    const sessions = Array.isArray(responseData) ? responseData : [];
+    
+    // Sort by session_date descending (latest first)
+    checklistSessions.value = sessions.sort((a: any, b: any) => (b.session_date || '').localeCompare(a.session_date || ''));
+  } catch (err) {
+    console.error('Failed to fetch checklists:', err);
+  }
 }
 
-async function changeLang(lang: 'zh-CN' | 'en-US') {
-  if (locale.value === lang) return;
-  const hide = message.loading({ content: lang === 'zh-CN' ? 'Đang chuyển ngôn ngữ...' : 'Switching language...', key: 'lang', duration: 0 });
+// ─── Fetch Maintenance Schedules (All of them) ───
+async function fetchMaintenance() {
   try {
-    updatePreferences({
-      app: {
-        locale: lang,
-      },
+    const rawSchedules = await listMaintenanceSchedulesApi({
+      with_logs: true,
+      per_page: 1000,
     });
-    await loadLocaleMessages(lang);
-    updateTime();
-  } catch (error) {
-    console.error('Failed to change language:', error);
-  } finally {
-    hide();
+    const scheduleArray = Array.isArray(rawSchedules) ? rawSchedules : [];
+    maintenanceSchedules.value = groupSchedulesByPlan(scheduleArray);
+  } catch (err) {
+    console.error('Failed to fetch maintenance:', err);
   }
+}
+
+// Group schedules by plan code & date
+function getLatestResult(schedule: any): string | null {
+  if (schedule.result) return schedule.result;
+  if (schedule.maintenance_logs && schedule.maintenance_logs.length > 0) {
+    return schedule.maintenance_logs[0]?.result || null;
+  }
+  return null;
+}
+
+function groupSchedulesByPlan(rows: any[]): any[] {
+  const planMap = new Map<string, any>();
+
+  for (const s of rows) {
+    if (!s.date) continue;
+    const dateStr = s.date.slice(0, 10);
+    const planKey = `${s.maintenance_plan_id || s.plan_code || s.id || 'unknown'}-${dateStr}`;
+    const latestRes = getLatestResult(s);
+    const isCompleted = Boolean(latestRes);
+    const isPassed = latestRes === 'pass' || latestRes === 'normal' || latestRes === 'completed';
+    const isFailed = latestRes === 'fail' || latestRes === 'abnormal';
+
+    const eqCode = s.equipment_code || s.maintenance_plan?.equipment?.code || '—';
+    const eqName = s.equipment_name || s.maintenance_plan?.equipment?.name || null;
+    const planCode = s.plan_code || s.maintenance_plan?.plan_code || 'KẾ HOẠCH BẢO TRÌ';
+    const mType = s.maintenance_type || s.maintenance_plan?.maintenance_type || '—';
+    const users = s.users || s.maintenance_plan?.users || [];
+
+    if (!planMap.has(planKey)) {
+      planMap.set(planKey, {
+        key: `plan-${planKey}`,
+        plan_id: s.maintenance_plan_id || '',
+        plan_code: planCode,
+        date: dateStr,
+        equipment_code: eqCode,
+        equipment_name: eqName,
+        maintenance_type: mType,
+        schedules: [s],
+        total_items: 1,
+        completed_items: isCompleted ? 1 : 0,
+        status: isFailed ? 'fail' : isCompleted && isPassed ? 'pass' : 'pending',
+        users,
+      });
+    } else {
+      const node = planMap.get(planKey)!;
+      node.schedules.push(s);
+      node.total_items += 1;
+      if (isCompleted) {
+        node.completed_items += 1;
+      }
+
+      if (isFailed || node.status === 'fail') {
+        node.status = 'fail';
+      } else if (node.completed_items === node.total_items) {
+        node.status = 'pass';
+      } else {
+        node.status = 'pending';
+      }
+    }
+  }
+  
+  // Sort by date descending
+  return Array.from(planMap.values()).sort((a, b) => b.date.localeCompare(a.date));
+}
+
+// ─── Filter lists to show ONLY current logged-in user ───
+const myChecklistSessions = computed(() => {
+  return checklistSessions.value.filter((s) => {
+    return s.users?.some((u: any) => u.id === currentUserId.value) || s.created_by === currentUserId.value;
+  });
+});
+
+const myMaintenancePlans = computed(() => {
+  return maintenanceSchedules.value.filter((p) => {
+    return p.users?.some((u: any) => u.id === currentUserId.value);
+  });
+});
+
+// ─── Status Tags ───
+function getSessionStatusTag(session: any) {
+  if (!session.details || session.details.length === 0) return { color: 'warning', label: t('page.portal.statusPending') || 'Chưa xong' };
+  
+  const completedCount = session.details.filter((d: any) => {
+    const logs = d.logs || [];
+    return logs.some((log: any) => log.status === 'completed');
+  }).length;
+  
+  const allCompleted = completedCount === session.details.length;
+  if (!allCompleted) return { color: 'warning', label: t('page.portal.statusPending') || 'Chưa xong' };
+  
+  const allPassed = session.details.every((d: any) => {
+    const logs = d.logs || [];
+    const latestLog = logs.filter((log: any) => log.status === 'completed').sort((l: any, r: any) => (l.checked_at ?? '').localeCompare(r.checked_at ?? '')).at(-1);
+    return latestLog?.result === 'pass';
+  });
+  return allPassed ? { color: 'success', label: t('page.portal.statusPass') || 'Đạt' } : { color: 'error', label: t('page.portal.statusFail') || 'Không đạt' };
+}
+
+function getPlanStatusTag(group: any) {
+  if (group.status === 'pass') {
+    return { color: 'success', label: t('page.portal.statusPass') || 'Đạt' };
+  } else if (group.status === 'fail') {
+    return { color: 'error', label: t('page.portal.statusFail') || 'Không đạt' };
+  }
+  return { color: 'warning', label: t('page.portal.statusPending') || 'Chưa xong' };
+}
+
+function getCycleText(type?: string): string {
+  switch (type) {
+    case 'daily': return 'Hàng ngày';
+    case 'weekly': return 'Hàng tuần';
+    case 'monthly': return 'Hàng tháng';
+    case 'yearly': return 'Hàng năm';
+    default: return type || '—';
+  }
+}
+
+function getCompletedCount(session: any): number {
+  if (!session.details) return 0;
+  return session.details.filter((d: any) => {
+    const logs = d.logs || [];
+    return logs.some((log: any) => log.status === 'completed');
+  }).length;
+}
+
+function getProgressPercent(session: any): number {
+  if (!session.details || session.details.length === 0) return 0;
+  return Math.round((getCompletedCount(session) / session.details.length) * 100);
+}
+
+function getProgressPercentForPlan(group: any): number {
+  if (!group.total_items) return 0;
+  return Math.round((group.completed_items / group.total_items) * 100);
+}
+
+async function loadData() {
+  loading.value = true;
+  await Promise.all([fetchChecklists(), fetchMaintenance()]);
+  loading.value = false;
 }
 
 onMounted(() => {
-  updateTime();
-  timerId = setInterval(updateTime, 1000);
+  loadData();
 });
-
-onUnmounted(() => {
-  if (timerId) clearInterval(timerId);
-});
-
-const menuItems = computed(() => [
-  {
-    title: t('page.portal.equipment'),
-    subtitle: t('page.portal.equipmentSub'),
-    path: '/portal/equipment',
-    iconClass: 'bg-amber-50/80 text-amber-600 dark:bg-amber-950/40 dark:text-amber-400',
-    hoverClass: 'hover:border-amber-400/80 dark:hover:border-amber-500/40 hover:shadow-[0_12px_30px_rgba(245,158,11,0.08)]',
-    activeGlow: 'bg-amber-500',
-    iconSvg: `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-wrench"><path d="M14.7 6.3a1 1 0 0 0 0 1.4l1.6 1.6a1 1 0 0 0 1.4 0l3.77-3.77a6 6 0 0 1-7.94 7.94l-6.91 6.91a2.12 2.12 0 0 1-3-3l6.91-6.91a6 6 0 0 1 7.94-7.94l-3.76 3.76z"/></svg>`
-  },
-  {
-    title: t('page.portal.notifications') || 'Thông báo',
-    subtitle: t('page.portal.notificationsSub') || 'Thông tin & cảnh báo',
-    path: '/portal/dashboard',
-    iconClass: 'bg-purple-50/80 text-purple-600 dark:bg-purple-950/40 dark:text-purple-400',
-    hoverClass: 'hover:border-purple-400/80 dark:hover:border-purple-500/40 hover:shadow-[0_12px_30px_rgba(168,85,247,0.08)]',
-    activeGlow: 'bg-purple-500',
-    iconSvg: `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-bell"><path d="M6 8a6 6 0 0 1 12 0c0 7 3 9 3 9H3s3-2 3-9"/><path d="M10.3 21a1.94 1.94 0 0 0 3.4 0"/></svg>`
-  },
-  {
-    title: t('page.portal.checklist'),
-    subtitle: t('page.portal.checklistSub'),
-    path: '/portal/checklist',
-    iconClass: 'bg-blue-50/80 text-blue-600 dark:bg-blue-950/40 dark:text-blue-400',
-    hoverClass: 'hover:border-blue-400/80 dark:hover:border-blue-500/40 hover:shadow-[0_12px_30px_rgba(59,130,246,0.08)]',
-    activeGlow: 'bg-blue-500',
-    iconSvg: `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-clipboard-check"><rect width="8" height="4" x="8" y="2" rx="1" ry="1"/><path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2"/><path d="m9 14 2 2 4-4"/></svg>`
-  },
-  {
-    title: t('page.portal.mPlans'),
-    subtitle: t('page.portal.mPlansSub'),
-    path: '/portal/maintain-plan',
-    iconClass: 'bg-emerald-50/80 text-emerald-600 dark:bg-emerald-950/40 dark:text-emerald-400',
-    hoverClass: 'hover:border-emerald-400/80 dark:hover:border-emerald-500/40 hover:shadow-[0_12px_30px_rgba(16,185,129,0.08)]',
-    activeGlow: 'bg-emerald-500',
-    iconSvg: `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-calendar-clock"><path d="M21 7.5V6a2 2 0 0 0-2-2H5a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h3.5"/><path d="M16 2v4"/><path d="M8 2v4"/><path d="M3 10h18"/><path d="M12 14v4h4"/><circle cx="18" cy="18" r="4"/></svg>`
-  }
-]);
-
-function handleNavigate(path: string) {
-  message.loading({ content: t('page.portal.loading'), key: 'nav', duration: 0.5 });
-  setTimeout(() => {
-    router.push(path);
-  }, 300);
-}
 </script>
 
 <template>
-  <div class="portal-container min-h-[85vh] bg-gradient-to-br from-slate-50 via-slate-100 to-indigo-50/40 dark:from-zinc-950 dark:via-zinc-900 dark:to-indigo-950/20 flex flex-col justify-center transition-colors duration-300 relative overflow-hidden">
-    
-    <!-- Language Switcher Pill (Floating Top-Right) -->
-    <div class="absolute top-4 right-4 z-20 flex items-center gap-1 p-1 bg-white/80 dark:bg-zinc-900/80 backdrop-blur-md rounded-full border border-slate-100/85 dark:border-zinc-800/85 shadow-[0_4px_12px_rgba(0,0,0,0.03)]">
-      <button 
-        @click="changeLang('zh-CN')" 
-        :class="[locale === 'zh-CN' ? 'bg-indigo-600 text-white shadow-xs font-bold' : 'text-slate-500 dark:text-zinc-400 hover:text-slate-700 dark:hover:text-zinc-200 font-semibold']"
-        class="px-3 py-1 rounded-full text-[10px] tracking-wide transition-all duration-200 cursor-pointer border-0 outline-none"
-      >
-        VI
-      </button>
-      <button 
-        @click="changeLang('en-US')" 
-        :class="[locale === 'en-US' ? 'bg-indigo-600 text-white shadow-xs font-bold' : 'text-slate-500 dark:text-zinc-400 hover:text-slate-700 dark:hover:text-zinc-200 font-semibold']"
-        class="px-3 py-1 rounded-full text-[10px] tracking-wide transition-all duration-200 cursor-pointer border-0 outline-none"
-      >
-        EN
-      </button>
-    </div>
+  <div class="portal-container min-h-[85vh] bg-slate-50 dark:bg-zinc-950/40 pb-24 relative flex flex-col transition-colors duration-300">
 
-    <!-- Premium background glowing spots (ambient mesh) -->
-    <div class="absolute top-[-10%] left-[-10%] w-[50%] h-[50%] bg-indigo-200/20 dark:bg-indigo-900/10 rounded-full blur-[120px] pointer-events-none"></div>
-    <div class="absolute bottom-[-10%] right-[-10%] w-[50%] h-[50%] bg-emerald-200/10 dark:bg-emerald-950/5 rounded-full blur-[120px] pointer-events-none"></div>
-
-    <div class="max-w-4xl mx-auto w-full flex flex-col gap-6 sm:gap-8 relative z-10">
-    
-      <!-- 4 Grid Buttons Portal Section (Using Ant Design Row/Col Grid) -->
-      <div class="w-full">
-        <Row :gutter="[16, 16]">
-          <Col v-for="item in menuItems" :key="item.title" :span="12">
-            <Card 
-              hoverable 
-              @click="handleNavigate(item.path)"
-              :class="[item.hoverClass]"
-              class="portal-card h-full group relative overflow-hidden bg-white/70 dark:bg-zinc-900/60 backdrop-blur-md border border-slate-100/80 dark:border-zinc-800/70 rounded-2xl transition-all duration-300 hover:-translate-y-1 shadow-[0_4px_16px_rgba(0,0,0,0.02)]"
-            >
-              <!-- Colored Accent Border Line (Slide-in transition) -->
-              <div :class="[item.activeGlow]" class="absolute left-0 top-0 bottom-0 w-1 sm:w-1.5 opacity-0 group-hover:opacity-100 transition-all duration-300 rounded-r-md"></div>
-
-              <!-- Top Row: Icon & Mini indicator -->
-              <div class="flex items-center justify-between mb-3 sm:mb-4.5">
-                <div 
-                  :class="[item.iconClass]" 
-                  class="portal-icon-wrapper rounded-xl flex items-center justify-center transition-transform duration-300 group-hover:scale-110 shadow-3xs"
-                  v-html="item.iconSvg"
-                ></div>
-              </div>
-
-              <!-- Content details -->
-              <h3 class="text-sm sm:text-base font-bold text-slate-800 dark:text-zinc-200 group-hover:text-indigo-600 dark:group-hover:text-indigo-400 transition-colors duration-200">
-                {{ item.title }}
-              </h3>
-              <span class="text-[10px] sm:text-xs font-semibold text-slate-400 dark:text-zinc-500">
-                {{ item.subtitle }}
-              </span>
-
-              <!-- Premium Hover glow effect background -->
-              <div class="absolute -right-12 -bottom-12 w-24 h-24 rounded-full bg-slate-400/5 dark:bg-zinc-400/5 group-hover:scale-150 transition-transform duration-500 ease-out pointer-events-none"></div>
-            </Card>
-          </Col>
-        </Row>
+    <div class="relative z-10 w-full flex-1 flex flex-col">
+      <!-- ─── TOP AREA: FILTER TABS ─── -->
+      <div class="mb-4 flex items-center gap-1.5 p-1 bg-white dark:bg-zinc-900 border border-slate-200/80 dark:border-zinc-800 rounded-xl shadow-3xs">
+        <button
+          type="button"
+          @click="activeTab = 'checklist'"
+          :class="[
+            'flex-1 py-2 text-xs font-bold rounded-lg transition-colors border-0 cursor-pointer outline-none',
+            activeTab === 'checklist'
+              ? 'bg-indigo-600 text-white shadow-xs'
+              : 'bg-transparent text-slate-500 dark:text-zinc-400 hover:bg-slate-100 dark:hover:bg-zinc-800'
+          ]"
+        >
+          {{ t('page.portal.checklistTitle') }} ({{ myChecklistSessions.length }})
+        </button>
+        <button
+          type="button"
+          @click="activeTab = 'maintenance'"
+          :class="[
+            'flex-1 py-2 text-xs font-bold rounded-lg transition-colors border-0 cursor-pointer outline-none',
+            activeTab === 'maintenance'
+              ? 'bg-indigo-600 text-white shadow-xs'
+              : 'bg-transparent text-slate-500 dark:text-zinc-400 hover:bg-slate-100 dark:hover:bg-zinc-800'
+          ]"
+        >
+          {{ t('page.portal.maintenanceTitle') }} ({{ myMaintenancePlans.length }})
+        </button>
       </div>
 
+      <!-- ─── MIDDLE CONTENT AREA: CLICKABLE CARDS ─── -->
+      <div class="flex-1 overflow-y-auto pb-4">
+        <Spin :spinning="loading">
+          
+          <!-- Checklist Tab Content -->
+          <div v-if="activeTab === 'checklist'">
+            <div v-if="myChecklistSessions.length > 0" class="flex flex-col gap-3.5">
+              <Card
+                v-for="session in myChecklistSessions"
+                :key="session.id"
+                class="rounded-2xl shadow-3xs border-slate-200/80 dark:border-zinc-800/80 bg-white dark:bg-zinc-900/60 backdrop-blur-md overflow-hidden cursor-pointer hover:border-indigo-300 dark:hover:border-indigo-800 transition-colors"
+                :body-style="{ padding: '16px' }"
+                @click="router.push('/portal/checklist')"
+              >
+                <div class="flex items-start justify-between gap-3 mb-1">
+                  <div class="flex-1 min-w-0">
+                    <h3 class="text-xs font-bold text-slate-800 dark:text-zinc-200 m-0 leading-snug">
+                      {{ session.name || session.equipment?.name || t('page.portal.cellButtonLabel') }}
+                    </h3>
+                    <p class="text-[11px] font-mono text-slate-500 dark:text-zinc-400 mt-1 mb-0 font-medium">
+                      {{ t('page.portal.codeLabel') }}: <span class="font-bold text-slate-700 dark:text-zinc-300">{{ session.equipment?.code || '—' }}</span>
+                      <span v-if="session.equipment?.name" class="text-slate-400"> — {{ session.equipment.name }}</span>
+                    </p>
+                  </div>
+
+                  <Tag :color="getSessionStatusTag(session).color" class="m-0 text-[9px] uppercase font-bold px-1.5 py-0.5 rounded-md shrink-0">
+                    {{ getSessionStatusTag(session).label }}
+                  </Tag>
+                </div>
+
+                <div class="flex justify-between items-center text-[11px] text-slate-500 dark:text-zinc-400 mt-2.5">
+                  <span>
+                    {{ t('page.portal.cycleLabel') }}: <strong class="text-slate-700 dark:text-zinc-300">{{ getCycleText(session.cycle_type) }}</strong>
+                  </span>
+                  <span>
+                    {{ t('page.portal.itemsLabel') }}: <strong class="text-slate-700 dark:text-zinc-300">{{ getCompletedCount(session) }}/{{ session.details?.length || 0 }}</strong>
+                  </span>
+                </div>
+
+                <div class="mt-2">
+                  <Progress
+                    :percent="getProgressPercent(session)"
+                    :show-info="false"
+                    size="small"
+                    class="m-0"
+                    stroke-color="#4f46e5"
+                    trail-color="#f1f5f9"
+                  />
+                </div>
+
+                <div class="mt-3 pt-2.5 border-t border-slate-100 dark:border-zinc-800/80 text-[10px] font-mono text-slate-400 dark:text-zinc-500">
+                  <span>{{ t('page.portal.dateLabel') }}: {{ session.session_date || '—' }}</span>
+                </div>
+              </Card>
+            </div>
+
+            <div v-else class="py-12 flex flex-col items-center justify-center bg-white dark:bg-zinc-900 border border-dashed border-slate-200 dark:border-zinc-800 rounded-2xl">
+              <Empty :description="t('page.portal.noChecklistsAssigned')" />
+            </div>
+          </div>
+
+          <!-- Maintenance Tab Content -->
+          <div v-if="activeTab === 'maintenance'">
+            <div v-if="myMaintenancePlans.length > 0" class="flex flex-col gap-3.5">
+              <Card
+                v-for="group in myMaintenancePlans"
+                :key="group.key"
+                class="rounded-2xl shadow-3xs border-slate-200/80 dark:border-zinc-800/80 bg-white dark:bg-zinc-900/60 backdrop-blur-md overflow-hidden cursor-pointer hover:border-indigo-300 dark:hover:border-indigo-800 transition-colors"
+                :body-style="{ padding: '16px' }"
+                @click="router.push('/portal/maintain-plan')"
+              >
+                <div class="flex items-start justify-between gap-3 mb-1">
+                  <div class="flex-1 min-w-0">
+                    <h3 class="text-xs font-bold text-slate-800 dark:text-zinc-200 m-0 leading-snug">
+                      {{ group.plan_code }}
+                    </h3>
+                    <p class="text-[11px] font-mono text-slate-500 dark:text-zinc-400 mt-1 mb-0 font-medium">
+                      {{ t('page.portal.equipmentLabel') }}: <span class="font-bold text-slate-700 dark:text-zinc-300">{{ group.equipment_code }}</span>
+                      <span v-if="group.equipment_name" class="text-slate-400"> — {{ group.equipment_name }}</span>
+                    </p>
+                  </div>
+
+                  <Tag :color="getPlanStatusTag(group).color" class="m-0 text-[9px] uppercase font-bold px-1.5 py-0.5 rounded-md shrink-0">
+                    {{ getPlanStatusTag(group).label }}
+                  </Tag>
+                </div>
+
+                <div class="flex justify-between items-center text-[11px] text-slate-500 dark:text-zinc-400 mt-2.5">
+                  <span>
+                    {{ t('page.portal.typeLabel') }}: <strong class="text-slate-700 dark:text-zinc-300">{{ group.maintenance_type || t('page.dashboard.normal') }}</strong>
+                  </span>
+                  <span>
+                    {{ t('page.portal.itemsLabel') }}: <strong class="text-slate-700 dark:text-zinc-300">{{ group.completed_items }}/{{ group.total_items }}</strong>
+                  </span>
+                </div>
+
+                <div class="mt-2">
+                  <Progress
+                    :percent="getProgressPercentForPlan(group)"
+                    :show-info="false"
+                    size="small"
+                    class="m-0"
+                    stroke-color="#4f46e5"
+                    trail-color="#f1f5f9"
+                  />
+                </div>
+
+                <div class="mt-3 pt-2.5 border-t border-slate-100 dark:border-zinc-800/80 text-[10px] font-mono text-slate-400 dark:text-zinc-500">
+                  <span>{{ t('page.portal.dateLabel') }}: {{ group.date }}</span>
+                </div>
+              </Card>
+            </div>
+
+            <div v-else class="py-12 flex flex-col items-center justify-center bg-white dark:bg-zinc-900 border border-dashed border-slate-200 dark:border-zinc-800 rounded-2xl">
+              <Empty :description="t('page.portal.noMaintenanceAssigned')" />
+            </div>
+          </div>
+
+        </Spin>
+      </div>
     </div>
+
+    <!-- ─── FIXED BOTTOM ACTION BAR (50% / 50% split) ─── -->
+    <div class="fixed bottom-0 left-0 right-0 h-16 bg-white/95 dark:bg-zinc-900/95 px-4 flex items-center z-30 border-t border-slate-200/80 dark:border-zinc-800/80 shadow-[0_-4px_16px_rgba(0,0,0,0.05)] backdrop-blur-md">
+      <div class="grid grid-cols-2 gap-3 w-full items-center">
+        
+        <!-- Báo cáo sự cố (50% width) -->
+        <button
+          type="button"
+          @click="router.push('/portal/incident-report')"
+          class="h-12 w-full bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-xs border-0 rounded-xl outline-none transition-colors select-none flex items-center justify-center shadow-xs cursor-pointer"
+        >
+          {{ t('page.portal.reportIncident') }}
+        </button>
+
+        <!-- Dừng khẩn cấp (50% width) -->
+        <button
+          type="button"
+          @click="router.push('/portal/emergency-stop')"
+          class="h-12 w-full bg-rose-600 hover:bg-rose-700 text-white font-bold text-xs border-0 rounded-xl outline-none transition-colors select-none flex items-center justify-center shadow-xs cursor-pointer"
+        >
+          {{ t('page.portal.emergencyStop') }}
+        </button>
+
+      </div>
+    </div>
+
   </div>
 </template>
 
 <style scoped>
 .portal-container {
   padding: 16px;
-}
-
-@media (min-width: 640px) {
-  .portal-container {
-    padding: 32px 24px;
-  }
-}
-
-.eamo-logo {
-  height: 64px;
-  width: auto;
-  object-fit: contain;
-}
-
-@media (min-width: 640px) {
-  .eamo-logo {
-    height: 108px;
-  }
-}
-
-/* Custom styling to ensure Ant Design card has correct cursor and layout */
-.portal-card {
-  cursor: pointer;
-  border-radius: 16px !important;
-}
-
-.portal-card :deep(.ant-card-body) {
-  display: flex;
-  flex-direction: column;
-  height: 100%;
   position: relative;
-  padding: 14px !important;
 }
-
-@media (min-width: 640px) {
-  .portal-card :deep(.ant-card-body) {
-    padding: 22px !important;
-  }
-}
-
-.portal-icon-wrapper {
-  padding: 9px;
-}
-
-@media (min-width: 640px) {
-  .portal-icon-wrapper {
-    padding: 12px;
-  }
-}
-
-.portal-icon-wrapper :deep(svg) {
-  width: 22px;
-  height: 22px;
-}
-
-@media (min-width: 640px) {
-  .portal-icon-wrapper :deep(svg) {
-    width: 28px;
-    height: 28px;
-  }
+:deep(.ant-card) {
+  margin-bottom: 0 !important;
 }
 </style>

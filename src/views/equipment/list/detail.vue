@@ -23,6 +23,7 @@ import type { UploadFile, UploadProps } from 'ant-design-vue';
 import axios from 'axios';
 import { useAccessStore } from '@vben/stores';
 import { API_BASE_URL } from '#/api/config';
+import EquipmentQrModal from './components/EquipmentQrModal.vue';
 
 const UploadOutlined = createIconifyIcon('ant-design:upload-outlined');
 
@@ -73,6 +74,21 @@ const formState = ref({
   equipment_parameters: [] as { id?: string; code: string; name: string; unit_id: string | undefined; standard?: number; standard_max?: number; standard_min?: number }[],
   parent_id: undefined as string | undefined,
   child_ids: [] as string[],
+});
+
+const qrModalOpen = ref(false);
+
+const currentEquipmentObject = computed(() => {
+  if (!editId.value) return null;
+  const category = categories.value.find((c) => c.id === formState.value.equipment_category_id);
+  return {
+    id: editId.value,
+    code: formState.value.code,
+    name: formState.value.name,
+    equipment_category_id: formState.value.equipment_category_id,
+    equipment_category: category || null,
+    is_active: formState.value.is_active,
+  };
 });
 
 const fileList = ref<UploadFile[]>([]);
@@ -499,6 +515,15 @@ onMounted(() => {
         </h1>
       </div>
       <div class="flex gap-2">
+        <Button
+          v-if="isEditing"
+          type="default"
+          class="flex items-center gap-1.5 font-medium"
+          @click="qrModalOpen = true"
+        >
+          <svg xmlns="http://www.w3.org/2000/svg" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-qr-code"><rect width="5" height="5" x="3" y="3" rx="1"/><rect width="5" height="5" x="16" y="3" rx="1"/><rect width="5" height="5" x="3" y="16" rx="1"/><path d="M21 16V21H16"/><path d="M21 12H21.01"/><path d="M12 21H12.01"/><path d="M12 12H12.01"/><path d="M16 16H16.01"/><path d="M16 12H16.01"/><path d="M12 16H12.01"/></svg>
+          {{ $t('page.equipment.btnQrCode') }}
+        </Button>
         <Button type="default" @click="goBack" :disabled="submitting">
           {{ $t('page.equipment.btnCancel') }}
         </Button>
@@ -641,6 +666,12 @@ onMounted(() => {
     <Modal :open="previewVisible" :title="previewTitle" :footer="null" width="600px" @cancel="previewVisible = false">
       <img alt="preview" style="width: 100%" :src="previewImage" />
     </Modal>
+
+    <!-- Equipment QR Modal -->
+    <EquipmentQrModal
+      v-model:open="qrModalOpen"
+      :equipment="currentEquipmentObject"
+    />
   </div>
 </template>
 

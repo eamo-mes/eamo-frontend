@@ -20,6 +20,7 @@ import { isSoftDeleted, softDeletedRowClass, sortBySoftDeleted } from '#/utils/s
 import EquipmentSummaryWidgets from './components/EquipmentSummaryWidgets.vue';
 import ExpandableContainer from '#/components/ExpandableContainer.vue';
 import EquipmentChecklistSessionsModal from './components/EquipmentChecklistSessionsModal.vue';
+import EquipmentQrModal from './components/EquipmentQrModal.vue';
 
 interface CategoryOption {
   id: string;
@@ -79,6 +80,14 @@ const activeSearch = ref('');
 const checklistModalOpen = ref(false);
 const checklistModalEquipmentId = ref<string | null>(null);
 const checklistModalEquipmentName = ref<string | null>(null);
+
+const qrModalOpen = ref(false);
+const qrModalEquipment = ref<EquipmentItem | null>(null);
+
+function openQrModal(record: EquipmentItem) {
+  qrModalEquipment.value = record;
+  qrModalOpen.value = true;
+}
 
 // Summary Widgets State
 interface SummaryItem {
@@ -432,6 +441,15 @@ onMounted(() => {
                 <Button
                   size="small"
                   :disabled="isSoftDeleted(record as EquipmentItem)"
+                  class="rounded hover:border-primary hover:text-primary flex items-center gap-1"
+                  @click="openQrModal(record as EquipmentItem)"
+                >
+                  <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-qr-code"><rect width="5" height="5" x="3" y="3" rx="1"/><rect width="5" height="5" x="16" y="3" rx="1"/><rect width="5" height="5" x="3" y="16" rx="1"/><path d="M21 16V21H16"/><path d="M21 12H21.01"/><path d="M12 21H12.01"/><path d="M12 12H12.01"/><path d="M16 16H16.01"/><path d="M16 12H16.01"/><path d="M12 16H12.01"/></svg>
+                  {{ $t('page.equipment.btnQrCode') }}
+                </Button>
+                <Button
+                  size="small"
+                  :disabled="isSoftDeleted(record as EquipmentItem)"
                   class="rounded hover:border-primary hover:text-primary"
                   @click="openEditModal(record as EquipmentItem)"
                 >
@@ -472,6 +490,12 @@ onMounted(() => {
       v-model:open="checklistModalOpen"
       :equipment-id="checklistModalEquipmentId"
       :equipment-name="checklistModalEquipmentName"
+    />
+
+    <!-- Equipment QR Modal -->
+    <EquipmentQrModal
+      v-model:open="qrModalOpen"
+      :equipment="qrModalEquipment"
     />
   </div>
 </template>

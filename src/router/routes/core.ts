@@ -129,6 +129,17 @@ const coreRoutes: RouteRecordRaw[] = [
         },
       },
       {
+        name: 'MobilePortalEquipmentDetail',
+        path: '/portal/equipment/:id',
+        component: () => import('#/views/mobile/portal/equipment/detail.vue'),
+        meta: {
+          title: 'Chi tiết thiết bị',
+          ignoreAccess: true,
+          hideInMenu: true,
+          hideInTab: true,
+        },
+      },
+      {
         name: 'MobilePortalDashboard',
         path: '/portal/dashboard',
         component: () => import('#/views/mobile/portal/dashboard/index.vue'),
@@ -156,6 +167,28 @@ const coreRoutes: RouteRecordRaw[] = [
         component: () => import('#/views/mobile/portal/maintain-plan/index.vue'),
         meta: {
           title: 'Maintain Plan',
+          ignoreAccess: true,
+          hideInMenu: true,
+          hideInTab: true,
+        },
+      },
+      {
+        name: 'MobilePortalIncidentReport',
+        path: '/portal/incident-report',
+        component: () => import('#/views/mobile/portal/incident-report/index.vue'),
+        meta: {
+          title: 'Báo cáo sự cố',
+          ignoreAccess: true,
+          hideInMenu: true,
+          hideInTab: true,
+        },
+      },
+      {
+        name: 'MobilePortalEmergencyStop',
+        path: '/portal/emergency-stop',
+        component: () => import('#/views/mobile/portal/emergency-stop/index.vue'),
+        meta: {
+          title: 'Dừng khẩn cấp',
           ignoreAccess: true,
           hideInMenu: true,
           hideInTab: true,

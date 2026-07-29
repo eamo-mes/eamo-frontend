@@ -148,22 +148,6 @@ function handleBack() {
   router.push('/portal');
 }
 
-function navigateToEntity(item: BackendNotification) {
-  if (!item.read_at) {
-    handleMarkRead(item);
-  }
-  const entityType = item.data?.entity_type;
-  if (entityType === 'checklist_session') {
-    router.push('/portal/checklist');
-  } else if (entityType === 'maintenance_schedule' || entityType === 'maintenance_item') {
-    router.push('/portal/maintain-plan');
-  } else if (entityType === 'error_log') {
-    router.push('/portal/equipment');
-  } else {
-    router.push('/portal');
-  }
-}
-
 onMounted(() => {
   fetchNotifications();
 });
