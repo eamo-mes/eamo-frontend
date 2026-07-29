@@ -354,7 +354,7 @@ onUnmounted(() => {
 
             <div v-else-if="filteredEquipments.length > 0" class="space-y-2.5 max-h-[50vh] overflow-y-auto pr-1 scrollbar-thin">
               <div
-                v-for="eq" in filteredEquipments"
+                v-for="eq in filteredEquipments"
                 :key="eq.id"
                 class="flex items-center justify-between p-3.5 bg-slate-50 hover:bg-slate-100/80 dark:bg-zinc-950/30 dark:hover:bg-zinc-900/40 border border-slate-100 dark:border-zinc-800/40 rounded-xl cursor-pointer transition-all duration-200"
                 @click="selectEquipment(eq.id)"
