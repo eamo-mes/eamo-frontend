@@ -3,7 +3,6 @@ import { ref, computed, onMounted } from 'vue';
 import { useRouter } from 'vue-router';
 import { 
   Card,
-  Button,
   Tag,
   Spin, 
   Empty,
@@ -205,10 +204,10 @@ onMounted(() => {
 </script>
 
 <template>
-  <div class="portal-container min-h-[85vh] bg-slate-50 dark:bg-zinc-950/40 pb-28 relative flex flex-col transition-colors duration-300">
+  <div class="portal-container min-h-[85vh] bg-slate-50 dark:bg-zinc-950/40 pb-24 relative flex flex-col transition-colors duration-300">
 
     <div class="relative z-10 w-full flex-1 flex flex-col">
-      <!-- ─── TOP AREA: FILTER TABS (Same design as /portal/dashboard) ─── -->
+      <!-- ─── TOP AREA: FILTER TABS ─── -->
       <div class="mb-4 flex items-center gap-1.5 p-1 bg-white dark:bg-zinc-900 border border-slate-200/80 dark:border-zinc-800 rounded-xl shadow-3xs">
         <button
           type="button"
@@ -236,7 +235,7 @@ onMounted(() => {
         </button>
       </div>
 
-      <!-- ─── MIDDLE CONTENT AREA: SCROLLABLE LIST (Same Card design as /portal/dashboard) ─── -->
+      <!-- ─── MIDDLE CONTENT AREA: CLICKABLE CARDS ─── -->
       <div class="flex-1 overflow-y-auto pb-4">
         <Spin :spinning="loading">
           
@@ -246,8 +245,9 @@ onMounted(() => {
               <Card
                 v-for="session in myChecklistSessions"
                 :key="session.id"
-                class="rounded-2xl shadow-3xs border-slate-200/80 dark:border-zinc-800/80 bg-white dark:bg-zinc-900/60 backdrop-blur-md overflow-hidden"
+                class="rounded-2xl shadow-3xs border-slate-200/80 dark:border-zinc-800/80 bg-white dark:bg-zinc-900/60 backdrop-blur-md overflow-hidden cursor-pointer hover:border-indigo-300 dark:hover:border-indigo-800 transition-colors"
                 :body-style="{ padding: '16px' }"
+                @click="router.push('/portal/checklist')"
               >
                 <div class="flex items-start justify-between gap-3 mb-1">
                   <div class="flex-1 min-w-0">
@@ -285,18 +285,12 @@ onMounted(() => {
                   />
                 </div>
 
-                <div class="flex items-center justify-between gap-2 mt-3.5 pt-2.5 border-t border-slate-100 dark:border-zinc-800/80">
-                  <span class="text-[10px] font-mono text-slate-400 dark:text-zinc-500">
-                    {{ t('page.portal.dateLabel') }}: {{ session.session_date || '—' }}
+                <div class="flex items-center justify-between gap-2 mt-3 pt-2.5 border-t border-slate-100 dark:border-zinc-800/80 text-[10px] font-mono text-slate-400 dark:text-zinc-500">
+                  <span>{{ t('page.portal.dateLabel') }}: {{ session.session_date || '—' }}</span>
+                  <span class="text-indigo-600 dark:text-indigo-400 font-bold flex items-center gap-0.5">
+                    Chi tiết
+                    <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="m9 18 6-6-6-6"/></svg>
                   </span>
-                  <Button
-                    type="primary"
-                    size="small"
-                    class="bg-indigo-600 hover:bg-indigo-700 border-none text-[11px] h-7.5 rounded-lg font-bold px-3"
-                    @click="router.push('/portal/checklist')"
-                  >
-                    {{ t('page.portal.btnStart') }}
-                  </Button>
                 </div>
               </Card>
             </div>
@@ -312,8 +306,9 @@ onMounted(() => {
               <Card
                 v-for="group in myMaintenancePlans"
                 :key="group.key"
-                class="rounded-2xl shadow-3xs border-slate-200/80 dark:border-zinc-800/80 bg-white dark:bg-zinc-900/60 backdrop-blur-md overflow-hidden"
+                class="rounded-2xl shadow-3xs border-slate-200/80 dark:border-zinc-800/80 bg-white dark:bg-zinc-900/60 backdrop-blur-md overflow-hidden cursor-pointer hover:border-indigo-300 dark:hover:border-indigo-800 transition-colors"
                 :body-style="{ padding: '16px' }"
+                @click="router.push('/portal/maintain-plan')"
               >
                 <div class="flex items-start justify-between gap-3 mb-1">
                   <div class="flex-1 min-w-0">
@@ -351,18 +346,12 @@ onMounted(() => {
                   />
                 </div>
 
-                <div class="flex items-center justify-between gap-2 mt-3.5 pt-2.5 border-t border-slate-100 dark:border-zinc-800/80">
-                  <span class="text-[10px] font-mono text-slate-400 dark:text-zinc-500">
-                    {{ t('page.portal.dateLabel') }}: {{ group.date }}
+                <div class="flex items-center justify-between gap-2 mt-3 pt-2.5 border-t border-slate-100 dark:border-zinc-800/80 text-[10px] font-mono text-slate-400 dark:text-zinc-500">
+                  <span>{{ t('page.portal.dateLabel') }}: {{ group.date }}</span>
+                  <span class="text-indigo-600 dark:text-indigo-400 font-bold flex items-center gap-0.5">
+                    Chi tiết
+                    <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="m9 18 6-6-6-6"/></svg>
                   </span>
-                  <Button
-                    type="primary"
-                    size="small"
-                    class="bg-indigo-600 hover:bg-indigo-700 border-none text-[11px] h-7.5 rounded-lg font-bold px-3"
-                    @click="router.push('/portal/maintain-plan')"
-                  >
-                    {{ t('page.portal.btnExecute') }}
-                  </Button>
                 </div>
               </Card>
             </div>
@@ -376,37 +365,24 @@ onMounted(() => {
       </div>
     </div>
 
-    <!-- ─── FIXED BOTTOM ACTION BAR (Matching Dashboard White + Indigo + Black Theme) ─── -->
-    <div class="fixed bottom-0 left-0 right-0 h-20 bg-white/95 dark:bg-zinc-900/95 px-4 flex items-center z-30 border-t border-slate-200/80 dark:border-zinc-800/80 shadow-[0_-4px_16px_rgba(0,0,0,0.05)] backdrop-blur-md">
-      <div class="grid grid-cols-3 gap-3 w-full items-center">
+    <!-- ─── FIXED BOTTOM ACTION BAR (50% / 50% split, NO QR button) ─── -->
+    <div class="fixed bottom-0 left-0 right-0 h-16 bg-white/95 dark:bg-zinc-900/95 px-4 flex items-center z-30 border-t border-slate-200/80 dark:border-zinc-800/80 shadow-[0_-4px_16px_rgba(0,0,0,0.05)] backdrop-blur-md">
+      <div class="grid grid-cols-2 gap-3 w-full items-center">
         
-        <!-- Báo cáo sự cố -->
+        <!-- Báo cáo sự cố (50% width) -->
         <button
           type="button"
           @click="router.push('/portal/incident-report')"
-          class="h-14 w-full bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-xs border-0 rounded-xl outline-none transition-colors select-none flex items-center justify-center shadow-xs cursor-pointer"
+          class="h-12 w-full bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-xs border-0 rounded-xl outline-none transition-colors select-none flex items-center justify-center shadow-xs cursor-pointer"
         >
           {{ t('page.portal.reportIncident') }}
         </button>
 
-        <!-- Center Scan Button -->
-        <div class="flex justify-center items-center">
-          <button
-            type="button"
-            @click="router.push('/portal/equipment')"
-            class="w-14 h-14 bg-black hover:bg-zinc-900 active:scale-95 text-white rounded-full flex items-center justify-center border-0 cursor-pointer outline-none transition-all duration-200 shadow-md"
-            style="margin-bottom: -20px;"
-          >
-            <!-- V logo icon -->
-            <span class="text-white font-black text-xl select-none font-sans">V</span>
-          </button>
-        </div>
-
-        <!-- Dừng khẩn cấp -->
+        <!-- Dừng khẩn cấp (50% width) -->
         <button
           type="button"
           @click="router.push('/portal/emergency-stop')"
-          class="h-14 w-full bg-rose-600 hover:bg-rose-700 text-white font-bold text-xs border-0 rounded-xl outline-none transition-colors select-none flex items-center justify-center shadow-xs cursor-pointer"
+          class="h-12 w-full bg-rose-600 hover:bg-rose-700 text-white font-bold text-xs border-0 rounded-xl outline-none transition-colors select-none flex items-center justify-center shadow-xs cursor-pointer"
         >
           {{ t('page.portal.emergencyStop') }}
         </button>
