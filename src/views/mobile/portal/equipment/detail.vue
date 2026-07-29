@@ -14,7 +14,6 @@ import {
 import axios from 'axios';
 import { useAccessStore } from '@vben/stores';
 import { API_BASE_URL } from '#/api/config';
-import EquipmentQrModal from '#/views/equipment/list/components/EquipmentQrModal.vue';
 
 defineOptions({ name: 'MobilePortalEquipmentDetail' });
 
@@ -98,7 +97,6 @@ const fetchError = ref('');
 const errorStatus = ref<number | null>(null);
 
 const activeEquipment = ref<EquipmentItem | null>(null);
-const qrModalOpen = ref(false);
 const dailyLoading = ref(false);
 const dailyChecklistData = ref<DailyChecklistResponse | null>(null);
 const remainingHours = ref<number | null>(null);
@@ -287,20 +285,9 @@ onMounted(() => {
           <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-chevron-left"><path d="m15 18-6-6 6-6"/></svg>
         </Button>
         <h1 class="text-base font-bold text-slate-800 dark:text-zinc-200 m-0">
-          Chi tiết thiết bị
+          {{ t('page.portal.equipmentDetailTitle') }}
         </h1>
       </div>
-
-      <Button
-        v-if="activeEquipment"
-        type="default"
-        size="small"
-        class="flex items-center gap-1 font-bold text-xs rounded-lg text-indigo-600 dark:text-indigo-400 border-indigo-200 dark:border-zinc-700"
-        @click="qrModalOpen = true"
-      >
-        <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-qr-code"><rect width="5" height="5" x="3" y="3" rx="1"/><rect width="5" height="5" x="16" y="3" rx="1"/><rect width="5" height="5" x="3" y="16" rx="1"/><path d="M21 16V21H16"/><path d="M21 12H21.01"/><path d="M12 21H12.01"/><path d="M12 12H12.01"/><path d="M16 16H16.01"/><path d="M16 12H16.01"/><path d="M12 16H12.01"/></svg>
-        Mã QR
-      </Button>
     </div>
 
     <!-- ─── LOADING STATE ─── -->
@@ -312,12 +299,12 @@ onMounted(() => {
     <div v-else-if="fetchError" class="py-12 bg-white dark:bg-zinc-900 rounded-2xl shadow-xs border border-slate-200 dark:border-zinc-800/80 px-4 text-center">
       <Result
         status="warning"
-        title="Lỗi thiết bị"
+        :title="t('page.portal.equipmentError')"
         :sub-title="fetchError"
       >
         <template #extra>
           <Button type="primary" class="bg-indigo-600 border-none rounded-xl" @click="handleBack">
-            Quay lại danh sách
+            {{ t('page.portal.backToList') }}
           </Button>
         </template>
       </Result>
@@ -351,13 +338,13 @@ onMounted(() => {
         <div class="p-4 space-y-4">
           <div class="grid grid-cols-2 gap-3 text-xs">
             <div>
-              <span class="text-slate-400 dark:text-zinc-500 block uppercase tracking-wider text-[9px] font-bold">Category</span>
+              <span class="text-slate-400 dark:text-zinc-500 block uppercase tracking-wider text-[9px] font-bold">{{ t('page.equipment.colCategory') }}</span>
               <span class="text-slate-700 dark:text-zinc-300 font-semibold mt-0.5 block">
                 {{ activeEquipment?.equipment_category?.name || '—' }}
               </span>
             </div>
             <div>
-              <span class="text-slate-400 dark:text-zinc-500 block uppercase tracking-wider text-[9px] font-bold">Status</span>
+              <span class="text-slate-400 dark:text-zinc-500 block uppercase tracking-wider text-[9px] font-bold">{{ t('page.portal.statusLabel') }}</span>
               <Tag :color="activeEquipment?.is_active ? 'success' : 'default'" class="text-[9px] px-1.5 py-0.5 mt-0.5 rounded-md font-bold uppercase inline-block">
                 {{ activeEquipment?.is_active ? t('page.equipment.statusActive') : t('page.equipment.statusInactive') }}
               </Tag>
@@ -366,7 +353,7 @@ onMounted(() => {
 
           <!-- Parameters Section -->
           <div v-if="activeEquipment?.equipment_parameters && activeEquipment.equipment_parameters.length > 0">
-            <span class="text-slate-400 dark:text-zinc-500 block uppercase tracking-wider text-[9px] font-bold mb-1.5">Parameters</span>
+            <span class="text-slate-400 dark:text-zinc-500 block uppercase tracking-wider text-[9px] font-bold mb-1.5">{{ t('page.equipment.parametersTitle') }}</span>
             <div class="flex flex-wrap gap-1">
               <Tag
                 v-for="param in activeEquipment?.equipment_parameters"
@@ -381,7 +368,7 @@ onMounted(() => {
 
           <!-- Errors Section -->
           <div v-if="activeEquipment?.equipment_errors && activeEquipment.equipment_errors.length > 0">
-            <span class="text-slate-400 dark:text-zinc-500 block uppercase tracking-wider text-[9px] font-bold mb-1.5">Errors</span>
+            <span class="text-slate-400 dark:text-zinc-500 block uppercase tracking-wider text-[9px] font-bold mb-1.5">{{ t('page.equipment.colErrors') }}</span>
             <div class="flex flex-wrap gap-1">
               <Tag
                 v-for="err in activeEquipment?.equipment_errors"
@@ -490,12 +477,6 @@ onMounted(() => {
         </div>
       </div>
     </div>
-
-    <!-- Equipment QR Modal -->
-    <EquipmentQrModal
-      v-model:open="qrModalOpen"
-      :equipment="activeEquipment"
-    />
   </div>
 </template>
 
