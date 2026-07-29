@@ -1,5 +1,5 @@
 <script lang="ts" setup>
-import { ref, computed, onMounted, watch } from 'vue';
+import { ref, computed, onMounted } from 'vue';
 import { useRouter } from 'vue-router';
 import { 
   Card, 
@@ -7,12 +7,10 @@ import {
   Tag, 
   Spin, 
   Empty, 
-  DatePicker, 
   Progress 
 } from 'ant-design-vue';
 import { useI18n } from '@vben/locales';
 import { useUserStore } from '@vben/stores';
-import dayjs, { type Dayjs } from 'dayjs';
 import { getChecklistSessionsApi } from '#/api/ops/checklist';
 import { listMaintenanceSchedulesApi } from '#/api/ops/maintenance-plans';
 
@@ -23,7 +21,6 @@ const { t } = useI18n();
 const userStore = useUserStore();
 
 const activeTab = ref<'checklist' | 'maintenance'>('checklist');
-const selectedDate = ref<Dayjs>(dayjs());
 const loading = ref(false);
 
 const checklistSessions = ref<any[]>([]);
@@ -31,40 +28,38 @@ const maintenanceSchedules = ref<any[]>([]);
 
 const currentUserId = computed(() => userStore.userInfo?.userId || (userStore.userInfo as { id?: string } | null)?.id || '');
 
-// ─── Fetch Checklist Sessions ───
+// ─── Fetch Checklist Sessions (All of them) ───
 async function fetchChecklists() {
   try {
-    const dateStr = selectedDate.value.format('YYYY-MM-DD');
     const raw = await getChecklistSessionsApi({
       include_details: true,
-      start_date: dateStr,
-      end_date: dateStr,
-      per_page: 100,
+      per_page: 1000,
     });
     const responseData = (raw as any)?.data ?? (raw as any)?.items ?? (Array.isArray(raw) ? raw : []);
-    checklistSessions.value = Array.isArray(responseData) ? responseData : [];
+    const sessions = Array.isArray(responseData) ? responseData : [];
+    
+    // Sort by session_date descending (latest first)
+    checklistSessions.value = sessions.sort((a: any, b: any) => (b.session_date || '').localeCompare(a.session_date || ''));
   } catch (err) {
     console.error('Failed to fetch checklists:', err);
   }
 }
 
-// ─── Fetch Maintenance Schedules ───
+// ─── Fetch Maintenance Schedules (All of them) ───
 async function fetchMaintenance() {
   try {
-    const dateStr = selectedDate.value.format('YYYY-MM-DD');
     const rawSchedules = await listMaintenanceSchedulesApi({
-      start_date: dateStr,
-      end_date: dateStr,
       with_logs: true,
+      per_page: 1000,
     });
     const scheduleArray = Array.isArray(rawSchedules) ? rawSchedules : [];
-    maintenanceSchedules.value = groupSchedulesByPlan(scheduleArray, dateStr);
+    maintenanceSchedules.value = groupSchedulesByPlan(scheduleArray);
   } catch (err) {
     console.error('Failed to fetch maintenance:', err);
   }
 }
 
-// Group schedules by plan code
+// Group schedules by plan code & date
 function getLatestResult(schedule: any): string | null {
   if (schedule.result) return schedule.result;
   if (schedule.maintenance_logs && schedule.maintenance_logs.length > 0) {
@@ -73,12 +68,13 @@ function getLatestResult(schedule: any): string | null {
   return null;
 }
 
-function groupSchedulesByPlan(rows: any[], dateStr: string): any[] {
+function groupSchedulesByPlan(rows: any[]): any[] {
   const planMap = new Map<string, any>();
-  const dayRows = rows.filter((s) => s.date && s.date.startsWith(dateStr));
 
-  for (const s of dayRows) {
-    const planKey = s.maintenance_plan_id || s.plan_code || s.id || 'unknown';
+  for (const s of rows) {
+    if (!s.date) continue;
+    const dateStr = s.date.slice(0, 10);
+    const planKey = `${s.maintenance_plan_id || s.plan_code || s.id || 'unknown'}-${dateStr}`;
     const latestRes = getLatestResult(s);
     const isCompleted = Boolean(latestRes);
     const isPassed = latestRes === 'pass' || latestRes === 'normal' || latestRes === 'completed';
@@ -92,7 +88,7 @@ function groupSchedulesByPlan(rows: any[], dateStr: string): any[] {
 
     if (!planMap.has(planKey)) {
       planMap.set(planKey, {
-        key: `plan-${planKey}-${dateStr}`,
+        key: `plan-${planKey}`,
         plan_id: s.maintenance_plan_id || '',
         plan_code: planCode,
         date: dateStr,
@@ -122,7 +118,9 @@ function groupSchedulesByPlan(rows: any[], dateStr: string): any[] {
       }
     }
   }
-  return Array.from(planMap.values());
+  
+  // Sort by date descending
+  return Array.from(planMap.values()).sort((a, b) => b.date.localeCompare(a.date));
 }
 
 // ─── Filter lists to show ONLY current logged-in user ───
@@ -220,17 +218,6 @@ function getProgressColorForPlan(group: any): string {
   return '#1890ff';
 }
 
-// Date switcher helpers
-function changeDate(days: number) {
-  selectedDate.value = selectedDate.value.add(days, 'day');
-}
-
-function handleDateChange(val: any) {
-  if (val) {
-    selectedDate.value = dayjs(val);
-  }
-}
-
 async function loadData() {
   loading.value = true;
   await Promise.all([fetchChecklists(), fetchMaintenance()]);
@@ -238,10 +225,6 @@ async function loadData() {
 }
 
 onMounted(() => {
-  loadData();
-});
-
-watch(selectedDate, () => {
   loadData();
 });
 </script>
@@ -254,37 +237,8 @@ watch(selectedDate, () => {
     <div class="absolute bottom-[-10%] right-[-10%] w-[50%] h-[50%] bg-emerald-200/10 dark:bg-emerald-950/5 rounded-full blur-[120px] pointer-events-none"></div>
 
     <div class="relative z-10 w-full flex-1 flex flex-col">
-      <!-- ─── TOP AREA: DATE PICKER & TAB SWITCHER ─── -->
-      <div class="space-y-3.5 mb-4">
-        
-        <!-- Date Switcher Pill -->
-        <div class="flex items-center justify-between gap-2 bg-white dark:bg-zinc-900 p-2 rounded-2xl border border-slate-200/80 dark:border-zinc-800 shadow-3xs">
-          <button
-            type="button"
-            class="h-9 w-9 shrink-0 flex items-center justify-center rounded-xl bg-slate-100/80 dark:bg-zinc-800/80 hover:bg-slate-200 dark:hover:bg-zinc-700 text-slate-600 dark:text-zinc-300 transition-colors border-0 cursor-pointer outline-none"
-            @click="changeDate(-1)"
-          >
-            <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="m15 18-6-6 6-6"/></svg>
-          </button>
-          
-          <DatePicker
-            :value="selectedDate"
-            @change="handleDateChange"
-            format="YYYY-MM-DD"
-            :allow-clear="false"
-            class="flex-1 border-none bg-transparent hover:bg-slate-50 dark:hover:bg-zinc-800/50 rounded-xl py-1 px-2 cursor-pointer font-bold text-center"
-            style="width: 100%"
-          />
-
-          <button
-            type="button"
-            class="h-9 w-9 shrink-0 flex items-center justify-center rounded-xl bg-slate-100/80 dark:bg-zinc-800/80 hover:bg-slate-200 dark:hover:bg-zinc-700 text-slate-600 dark:text-zinc-300 transition-colors border-0 cursor-pointer outline-none"
-            @click="changeDate(1)"
-          >
-            <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="m9 18 6-6-6-6"/></svg>
-          </button>
-        </div>
-
+      <!-- ─── TOP AREA: TAB SWITCHER ─── -->
+      <div class="mb-4">
         <!-- Tab Switcher (Checklist vs Maintenance) -->
         <div class="flex p-1 bg-indigo-600 dark:bg-indigo-900 rounded-xl shadow-md">
           <button
@@ -304,7 +258,6 @@ watch(selectedDate, () => {
             Kế hoạch bảo trì ({{ myMaintenancePlans.length }})
           </button>
         </div>
-
       </div>
 
       <!-- ─── MIDDLE CONTENT AREA: SCROLLABLE LIST ─── -->
@@ -328,13 +281,16 @@ watch(selectedDate, () => {
                     <p class="text-[11px] text-indigo-600 dark:text-indigo-400 font-bold font-mono mt-1 mb-0">
                       {{ session.equipment?.code || '—' }} <span v-if="session.equipment?.name" class="text-slate-400 dark:text-zinc-500 font-normal">— {{ session.equipment.name }}</span>
                     </p>
+                    <p class="text-[10px] text-slate-400 mt-1 mb-0 font-medium">
+                      Ngày: {{ session.session_date || '—' }}
+                    </p>
                   </div>
                   <Tag :color="getSessionStatusTag(session).color" class="m-0 text-[9px] uppercase font-bold px-1.5 py-0.5 rounded-md shrink-0">
                     {{ getSessionStatusTag(session).label }}
                   </Tag>
                 </div>
 
-                <div class="flex justify-between items-center text-xs text-slate-500 dark:text-zinc-400 mt-4">
+                <div class="flex justify-between items-center text-xs text-slate-500 dark:text-zinc-400 mt-3">
                   <span class="font-semibold text-[11px]">
                     Chu kỳ: {{ getCycleText(session.cycle_type) }}
                     <span v-if="session.cycle_interval && session.cycle_interval > 1">({{ session.cycle_interval }})</span>
@@ -342,7 +298,7 @@ watch(selectedDate, () => {
                   <span class="font-medium text-[11px]">Hạng mục: {{ getCompletedCount(session) }}/{{ session.details?.length || 0 }}</span>
                 </div>
 
-                <div class="mt-2.5">
+                <div class="mt-2">
                   <Progress
                     :percent="getProgressPercent(session)"
                     :show-info="false"
@@ -366,7 +322,7 @@ watch(selectedDate, () => {
             </div>
 
             <div v-else class="py-16 flex flex-col items-center justify-center bg-white dark:bg-zinc-900 border border-dashed border-slate-200 dark:border-zinc-800 rounded-2xl text-center px-4">
-              <Empty description="Không có phiên kiểm tra nào được giao cho bạn hôm nay." />
+              <Empty description="Không có phiên kiểm tra nào được giao cho bạn." />
             </div>
           </div>
 
@@ -387,20 +343,23 @@ watch(selectedDate, () => {
                     <p class="text-[11px] text-emerald-600 dark:text-emerald-400 font-bold font-mono mt-1 mb-0">
                       {{ group.equipment_code }} <span v-if="group.equipment_name" class="text-slate-400 dark:text-zinc-500 font-normal">— {{ group.equipment_name }}</span>
                     </p>
+                    <p class="text-[10px] text-slate-400 mt-1 mb-0 font-medium">
+                      Ngày: {{ group.date }}
+                    </p>
                   </div>
                   <Tag :color="getPlanStatusTag(group).color" class="m-0 text-[9px] uppercase font-bold px-1.5 py-0.5 rounded-md shrink-0">
                     {{ getPlanStatusTag(group).label }}
                   </Tag>
                 </div>
 
-                <div class="flex justify-between items-center text-xs text-slate-500 dark:text-zinc-400 mt-4">
+                <div class="flex justify-between items-center text-xs text-slate-500 dark:text-zinc-400 mt-3">
                   <span class="font-semibold text-[11px]">
                     Loại bảo trì: {{ group.maintenance_type || 'Bảo trì định kỳ' }}
                   </span>
                   <span class="font-medium text-[11px]">Hạng mục: {{ group.completed_items }}/{{ group.total_items }}</span>
                 </div>
 
-                <div class="mt-2.5">
+                <div class="mt-2">
                   <Progress
                     :percent="getProgressPercentForPlan(group)"
                     :show-info="false"
@@ -424,7 +383,7 @@ watch(selectedDate, () => {
             </div>
 
             <div v-else class="py-16 flex flex-col items-center justify-center bg-white dark:bg-zinc-900 border border-dashed border-slate-200 dark:border-zinc-800 rounded-2xl text-center px-4">
-              <Empty description="Không có kế hoạch bảo trì nào được giao cho bạn hôm nay." />
+              <Empty description="Không có kế hoạch bảo trì nào được giao cho bạn." />
             </div>
           </div>
 
