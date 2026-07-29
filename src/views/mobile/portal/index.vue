@@ -231,29 +231,24 @@ onMounted(() => {
 
 <template>
   <div class="portal-container min-h-[85vh] bg-slate-50 dark:bg-zinc-950/40 pb-28 relative flex flex-col transition-colors duration-300">
-    
-    <!-- Premium background glowing spots (ambient mesh) -->
-    <div class="absolute top-[-10%] left-[-10%] w-[50%] h-[50%] bg-indigo-200/20 dark:bg-indigo-900/10 rounded-full blur-[120px] pointer-events-none"></div>
-    <div class="absolute bottom-[-10%] right-[-10%] w-[50%] h-[50%] bg-emerald-200/10 dark:bg-emerald-950/5 rounded-full blur-[120px] pointer-events-none"></div>
 
     <div class="relative z-10 w-full flex-1 flex flex-col">
-      <!-- ─── TOP AREA: TAB SWITCHER ─── -->
-      <div class="mb-4">
-        <!-- Tab Switcher (Checklist vs Maintenance) -->
-        <div class="flex p-1 bg-indigo-600 dark:bg-indigo-900 rounded-xl shadow-md">
+      <!-- ─── TOP AREA: TAB SWITCHER (Blue Banner Mockup) ─── -->
+      <div class="mb-5">
+        <div class="flex bg-[#4172cd] p-1 rounded-none shadow-md">
           <button
             type="button"
             @click="activeTab = 'checklist'"
-            :class="[activeTab === 'checklist' ? 'bg-white text-indigo-700 font-bold shadow-xs' : 'text-white/80 font-medium hover:text-white']"
-            class="flex-1 py-2 text-xs text-center rounded-lg transition-all border-0 cursor-pointer outline-none"
+            :class="[activeTab === 'checklist' ? 'bg-[#2f55a4] text-white font-bold' : 'text-white/80 font-medium hover:text-white']"
+            class="flex-1 py-3 text-xs text-center border-0 cursor-pointer outline-none transition-all"
           >
             Checklist ({{ myChecklistSessions.length }})
           </button>
           <button
             type="button"
             @click="activeTab = 'maintenance'"
-            :class="[activeTab === 'maintenance' ? 'bg-white text-indigo-700 font-bold shadow-xs' : 'text-white/80 font-medium hover:text-white']"
-            class="flex-1 py-2 text-xs text-center rounded-lg transition-all border-0 cursor-pointer outline-none"
+            :class="[activeTab === 'maintenance' ? 'bg-[#2f55a4] text-white font-bold' : 'text-white/80 font-medium hover:text-white']"
+            class="flex-1 py-3 text-xs text-center border-0 cursor-pointer outline-none transition-all"
           >
             Kế hoạch bảo trì ({{ myMaintenancePlans.length }})
           </button>
@@ -266,34 +261,34 @@ onMounted(() => {
           
           <!-- Checklist Tab Content -->
           <div v-if="activeTab === 'checklist'">
-            <div v-if="myChecklistSessions.length > 0" class="flex flex-col gap-3.5">
+            <div v-if="myChecklistSessions.length > 0" class="flex flex-col gap-4">
               <Card
                 v-for="session in myChecklistSessions"
                 :key="session.id"
-                class="rounded-2xl shadow-3xs border-slate-200/80 dark:border-zinc-800/80 bg-white dark:bg-zinc-900/60 backdrop-blur-md overflow-hidden"
-                :body-style="{ padding: '16px' }"
+                class="rounded-none shadow-sm border-none bg-[#4172cd] overflow-hidden"
+                :body-style="{ padding: '18px' }"
               >
                 <div class="flex items-start justify-between gap-3">
                   <div class="flex-1 min-w-0">
-                    <h3 class="text-sm font-bold text-slate-800 dark:text-zinc-200 truncate m-0">
+                    <h3 class="text-sm font-bold text-white truncate m-0">
                       {{ session.name || session.equipment?.name || 'Phiên kiểm tra' }}
                     </h3>
-                    <p class="text-[11px] text-indigo-600 dark:text-indigo-400 font-bold font-mono mt-1 mb-0">
-                      {{ session.equipment?.code || '—' }} <span v-if="session.equipment?.name" class="text-slate-400 dark:text-zinc-500 font-normal">— {{ session.equipment.name }}</span>
+                    <p class="text-[11px] text-white/90 font-bold font-mono mt-1 mb-0">
+                      {{ session.equipment?.code || '—' }} <span v-if="session.equipment?.name" class="text-white/70 font-normal">— {{ session.equipment.name }}</span>
                     </p>
-                    <p class="text-[10px] text-slate-400 mt-1 mb-0 font-medium">
+                    <p class="text-[10px] text-white/80 mt-1 mb-0 font-medium">
                       Ngày: {{ session.session_date || '—' }}
                     </p>
                   </div>
-                  <Tag :color="getSessionStatusTag(session).color" class="m-0 text-[9px] uppercase font-bold px-1.5 py-0.5 rounded-md shrink-0">
+                  <Tag color="blue" class="m-0 text-[9px] uppercase font-bold px-1.5 py-0.5 rounded-none shrink-0 border-white text-white bg-[#2f55a4]">
                     {{ getSessionStatusTag(session).label }}
                   </Tag>
                 </div>
 
-                <div class="flex justify-between items-center text-xs text-slate-500 dark:text-zinc-400 mt-3">
+                <div class="flex justify-between items-center text-xs text-white/90 mt-3">
                   <span class="font-semibold text-[11px]">
                     Chu kỳ: {{ getCycleText(session.cycle_type) }}
-                    <span v-if="session.cycle_interval && session.cycle_interval > 1">({{ session.cycle_interval }})</span>
+                    <span v-if="session.cycle_interval && session.cycle_interval > 1">(interval: {{ session.cycle_interval }})</span>
                   </span>
                   <span class="font-medium text-[11px]">Hạng mục: {{ getCompletedCount(session) }}/{{ session.details?.length || 0 }}</span>
                 </div>
@@ -304,55 +299,55 @@ onMounted(() => {
                     :show-info="false"
                     size="small"
                     class="m-0"
-                    :stroke-color="getProgressColor(session)"
+                    stroke-color="#ffffff"
+                    trail-color="rgba(255, 255, 255, 0.3)"
                   />
                 </div>
 
                 <div class="flex items-center gap-2 mt-4">
                   <Button
                     type="primary"
-                    class="flex-1 bg-indigo-600 hover:bg-indigo-700 border-none text-xs h-8.5 rounded-xl font-bold flex items-center justify-center gap-1.5"
+                    class="flex-1 bg-[#2f55a4] hover:bg-[#1d3d80] border-none text-xs h-8.5 rounded-none font-bold flex items-center justify-center gap-1.5 text-white"
                     @click="router.push('/portal/checklist')"
                   >
-                    <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="m9 11 3 3L22 4"/><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/></svg>
                     Bắt đầu kiểm tra
                   </Button>
                 </div>
               </Card>
             </div>
 
-            <div v-else class="py-16 flex flex-col items-center justify-center bg-white dark:bg-zinc-900 border border-dashed border-slate-200 dark:border-zinc-800 rounded-2xl text-center px-4">
+            <div v-else class="py-16 flex flex-col items-center justify-center bg-white dark:bg-zinc-900 border border-dashed border-slate-200 dark:border-zinc-800 rounded-none text-center px-4">
               <Empty description="Không có phiên kiểm tra nào được giao cho bạn." />
             </div>
           </div>
 
           <!-- Maintenance Tab Content -->
           <div v-if="activeTab === 'maintenance'">
-            <div v-if="myMaintenancePlans.length > 0" class="flex flex-col gap-3.5">
+            <div v-if="myMaintenancePlans.length > 0" class="flex flex-col gap-4">
               <Card
                 v-for="group in myMaintenancePlans"
                 :key="group.key"
-                class="rounded-2xl shadow-3xs border-slate-200/80 dark:border-zinc-800/80 bg-white dark:bg-zinc-900/60 backdrop-blur-md overflow-hidden"
-                :body-style="{ padding: '16px' }"
+                class="rounded-none shadow-sm border-none bg-[#4172cd] overflow-hidden"
+                :body-style="{ padding: '18px' }"
               >
                 <div class="flex items-start justify-between gap-3">
                   <div class="flex-1 min-w-0">
-                    <h3 class="text-sm font-bold text-slate-800 dark:text-zinc-200 truncate m-0">
+                    <h3 class="text-sm font-bold text-white truncate m-0">
                       {{ group.plan_code }}
                     </h3>
-                    <p class="text-[11px] text-emerald-600 dark:text-emerald-400 font-bold font-mono mt-1 mb-0">
-                      {{ group.equipment_code }} <span v-if="group.equipment_name" class="text-slate-400 dark:text-zinc-500 font-normal">— {{ group.equipment_name }}</span>
+                    <p class="text-[11px] text-white/90 font-bold font-mono mt-1 mb-0">
+                      {{ group.equipment_code }} <span v-if="group.equipment_name" class="text-white/70 font-normal">— {{ group.equipment_name }}</span>
                     </p>
-                    <p class="text-[10px] text-slate-400 mt-1 mb-0 font-medium">
+                    <p class="text-[10px] text-white/80 mt-1 mb-0 font-medium">
                       Ngày: {{ group.date }}
                     </p>
                   </div>
-                  <Tag :color="getPlanStatusTag(group).color" class="m-0 text-[9px] uppercase font-bold px-1.5 py-0.5 rounded-md shrink-0">
+                  <Tag color="blue" class="m-0 text-[9px] uppercase font-bold px-1.5 py-0.5 rounded-none shrink-0 border-white text-white bg-[#2f55a4]">
                     {{ getPlanStatusTag(group).label }}
                   </Tag>
                 </div>
 
-                <div class="flex justify-between items-center text-xs text-slate-500 dark:text-zinc-400 mt-3">
+                <div class="flex justify-between items-center text-xs text-white/90 mt-3">
                   <span class="font-semibold text-[11px]">
                     Loại bảo trì: {{ group.maintenance_type || 'Bảo trì định kỳ' }}
                   </span>
@@ -365,24 +360,24 @@ onMounted(() => {
                     :show-info="false"
                     size="small"
                     class="m-0"
-                    :stroke-color="getProgressColorForPlan(group)"
+                    stroke-color="#ffffff"
+                    trail-color="rgba(255, 255, 255, 0.3)"
                   />
                 </div>
 
                 <div class="flex items-center gap-2 mt-4">
                   <Button
                     type="primary"
-                    class="flex-1 bg-emerald-600 hover:bg-emerald-700 border-none text-xs h-8.5 rounded-xl font-bold flex items-center justify-center gap-1.5"
+                    class="flex-1 bg-[#2f55a4] hover:bg-[#1d3d80] border-none text-xs h-8.5 rounded-none font-bold flex items-center justify-center gap-1.5 text-white"
                     @click="router.push('/portal/maintain-plan')"
                   >
-                    <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M14.7 6.3a1 1 0 0 0 0 1.4l1.6 1.6a1 1 0 0 0 1.4 0l3.77-3.77a6 6 0 0 1-7.94 7.94l-6.91 6.91a2.12 2.12 0 0 1-3-3l6.91-6.91a6 6 0 0 1 7.94-7.94l-3.76 3.76z"/></svg>
                     Thực hiện bảo trì
                   </Button>
                 </div>
               </Card>
             </div>
 
-            <div v-else class="py-16 flex flex-col items-center justify-center bg-white dark:bg-zinc-900 border border-dashed border-slate-200 dark:border-zinc-800 rounded-2xl text-center px-4">
+            <div v-else class="py-16 flex flex-col items-center justify-center bg-white dark:bg-zinc-900 border border-dashed border-slate-200 dark:border-zinc-800 rounded-none text-center px-4">
               <Empty description="Không có kế hoạch bảo trì nào được giao cho bạn." />
             </div>
           </div>
@@ -392,24 +387,24 @@ onMounted(() => {
     </div>
 
     <!-- ─── FIXED BOTTOM ACTION BAR ─── -->
-    <div class="fixed bottom-0 left-0 right-0 h-16 bg-white dark:bg-zinc-950 border-t border-slate-200/80 dark:border-zinc-800/80 px-4 flex items-center justify-between z-30 shadow-[0_-4px_16px_rgba(0,0,0,0.04)]">
+    <div class="fixed bottom-0 left-0 right-0 h-16 bg-slate-50 dark:bg-zinc-950 px-4 py-2 flex items-center justify-between z-30 border-t border-slate-200/80 dark:border-zinc-800/80">
       
       <!-- Báo cáo sự cố (Bottom Left) -->
       <button
         type="button"
         @click="router.push('/portal/incident-report')"
-        class="h-10 px-4 rounded-lg bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-xs border-0 cursor-pointer outline-none transition-colors"
+        class="h-12 w-[42%] bg-[#4172cd] hover:bg-blue-700 text-white font-bold text-xs border-0 cursor-pointer outline-none transition-colors select-none"
       >
         Báo cáo sự cố
       </button>
 
-      <!-- Center Floating Scan Button Spacer -->
-      <div class="w-16 relative flex justify-center">
-        <!-- Floating Scan Button (Black circle with V logo) -->
+      <!-- Center Floating Scan Button (V logo) -->
+      <div class="w-[16%] flex justify-center items-center">
         <button
           type="button"
           @click="router.push('/portal/equipment')"
-          class="absolute -top-7 w-12 h-12 bg-black hover:bg-zinc-900 active:scale-95 text-white rounded-full flex items-center justify-center shadow-md border-4 border-white dark:border-zinc-950 cursor-pointer outline-none transition-all duration-200"
+          class="w-11 h-11 bg-black hover:bg-zinc-900 active:scale-95 text-white rounded-full flex items-center justify-center border-0 cursor-pointer outline-none transition-all duration-200"
+          style="margin-bottom: -15px;"
         >
           <!-- V logo icon -->
           <span class="text-white font-black text-lg select-none font-sans">V</span>
@@ -420,7 +415,7 @@ onMounted(() => {
       <button
         type="button"
         @click="router.push('/portal/emergency-stop')"
-        class="h-10 px-4 rounded-lg bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-xs border-0 cursor-pointer outline-none transition-colors"
+        class="h-12 w-[42%] bg-[#4172cd] hover:bg-blue-700 text-white font-bold text-xs border-0 cursor-pointer outline-none transition-colors select-none"
       >
         Dừng khẩn cấp
       </button>
