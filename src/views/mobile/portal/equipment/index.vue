@@ -83,7 +83,7 @@ function selectEquipment(id: string) {
   router.push(`/portal/equipment/${id}`);
 }
 
-// ─── Live Camera Control ───
+// ─── Live Camera Control (Starts ONLY on user click) ───
 async function startCamera() {
   cameraError.value = '';
   try {
@@ -100,7 +100,7 @@ async function startCamera() {
   } catch (err: any) {
     console.warn('Camera access error / restricted:', err);
     isCameraStreaming.value = false;
-    cameraError.value = 'Không thể mở trực tiếp Camera. Bạn có thể bấm nút bên dưới để chọn ảnh hoặc chụp.';
+    cameraError.value = 'Không thể mở Camera (vui lòng chọn ảnh từ thiết bị để quét)';
   }
 }
 
@@ -212,19 +212,16 @@ const filteredEquipments = computed(() => {
   );
 });
 
+// Stop camera if user switches away from QR tab
 watch(activeTabKey, (newVal) => {
-  if (newVal === 'qrcode') {
-    startCamera();
-  } else {
+  if (newVal !== 'qrcode') {
     stopCamera();
   }
 });
 
 onMounted(() => {
   loadEquipments();
-  if (activeTabKey.value === 'qrcode') {
-    startCamera();
-  }
+  // DO NOT auto start camera on mount — wait for explicit user click!
 });
 
 onUnmounted(() => {
@@ -284,8 +281,8 @@ onUnmounted(() => {
               <div class="absolute bottom-4 left-4 w-6 h-6 border-b-4 border-l-4 border-indigo-500 rounded-bl-lg z-10 pointer-events-none"></div>
               <div class="absolute bottom-4 right-4 w-6 h-6 border-b-4 border-r-4 border-indigo-500 rounded-br-lg z-10 pointer-events-none"></div>
 
-              <!-- Fallback UI overlay if camera is not active -->
-              <div v-if="!isCameraStreaming" class="text-center z-5 flex flex-col items-center justify-center p-4 bg-slate-900/80 w-full h-full hover:bg-slate-900/70 transition-colors">
+              <!-- Initial UI overlay before camera is opened by user -->
+              <div v-if="!isCameraStreaming" class="text-center z-5 flex flex-col items-center justify-center p-4 bg-slate-900/90 w-full h-full hover:bg-slate-900/80 transition-colors">
                 <div class="mb-3 p-3.5 bg-indigo-500/20 rounded-2xl text-indigo-400 group-hover:scale-110 transition-transform">
                   <svg xmlns="http://www.w3.org/2000/svg" width="44" height="44" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
                     <path d="M14.5 4h-5L7 7H4a2 2 0 0 0-2 2v9a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2V9a2 2 0 0 0-2-2h-3l-2.5-3z"/>
