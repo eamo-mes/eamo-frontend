@@ -2,12 +2,9 @@
 import { ref, computed, onMounted } from 'vue';
 import { useRouter } from 'vue-router';
 import { 
-  Card, 
-  Button, 
   Tag, 
   Spin, 
-  Empty, 
-  Progress 
+  Empty 
 } from 'ant-design-vue';
 import { useI18n } from '@vben/locales';
 import { useUserStore } from '@vben/stores';
@@ -183,18 +180,6 @@ function getCompletedCount(session: any): number {
   }).length;
 }
 
-function getProgressPercent(session: any): number {
-  if (!session.details || session.details.length === 0) return 0;
-  return Math.round((getCompletedCount(session) / session.details.length) * 100);
-}
-
-function getProgressColor(session: any): string {
-  const status = getSessionStatus(session);
-  if (status === 'pass') return '#52c41a';
-  if (status === 'fail') return '#f5222d';
-  return '#1890ff';
-}
-
 function getSessionStatus(session: any): 'pass' | 'fail' | 'pending' {
   if (!session.details || session.details.length === 0) return 'pending';
   const completedLogs = session.details.map((d: any) => {
@@ -205,17 +190,6 @@ function getSessionStatus(session: any): 'pass' | 'fail' | 'pending' {
   if (!allCompleted) return 'pending';
   const allPassed = completedLogs.every((log: any) => log?.result === 'pass');
   return allPassed ? 'pass' : 'fail';
-}
-
-function getProgressPercentForPlan(group: any): number {
-  if (group.total_items === 0) return 0;
-  return Math.round((group.completed_items / group.total_items) * 100);
-}
-
-function getProgressColorForPlan(group: any): string {
-  if (group.status === 'pass') return '#52c41a';
-  if (group.status === 'fail') return '#f5222d';
-  return '#1890ff';
 }
 
 async function loadData() {
@@ -233,7 +207,7 @@ onMounted(() => {
   <div class="portal-container min-h-[85vh] bg-slate-50 dark:bg-zinc-950/40 pb-28 relative flex flex-col transition-colors duration-300">
 
     <div class="relative z-10 w-full flex-1 flex flex-col">
-      <!-- ─── TOP AREA: TAB SWITCHER (Blue Banner Mockup) ─── -->
+      <!-- ─── TOP AREA: TAB SWITCHER (Blue Banner Mockup style) ─── -->
       <div class="mb-5">
         <div class="flex bg-[#4172cd] p-1 rounded-none shadow-md">
           <button
@@ -255,65 +229,51 @@ onMounted(() => {
         </div>
       </div>
 
-      <!-- ─── MIDDLE CONTENT AREA: SCROLLABLE LIST ─── -->
+      <!-- ─── MIDDLE CONTENT AREA: SCROLLABLE LIST (Notification List style) ─── -->
       <div class="flex-1 overflow-y-auto pb-4">
         <Spin :spinning="loading">
           
           <!-- Checklist Tab Content -->
           <div v-if="activeTab === 'checklist'">
-            <div v-if="myChecklistSessions.length > 0" class="flex flex-col gap-4">
-              <Card
+            <div v-if="myChecklistSessions.length > 0" class="bg-white dark:bg-zinc-900 border border-slate-200/80 dark:border-zinc-800 rounded-none shadow-xs divide-y divide-slate-100 dark:divide-zinc-800/60">
+              <div 
                 v-for="session in myChecklistSessions"
                 :key="session.id"
-                class="rounded-none shadow-sm border-none bg-[#4172cd] overflow-hidden"
-                :body-style="{ padding: '18px' }"
+                class="relative p-4 flex items-center justify-between gap-3 hover:bg-slate-50 dark:hover:bg-zinc-800/40 transition-colors cursor-pointer"
+                @click="router.push('/portal/checklist')"
               >
-                <div class="flex items-start justify-between gap-3">
-                  <div class="flex-1 min-w-0">
-                    <h3 class="text-sm font-bold text-white truncate m-0">
-                      {{ session.name || session.equipment?.name || 'Phiên kiểm tra' }}
-                    </h3>
-                    <p class="text-[11px] text-white/90 font-bold font-mono mt-1 mb-0">
-                      {{ session.equipment?.code || '—' }} <span v-if="session.equipment?.name" class="text-white/70 font-normal">— {{ session.equipment.name }}</span>
-                    </p>
-                    <p class="text-[10px] text-white/80 mt-1 mb-0 font-medium">
-                      Ngày: {{ session.session_date || '—' }}
-                    </p>
-                  </div>
-                  <Tag color="blue" class="m-0 text-[9px] uppercase font-bold px-1.5 py-0.5 rounded-none shrink-0 border-white text-white bg-[#2f55a4]">
+                <!-- Left Indicator Dot (Unread notification style) -->
+                <span 
+                  v-if="getSessionStatus(session) === 'pending'"
+                  class="absolute left-2.5 top-1/2 -translate-y-1/2 w-2 h-2 rounded-full bg-indigo-600 animate-pulse"
+                ></span>
+
+                <!-- Content -->
+                <div class="flex-1 min-w-0 pl-2">
+                  <h3 class="text-xs font-bold text-slate-800 dark:text-zinc-200 truncate m-0">
+                    {{ session.name || session.equipment?.name || 'Phiên kiểm tra' }}
+                  </h3>
+                  <p class="text-[11px] text-slate-500 dark:text-zinc-400 mt-1 mb-0.5 line-clamp-1">
+                    Mã: {{ session.equipment?.code || '—' }} | Chu kỳ: {{ getCycleText(session.cycle_type) }} | Hạng mục: {{ getCompletedCount(session) }}/{{ session.details?.length || 0 }}
+                  </p>
+                  <span class="text-[10px] text-slate-400 dark:text-zinc-500 font-mono block">
+                    Ngày: {{ session.session_date || '—' }}
+                  </span>
+                </div>
+
+                <!-- Right Side: Tag and Action -->
+                <div class="flex flex-col items-end gap-1.5 shrink-0">
+                  <Tag :color="getSessionStatusTag(session).color" class="m-0 text-[9px] uppercase font-bold px-1.5 py-0.5 rounded-md">
                     {{ getSessionStatusTag(session).label }}
                   </Tag>
-                </div>
-
-                <div class="flex justify-between items-center text-xs text-white/90 mt-3">
-                  <span class="font-semibold text-[11px]">
-                    Chu kỳ: {{ getCycleText(session.cycle_type) }}
-                    <span v-if="session.cycle_interval && session.cycle_interval > 1">(interval: {{ session.cycle_interval }})</span>
-                  </span>
-                  <span class="font-medium text-[11px]">Hạng mục: {{ getCompletedCount(session) }}/{{ session.details?.length || 0 }}</span>
-                </div>
-
-                <div class="mt-2">
-                  <Progress
-                    :percent="getProgressPercent(session)"
-                    :show-info="false"
-                    size="small"
-                    class="m-0"
-                    stroke-color="#ffffff"
-                    trail-color="rgba(255, 255, 255, 0.3)"
-                  />
-                </div>
-
-                <div class="flex items-center gap-2 mt-4">
-                  <Button
-                    type="primary"
-                    class="flex-1 bg-[#2f55a4] hover:bg-[#1d3d80] border-none text-xs h-8.5 rounded-none font-bold flex items-center justify-center gap-1.5 text-white"
-                    @click="router.push('/portal/checklist')"
+                  <button
+                    type="button"
+                    class="h-7 px-3 bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-[10px] border-0 rounded-lg cursor-pointer outline-none transition-colors"
                   >
-                    Bắt đầu kiểm tra
-                  </Button>
+                    Bắt đầu
+                  </button>
                 </div>
-              </Card>
+              </div>
             </div>
 
             <div v-else class="py-16 flex flex-col items-center justify-center bg-white dark:bg-zinc-900 border border-dashed border-slate-200 dark:border-zinc-800 rounded-none text-center px-4">
@@ -323,58 +283,45 @@ onMounted(() => {
 
           <!-- Maintenance Tab Content -->
           <div v-if="activeTab === 'maintenance'">
-            <div v-if="myMaintenancePlans.length > 0" class="flex flex-col gap-4">
-              <Card
+            <div v-if="myMaintenancePlans.length > 0" class="bg-white dark:bg-zinc-900 border border-slate-200/80 dark:border-zinc-800 rounded-none shadow-xs divide-y divide-slate-100 dark:divide-zinc-800/60">
+              <div 
                 v-for="group in myMaintenancePlans"
                 :key="group.key"
-                class="rounded-none shadow-sm border-none bg-[#4172cd] overflow-hidden"
-                :body-style="{ padding: '18px' }"
+                class="relative p-4 flex items-center justify-between gap-3 hover:bg-slate-50 dark:hover:bg-zinc-800/40 transition-colors cursor-pointer"
+                @click="router.push('/portal/maintain-plan')"
               >
-                <div class="flex items-start justify-between gap-3">
-                  <div class="flex-1 min-w-0">
-                    <h3 class="text-sm font-bold text-white truncate m-0">
-                      {{ group.plan_code }}
-                    </h3>
-                    <p class="text-[11px] text-white/90 font-bold font-mono mt-1 mb-0">
-                      {{ group.equipment_code }} <span v-if="group.equipment_name" class="text-white/70 font-normal">— {{ group.equipment_name }}</span>
-                    </p>
-                    <p class="text-[10px] text-white/80 mt-1 mb-0 font-medium">
-                      Ngày: {{ group.date }}
-                    </p>
-                  </div>
-                  <Tag color="blue" class="m-0 text-[9px] uppercase font-bold px-1.5 py-0.5 rounded-none shrink-0 border-white text-white bg-[#2f55a4]">
+                <!-- Left Indicator Dot -->
+                <span 
+                  v-if="group.status === 'pending'"
+                  class="absolute left-2.5 top-1/2 -translate-y-1/2 w-2 h-2 rounded-full bg-emerald-600 animate-pulse"
+                ></span>
+
+                <!-- Content -->
+                <div class="flex-1 min-w-0 pl-2">
+                  <h3 class="text-xs font-bold text-slate-800 dark:text-zinc-200 truncate m-0">
+                    {{ group.plan_code }}
+                  </h3>
+                  <p class="text-[11px] text-slate-500 dark:text-zinc-400 mt-1 mb-0.5 line-clamp-1">
+                    Thiết bị: {{ group.equipment_code }} | Loại: {{ group.maintenance_type || 'Định kỳ' }} | Hạng mục: {{ group.completed_items }}/{{ group.total_items }}
+                  </p>
+                  <span class="text-[10px] text-slate-400 dark:text-zinc-500 font-mono block">
+                    Ngày: {{ group.date }}
+                  </span>
+                </div>
+
+                <!-- Right Side: Tag and Action -->
+                <div class="flex flex-col items-end gap-1.5 shrink-0">
+                  <Tag :color="getPlanStatusTag(group).color" class="m-0 text-[9px] uppercase font-bold px-1.5 py-0.5 rounded-md">
                     {{ getPlanStatusTag(group).label }}
                   </Tag>
-                </div>
-
-                <div class="flex justify-between items-center text-xs text-white/90 mt-3">
-                  <span class="font-semibold text-[11px]">
-                    Loại bảo trì: {{ group.maintenance_type || 'Bảo trì định kỳ' }}
-                  </span>
-                  <span class="font-medium text-[11px]">Hạng mục: {{ group.completed_items }}/{{ group.total_items }}</span>
-                </div>
-
-                <div class="mt-2">
-                  <Progress
-                    :percent="getProgressPercentForPlan(group)"
-                    :show-info="false"
-                    size="small"
-                    class="m-0"
-                    stroke-color="#ffffff"
-                    trail-color="rgba(255, 255, 255, 0.3)"
-                  />
-                </div>
-
-                <div class="flex items-center gap-2 mt-4">
-                  <Button
-                    type="primary"
-                    class="flex-1 bg-[#2f55a4] hover:bg-[#1d3d80] border-none text-xs h-8.5 rounded-none font-bold flex items-center justify-center gap-1.5 text-white"
-                    @click="router.push('/portal/maintain-plan')"
+                  <button
+                    type="button"
+                    class="h-7 px-3 bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-[10px] border-0 rounded-lg cursor-pointer outline-none transition-colors"
                   >
-                    Thực hiện bảo trì
-                  </Button>
+                    Thực hiện
+                  </button>
                 </div>
-              </Card>
+              </div>
             </div>
 
             <div v-else class="py-16 flex flex-col items-center justify-center bg-white dark:bg-zinc-900 border border-dashed border-slate-200 dark:border-zinc-800 rounded-none text-center px-4">
