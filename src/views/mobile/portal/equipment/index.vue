@@ -1,5 +1,5 @@
 <script lang="ts" setup>
-import { ref, computed, onMounted } from 'vue';
+import { ref, computed, onMounted, onUnmounted, watch } from 'vue';
 import { useRouter } from 'vue-router';
 import { useI18n } from '@vben/locales';
 import {
@@ -44,7 +44,11 @@ const loading = ref(false);
 const equipments = ref<EquipmentItem[]>([]);
 const searchVal = ref('');
 
-// QR Scanning State (Backend Decoding)
+// Live Camera & QR State
+const videoRef = ref<HTMLVideoElement | null>(null);
+const isCameraStreaming = ref(false);
+const mediaStream = ref<MediaStream | null>(null);
+
 const uploading = ref(false);
 const cameraError = ref('');
 const fileInputRef = ref<HTMLInputElement | null>(null);
@@ -79,17 +83,66 @@ function selectEquipment(id: string) {
   router.push(`/portal/equipment/${id}`);
 }
 
+// ─── Live Camera Control ───
+async function startCamera() {
+  cameraError.value = '';
+  try {
+    const stream = await navigator.mediaDevices.getUserMedia({
+      video: { facingMode: { ideal: 'environment' } },
+      audio: false,
+    });
+    mediaStream.value = stream;
+    if (videoRef.value) {
+      videoRef.value.srcObject = stream;
+      await videoRef.value.play();
+    }
+    isCameraStreaming.value = true;
+  } catch (err: any) {
+    console.warn('Camera access error / restricted:', err);
+    isCameraStreaming.value = false;
+    cameraError.value = 'Không thể mở trực tiếp Camera (vui lòng chọn ảnh để quét)';
+  }
+}
+
+function stopCamera() {
+  if (mediaStream.value) {
+    mediaStream.value.getTracks().forEach((track) => track.stop());
+    mediaStream.value = null;
+  }
+  if (videoRef.value) {
+    videoRef.value.srcObject = null;
+  }
+  isCameraStreaming.value = false;
+}
+
 // ─── Actions ───
-function triggerCapture() {
+function triggerFileInput() {
   fileInputRef.value?.click();
 }
 
-// ─── Backend QR Decoding Logic ───
-async function handleImageCaptured(event: Event) {
-  const target = event.target as HTMLInputElement;
-  const file = target.files?.[0];
-  if (!file) return;
+async function captureAndDecode() {
+  if (isCameraStreaming.value && videoRef.value) {
+    const video = videoRef.value;
+    const canvas = document.createElement('canvas');
+    canvas.width = video.videoWidth || 640;
+    canvas.height = video.videoHeight || 480;
+    const ctx = canvas.getContext('2d');
+    if (ctx) {
+      ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+      canvas.toBlob(async (blob) => {
+        if (!blob) return;
+        const file = new File([blob], 'captured_qr.jpg', { type: 'image/jpeg' });
+        await uploadAndDecodeQr(file);
+      }, 'image/jpeg', 0.9);
+      return;
+    }
+  }
+  // Fallback to file input if camera is not active
+  triggerFileInput();
+}
 
+// ─── Backend QR Decoding Logic ───
+async function uploadAndDecodeQr(file: File) {
   const formData = new FormData();
   formData.append('qr_image', file);
 
@@ -107,8 +160,7 @@ async function handleImageCaptured(event: Event) {
     const equipmentData = res.data?.data;
     if (equipmentData && equipmentData.id) {
       message.success(t('page.portal.qrDecodeSuccess'));
-      
-      // Navigate directly to the dedicated detail screen!
+      stopCamera();
       router.push(`/portal/equipment/${equipmentData.id}`);
     }
   } catch (err: any) {
@@ -124,6 +176,13 @@ async function handleImageCaptured(event: Event) {
   }
 }
 
+async function handleImageCaptured(event: Event) {
+  const target = event.target as HTMLInputElement;
+  const file = target.files?.[0];
+  if (!file) return;
+  await uploadAndDecodeQr(file);
+}
+
 // ─── Filtered List ───
 const filteredEquipments = computed(() => {
   if (!searchVal.value) return equipments.value;
@@ -137,8 +196,23 @@ const filteredEquipments = computed(() => {
   );
 });
 
+watch(activeTabKey, (newVal) => {
+  if (newVal === 'qrcode') {
+    startCamera();
+  } else {
+    stopCamera();
+  }
+});
+
 onMounted(() => {
   loadEquipments();
+  if (activeTabKey.value === 'qrcode') {
+    startCamera();
+  }
+});
+
+onUnmounted(() => {
+  stopCamera();
 });
 </script>
 
@@ -156,11 +230,11 @@ onMounted(() => {
     <!-- ─── TABS VIEW ─── -->
     <Card class="rounded-2xl shadow-xs border-slate-200/80 dark:border-zinc-800/80 bg-white dark:bg-zinc-900/60 backdrop-blur-md overflow-hidden">
       <Tabs v-model:activeKey="activeTabKey" class="mobile-tabs w-full">
-        <!-- ─── TAB 1: BACKEND QR CODE DECODER ─── -->
+        <!-- ─── TAB 1: LIVE CAMERA QR CODE SCANNER ─── -->
         <TabPane key="qrcode" :tab="t('page.portal.qrCodeTab')">
           <div class="flex flex-col items-center pt-2 pb-6">
             
-            <!-- Hidden File Input for Capture -->
+            <!-- Hidden File Input for Fallback Capture -->
             <input
               ref="fileInputRef"
               type="file"
@@ -170,20 +244,30 @@ onMounted(() => {
               @change="handleImageCaptured"
             />
 
-            <!-- Frame for viewfinder -->
-            <div class="relative w-72 h-72 border border-slate-200/80 dark:border-zinc-800 bg-slate-100/50 dark:bg-zinc-950/40 rounded-3xl flex flex-col items-center justify-center overflow-hidden shadow-inner p-4">
-              <!-- Laser line scan animation when uploading/processing -->
-              <div v-if="uploading" class="scanline absolute left-0 right-0 h-0.5 bg-indigo-500 shadow-[0_0_8px_#6366f1] z-10"></div>
+            <!-- Frame for Viewfinder & Live Camera Stream -->
+            <div class="relative w-72 h-72 border border-slate-200/80 dark:border-zinc-800 bg-black rounded-3xl flex flex-col items-center justify-center overflow-hidden shadow-inner p-0">
+              
+              <!-- Live Video Feed -->
+              <video
+                ref="videoRef"
+                autoplay
+                playsinline
+                muted
+                class="absolute inset-0 w-full h-full object-cover z-0"
+              ></video>
+
+              <!-- Laser Line Scan animation -->
+              <div v-if="uploading || isCameraStreaming" class="scanline absolute left-0 right-0 h-0.5 bg-indigo-500 shadow-[0_0_8px_#6366f1] z-10"></div>
               
               <!-- Viewfinder Corner Brackets -->
-              <div class="absolute top-4 left-4 w-6 h-6 border-t-4 border-l-4 border-indigo-500 rounded-tl-lg"></div>
-              <div class="absolute top-4 right-4 w-6 h-6 border-t-4 border-r-4 border-indigo-500 rounded-tr-lg"></div>
-              <div class="absolute bottom-4 left-4 w-6 h-6 border-b-4 border-l-4 border-indigo-500 rounded-bl-lg"></div>
-              <div class="absolute bottom-4 right-4 w-6 h-6 border-b-4 border-r-4 border-indigo-500 rounded-br-lg"></div>
+              <div class="absolute top-4 left-4 w-6 h-6 border-t-4 border-l-4 border-indigo-500 rounded-tl-lg z-10 pointer-events-none"></div>
+              <div class="absolute top-4 right-4 w-6 h-6 border-t-4 border-r-4 border-indigo-500 rounded-tr-lg z-10 pointer-events-none"></div>
+              <div class="absolute bottom-4 left-4 w-6 h-6 border-b-4 border-l-4 border-indigo-500 rounded-bl-lg z-10 pointer-events-none"></div>
+              <div class="absolute bottom-4 right-4 w-6 h-6 border-b-4 border-r-4 border-indigo-500 rounded-br-lg z-10 pointer-events-none"></div>
 
-              <div class="text-center z-5 flex flex-col items-center justify-center">
-                <!-- QR Code Icon Wrapper -->
-                <div class="mb-3 p-3.5 bg-indigo-50 dark:bg-indigo-950/30 rounded-2xl text-indigo-600 dark:text-indigo-400">
+              <!-- Fallback UI overlay if camera is not active -->
+              <div v-if="!isCameraStreaming" class="text-center z-5 flex flex-col items-center justify-center p-4 bg-slate-900/80 w-full h-full">
+                <div class="mb-3 p-3.5 bg-indigo-500/20 rounded-2xl text-indigo-400">
                   <svg xmlns="http://www.w3.org/2000/svg" width="44" height="44" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
                     <rect width="5" height="5" x="3" y="3" rx="1"/>
                     <rect width="5" height="5" x="16" y="3" rx="1"/>
@@ -197,30 +281,37 @@ onMounted(() => {
                     <path d="M12 16H12.01"/>
                   </svg>
                 </div>
-                <p class="text-sm font-bold text-slate-700 dark:text-zinc-200 m-0">
-                  {{ uploading ? t('page.portal.sendingImageToDecode') : t('page.portal.pressButtonToCapture') }}
+                <p class="text-xs text-slate-300 font-medium m-0">
+                  {{ cameraError || t('page.portal.systemWillOpenCamera') }}
                 </p>
-                <p class="text-xs text-slate-400 dark:text-zinc-500 mt-2 px-4 leading-normal">
-                  {{ t('page.portal.systemWillOpenCamera') }}
-                </p>
-                <p v-if="cameraError" class="text-[11px] text-red-500 font-semibold mt-3 bg-red-50 dark:bg-red-950/20 px-2 py-1.5 rounded-lg">
-                  {{ cameraError }}
-                </p>
+                <Button size="small" type="dashed" class="mt-3 text-indigo-400 border-indigo-400" @click="startCamera">
+                  Thử mở lại Camera
+                </Button>
               </div>
             </div>
 
-            <!-- Action Button -->
-            <div class="mt-5 w-full max-w-[288px]">
+            <!-- Action Buttons -->
+            <div class="mt-5 w-full max-w-[288px] flex flex-col gap-2.5">
               <Button 
                 type="primary" 
                 block 
                 size="large" 
                 :loading="uploading"
                 class="bg-indigo-600 hover:bg-indigo-700 border-none rounded-xl font-bold flex items-center justify-center gap-1.5"
-                @click="triggerCapture"
+                @click="captureAndDecode"
               >
                 <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-camera"><path d="M14.5 4h-5L7 7H4a2 2 0 0 0-2 2v9a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2V9a2 2 0 0 0-2-2h-3l-2.5-3z"/><circle cx="12" cy="13" r="3"/></svg>
-                {{ t('page.portal.captureAndScanQr') }}
+                {{ uploading ? t('page.portal.sendingImageToDecode') : t('page.portal.captureAndScanQr') }}
+              </Button>
+
+              <Button 
+                type="default" 
+                block 
+                size="middle" 
+                class="rounded-xl font-medium text-xs text-slate-500 border-slate-200 dark:border-zinc-800"
+                @click="triggerFileInput"
+              >
+                Tải ảnh QR từ thư viện
               </Button>
             </div>
 
