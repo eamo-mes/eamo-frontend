@@ -14,6 +14,7 @@ import {
 import axios from 'axios';
 import { useAccessStore } from '@vben/stores';
 import { API_BASE_URL } from '#/api/config';
+import EquipmentQrModal from '#/views/equipment/list/components/EquipmentQrModal.vue';
 
 defineOptions({ name: 'MobilePortalEquipmentDetail' });
 
@@ -97,6 +98,7 @@ const fetchError = ref('');
 const errorStatus = ref<number | null>(null);
 
 const activeEquipment = ref<EquipmentItem | null>(null);
+const qrModalOpen = ref(false);
 const dailyLoading = ref(false);
 const dailyChecklistData = ref<DailyChecklistResponse | null>(null);
 const remainingHours = ref<number | null>(null);
@@ -288,6 +290,17 @@ onMounted(() => {
           Chi tiết thiết bị
         </h1>
       </div>
+
+      <Button
+        v-if="activeEquipment"
+        type="default"
+        size="small"
+        class="flex items-center gap-1 font-bold text-xs rounded-lg text-indigo-600 dark:text-indigo-400 border-indigo-200 dark:border-zinc-700"
+        @click="qrModalOpen = true"
+      >
+        <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-qr-code"><rect width="5" height="5" x="3" y="3" rx="1"/><rect width="5" height="5" x="16" y="3" rx="1"/><rect width="5" height="5" x="3" y="16" rx="1"/><path d="M21 16V21H16"/><path d="M21 12H21.01"/><path d="M12 21H12.01"/><path d="M12 12H12.01"/><path d="M16 16H16.01"/><path d="M16 12H16.01"/><path d="M12 16H12.01"/></svg>
+        Mã QR
+      </Button>
     </div>
 
     <!-- ─── LOADING STATE ─── -->
@@ -477,6 +490,12 @@ onMounted(() => {
         </div>
       </div>
     </div>
+
+    <!-- Equipment QR Modal -->
+    <EquipmentQrModal
+      v-model:open="qrModalOpen"
+      :equipment="activeEquipment"
+    />
   </div>
 </template>
 
