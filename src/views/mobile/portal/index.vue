@@ -4,7 +4,6 @@ import { useRouter } from 'vue-router';
 import { 
   Card,
   Button,
-  Tag, 
   Spin, 
   Empty,
   Progress
@@ -138,7 +137,7 @@ const myMaintenancePlans = computed(() => {
 
 // ─── Status Tags ───
 function getSessionStatusTag(session: any) {
-  if (!session.details || session.details.length === 0) return { color: 'warning', label: t('page.portal.statusPending') };
+  if (!session.details || session.details.length === 0) return { bgClass: 'bg-[#2f55a4]', label: t('page.portal.statusPending') };
   
   const completedCount = session.details.filter((d: any) => {
     const logs = d.logs || [];
@@ -146,23 +145,23 @@ function getSessionStatusTag(session: any) {
   }).length;
   
   const allCompleted = completedCount === session.details.length;
-  if (!allCompleted) return { color: 'warning', label: t('page.portal.statusPending') };
+  if (!allCompleted) return { bgClass: 'bg-[#2f55a4]', label: t('page.portal.statusPending') };
   
   const allPassed = session.details.every((d: any) => {
     const logs = d.logs || [];
     const latestLog = logs.filter((log: any) => log.status === 'completed').sort((l: any, r: any) => (l.checked_at ?? '').localeCompare(r.checked_at ?? '')).at(-1);
     return latestLog?.result === 'pass';
   });
-  return allPassed ? { color: 'success', label: t('page.portal.statusPass') } : { color: 'error', label: t('page.portal.statusFail') };
+  return allPassed ? { bgClass: 'bg-emerald-600', label: t('page.portal.statusPass') } : { bgClass: 'bg-rose-600', label: t('page.portal.statusFail') };
 }
 
 function getPlanStatusTag(group: any) {
   if (group.status === 'pass') {
-    return { color: 'success', label: t('page.portal.statusPass') };
+    return { bgClass: 'bg-emerald-600', label: t('page.portal.statusPass') };
   } else if (group.status === 'fail') {
-    return { color: 'error', label: t('page.portal.statusFail') };
+    return { bgClass: 'bg-rose-600', label: t('page.portal.statusFail') };
   }
-  return { color: 'warning', label: t('page.portal.statusPending') };
+  return { bgClass: 'bg-[#2f55a4]', label: t('page.portal.statusPending') };
 }
 
 function getCycleText(type?: string): string {
@@ -210,11 +209,11 @@ onMounted(() => {
     <div class="relative z-10 w-full flex-1 flex flex-col">
       <!-- ─── TOP AREA: TAB SWITCHER (Blue Banner Mockup style) ─── -->
       <div class="mb-5">
-        <div class="flex bg-[#4172cd] p-1 rounded-none shadow-md">
+        <div class="flex bg-[#3b65b9] p-1 rounded-none shadow-md">
           <button
             type="button"
             @click="activeTab = 'checklist'"
-            :class="[activeTab === 'checklist' ? 'bg-[#2f55a4] text-white font-bold' : 'text-white/80 font-medium hover:text-white']"
+            :class="[activeTab === 'checklist' ? 'bg-[#214389] text-white font-bold' : 'text-slate-100/90 font-medium hover:text-white']"
             class="flex-1 py-3 text-xs text-center border-0 cursor-pointer outline-none transition-all"
           >
             {{ t('page.portal.checklistTitle') }} ({{ myChecklistSessions.length }})
@@ -222,7 +221,7 @@ onMounted(() => {
           <button
             type="button"
             @click="activeTab = 'maintenance'"
-            :class="[activeTab === 'maintenance' ? 'bg-[#2f55a4] text-white font-bold' : 'text-white/80 font-medium hover:text-white']"
+            :class="[activeTab === 'maintenance' ? 'bg-[#214389] text-white font-bold' : 'text-slate-100/90 font-medium hover:text-white']"
             class="flex-1 py-3 text-xs text-center border-0 cursor-pointer outline-none transition-all"
           >
             {{ t('page.portal.maintenanceTitle') }} ({{ myMaintenancePlans.length }})
@@ -240,49 +239,51 @@ onMounted(() => {
               <Card
                 v-for="session in myChecklistSessions"
                 :key="session.id"
-                class="rounded-none shadow-sm border-none bg-[#4172cd] overflow-hidden"
+                class="rounded-none shadow-sm border-none bg-[#3b65b9] overflow-hidden"
                 :body-style="{ padding: '18px' }"
               >
                 <div class="flex items-start justify-between gap-3">
                   <div class="flex-1 min-w-0">
-                    <h3 class="text-sm font-bold text-white truncate m-0">
+                    <h3 class="text-sm font-bold text-white truncate m-0 leading-snug">
                       {{ session.name || session.equipment?.name || t('page.portal.cellButtonLabel') }}
                     </h3>
-                    <p class="text-[11px] text-white/90 font-bold font-mono mt-1 mb-0">
-                      {{ t('page.portal.codeLabel') }}: {{ session.equipment?.code || '—' }} <span v-if="session.equipment?.name" class="text-white/70 font-normal">— {{ session.equipment.name }}</span>
+                    <p class="text-[11px] text-white font-bold font-mono mt-2 mb-0">
+                      {{ t('page.portal.codeLabel') }}: {{ session.equipment?.code || '—' }} <span v-if="session.equipment?.name" class="text-white/90 font-normal">— {{ session.equipment.name }}</span>
                     </p>
-                    <p class="text-[10px] text-white/80 mt-1 mb-0 font-medium">
+                    <p class="text-[10px] text-white mt-1.5 mb-0 font-medium">
                       {{ t('page.portal.dateLabel') }}: {{ session.session_date || '—' }}
                     </p>
                   </div>
-                  <Tag color="blue" class="m-0 text-[9px] uppercase font-bold px-1.5 py-0.5 rounded-none shrink-0 border-white text-white bg-[#2f55a4]">
+                  
+                  <!-- Custom CSS Span instead of Tag to bypass light-theme color override -->
+                  <span :class="[getSessionStatusTag(session).bgClass]" class="m-0 text-[9px] uppercase font-bold px-1.5 py-0.5 rounded-none shrink-0 border border-solid border-white text-white">
                     {{ getSessionStatusTag(session).label }}
-                  </Tag>
+                  </span>
                 </div>
 
-                <div class="flex justify-between items-center text-xs text-white/90 mt-3">
-                  <span class="font-semibold text-[11px]">
+                <div class="flex justify-between items-center text-xs text-white mt-4">
+                  <span class="font-bold text-[11px]">
                     {{ t('page.portal.cycleLabel') }}: {{ getCycleText(session.cycle_type) }}
                     <span v-if="session.cycle_interval && session.cycle_interval > 1">(interval: {{ session.cycle_interval }})</span>
                   </span>
-                  <span class="font-medium text-[11px]">{{ t('page.portal.itemsLabel') }}: {{ getCompletedCount(session) }}/{{ session.details?.length || 0 }}</span>
+                  <span class="font-bold text-[11px]">{{ t('page.portal.itemsLabel') }}: {{ getCompletedCount(session) }}/{{ session.details?.length || 0 }}</span>
                 </div>
 
-                <div class="mt-2">
+                <div class="mt-2.5">
                   <Progress
                     :percent="getProgressPercent(session)"
                     :show-info="false"
                     size="small"
                     class="m-0"
                     stroke-color="#ffffff"
-                    trail-color="rgba(255, 255, 255, 0.3)"
+                    trail-color="rgba(255, 255, 255, 0.4)"
                   />
                 </div>
 
-                <div class="flex items-center gap-2 mt-4">
+                <div class="flex items-center gap-2 mt-4.5">
                   <Button
                     type="primary"
-                    class="flex-1 bg-[#2f55a4] hover:bg-[#1d3d80] border-none text-xs h-8.5 rounded-none font-bold flex items-center justify-center gap-1.5 text-white"
+                    class="flex-1 bg-[#214389] hover:bg-[#152e60] border-none text-xs h-9 rounded-none font-bold flex items-center justify-center gap-1.5 text-white"
                     @click="router.push('/portal/checklist')"
                   >
                     {{ t('page.portal.btnStart') }}
@@ -302,48 +303,50 @@ onMounted(() => {
               <Card
                 v-for="group in myMaintenancePlans"
                 :key="group.key"
-                class="rounded-none shadow-sm border-none bg-[#4172cd] overflow-hidden"
+                class="rounded-none shadow-sm border-none bg-[#3b65b9] overflow-hidden"
                 :body-style="{ padding: '18px' }"
               >
                 <div class="flex items-start justify-between gap-3">
                   <div class="flex-1 min-w-0">
-                    <h3 class="text-sm font-bold text-white truncate m-0">
+                    <h3 class="text-sm font-bold text-white truncate m-0 leading-snug">
                       {{ group.plan_code }}
                     </h3>
-                    <p class="text-[11px] text-white/90 font-bold font-mono mt-1 mb-0">
-                      {{ t('page.portal.equipmentLabel') }}: {{ group.equipment_code }} <span v-if="group.equipment_name" class="text-white/70 font-normal">— {{ group.equipment_name }}</span>
+                    <p class="text-[11px] text-white font-bold font-mono mt-2 mb-0">
+                      {{ t('page.portal.equipmentLabel') }}: {{ group.equipment_code }} <span v-if="group.equipment_name" class="text-white/90 font-normal">— {{ group.equipment_name }}</span>
                     </p>
-                    <p class="text-[10px] text-white/80 mt-1 mb-0 font-medium">
+                    <p class="text-[10px] text-white mt-1.5 mb-0 font-medium">
                       {{ t('page.portal.dateLabel') }}: {{ group.date }}
                     </p>
                   </div>
-                  <Tag color="blue" class="m-0 text-[9px] uppercase font-bold px-1.5 py-0.5 rounded-none shrink-0 border-white text-white bg-[#2f55a4]">
+                  
+                  <!-- Custom CSS Span instead of Tag to bypass light-theme color override -->
+                  <span :class="[getPlanStatusTag(group).bgClass]" class="m-0 text-[9px] uppercase font-bold px-1.5 py-0.5 rounded-none shrink-0 border border-solid border-white text-white">
                     {{ getPlanStatusTag(group).label }}
-                  </Tag>
+                  </span>
                 </div>
 
-                <div class="flex justify-between items-center text-xs text-white/90 mt-3">
-                  <span class="font-semibold text-[11px]">
+                <div class="flex justify-between items-center text-xs text-white mt-4">
+                  <span class="font-bold text-[11px]">
                     {{ t('page.portal.typeLabel') }}: {{ group.maintenance_type || t('page.dashboard.normal') }}
                   </span>
-                  <span class="font-medium text-[11px]">{{ t('page.portal.itemsLabel') }}: {{ group.completed_items }}/{{ group.total_items }}</span>
+                  <span class="font-bold text-[11px]">{{ t('page.portal.itemsLabel') }}: {{ group.completed_items }}/{{ group.total_items }}</span>
                 </div>
 
-                <div class="mt-2">
+                <div class="mt-2.5">
                   <Progress
                     :percent="getProgressPercentForPlan(group)"
                     :show-info="false"
                     size="small"
                     class="m-0"
                     stroke-color="#ffffff"
-                    trail-color="rgba(255, 255, 255, 0.3)"
+                    trail-color="rgba(255, 255, 255, 0.4)"
                   />
                 </div>
 
-                <div class="flex items-center gap-2 mt-4">
+                <div class="flex items-center gap-2 mt-4.5">
                   <Button
                     type="primary"
-                    class="flex-1 bg-[#2f55a4] hover:bg-[#1d3d80] border-none text-xs h-8.5 rounded-none font-bold flex items-center justify-center gap-1.5 text-white"
+                    class="flex-1 bg-[#214389] hover:bg-[#152e60] border-none text-xs h-9 rounded-none font-bold flex items-center justify-center gap-1.5 text-white"
                     @click="router.push('/portal/maintain-plan')"
                   >
                     {{ t('page.portal.btnExecute') }}
@@ -369,7 +372,7 @@ onMounted(() => {
         <button
           type="button"
           @click="router.push('/portal/incident-report')"
-          class="h-14 w-full bg-[#4172cd] hover:bg-blue-700 text-white font-bold text-xs border-0 cursor-pointer rounded-none outline-none transition-colors select-none flex items-center justify-center"
+          class="h-14 w-full bg-[#3b65b9] hover:bg-[#214389] text-white font-bold text-xs border-0 rounded-none outline-none transition-colors select-none flex items-center justify-center"
         >
           {{ t('page.portal.reportIncident') }}
         </button>
@@ -391,7 +394,7 @@ onMounted(() => {
         <button
           type="button"
           @click="router.push('/portal/emergency-stop')"
-          class="h-14 w-full bg-[#4172cd] hover:bg-blue-700 text-white font-bold text-xs border-0 cursor-pointer rounded-none outline-none transition-colors select-none flex items-center justify-center"
+          class="h-14 w-full bg-[#3b65b9] hover:bg-[#214389] text-white font-bold text-xs border-0 rounded-none outline-none transition-colors select-none flex items-center justify-center"
         >
           {{ t('page.portal.emergencyStop') }}
         </button>
