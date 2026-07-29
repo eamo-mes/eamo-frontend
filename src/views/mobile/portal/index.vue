@@ -2,7 +2,6 @@
 import { ref, computed, onMounted } from 'vue';
 import { useRouter } from 'vue-router';
 import { 
-  Card,
   Button,
   Spin, 
   Empty,
@@ -137,7 +136,7 @@ const myMaintenancePlans = computed(() => {
 
 // ─── Status Tags ───
 function getSessionStatusTag(session: any) {
-  if (!session.details || session.details.length === 0) return { bgClass: 'bg-[#2f55a4]', label: t('page.portal.statusPending') };
+  if (!session.details || session.details.length === 0) return { bgClass: 'bg-[#214389]', label: t('page.portal.statusPending') };
   
   const completedCount = session.details.filter((d: any) => {
     const logs = d.logs || [];
@@ -145,7 +144,7 @@ function getSessionStatusTag(session: any) {
   }).length;
   
   const allCompleted = completedCount === session.details.length;
-  if (!allCompleted) return { bgClass: 'bg-[#2f55a4]', label: t('page.portal.statusPending') };
+  if (!allCompleted) return { bgClass: 'bg-[#214389]', label: t('page.portal.statusPending') };
   
   const allPassed = session.details.every((d: any) => {
     const logs = d.logs || [];
@@ -161,7 +160,7 @@ function getPlanStatusTag(group: any) {
   } else if (group.status === 'fail') {
     return { bgClass: 'bg-rose-600', label: t('page.portal.statusFail') };
   }
-  return { bgClass: 'bg-[#2f55a4]', label: t('page.portal.statusPending') };
+  return { bgClass: 'bg-[#214389]', label: t('page.portal.statusPending') };
 }
 
 function getCycleText(type?: string): string {
@@ -174,6 +173,7 @@ function getCycleText(type?: string): string {
   }
 }
 
+// Completed item count helper
 function getCompletedCount(session: any): number {
   if (!session.details) return 0;
   return session.details.filter((d: any) => {
@@ -229,18 +229,18 @@ onMounted(() => {
         </div>
       </div>
 
-      <!-- ─── MIDDLE CONTENT AREA: SCROLLABLE LIST (Mockup Blue Boxes style) ─── -->
+      <!-- ─── MIDDLE CONTENT AREA: SCROLLABLE LIST (Mockup Blue Boxes style using raw divs) ─── -->
       <div class="flex-1 overflow-y-auto pb-4">
         <Spin :spinning="loading">
           
           <!-- Checklist Tab Content -->
           <div v-if="activeTab === 'checklist'">
             <div v-if="myChecklistSessions.length > 0" class="flex flex-col gap-4">
-              <Card
+              <!-- Using raw HTML div to bypass Ant Design Card background overrides in light mode -->
+              <div
                 v-for="session in myChecklistSessions"
                 :key="session.id"
-                class="rounded-none shadow-sm border-none bg-[#3b65b9] overflow-hidden"
-                :body-style="{ padding: '18px' }"
+                class="rounded-none shadow-sm border-0 bg-[#3b65b9] overflow-hidden p-[18px] text-white flex flex-col"
               >
                 <div class="flex items-start justify-between gap-3">
                   <div class="flex-1 min-w-0">
@@ -255,7 +255,6 @@ onMounted(() => {
                     </p>
                   </div>
                   
-                  <!-- Custom CSS Span instead of Tag to bypass light-theme color override -->
                   <span :class="[getSessionStatusTag(session).bgClass]" class="m-0 text-[9px] uppercase font-bold px-1.5 py-0.5 rounded-none shrink-0 border border-solid border-white text-white">
                     {{ getSessionStatusTag(session).label }}
                   </span>
@@ -289,7 +288,7 @@ onMounted(() => {
                     {{ t('page.portal.btnStart') }}
                   </Button>
                 </div>
-              </Card>
+              </div>
             </div>
 
             <div v-else class="py-16 flex flex-col items-center justify-center bg-white dark:bg-zinc-900 border border-dashed border-slate-200 dark:border-zinc-800 rounded-none text-center px-4">
@@ -300,11 +299,11 @@ onMounted(() => {
           <!-- Maintenance Tab Content -->
           <div v-if="activeTab === 'maintenance'">
             <div v-if="myMaintenancePlans.length > 0" class="flex flex-col gap-4">
-              <Card
+              <!-- Using raw HTML div to bypass Ant Design Card background overrides in light mode -->
+              <div
                 v-for="group in myMaintenancePlans"
                 :key="group.key"
-                class="rounded-none shadow-sm border-none bg-[#3b65b9] overflow-hidden"
-                :body-style="{ padding: '18px' }"
+                class="rounded-none shadow-sm border-0 bg-[#3b65b9] overflow-hidden p-[18px] text-white flex flex-col"
               >
                 <div class="flex items-start justify-between gap-3">
                   <div class="flex-1 min-w-0">
@@ -319,7 +318,6 @@ onMounted(() => {
                     </p>
                   </div>
                   
-                  <!-- Custom CSS Span instead of Tag to bypass light-theme color override -->
                   <span :class="[getPlanStatusTag(group).bgClass]" class="m-0 text-[9px] uppercase font-bold px-1.5 py-0.5 rounded-none shrink-0 border border-solid border-white text-white">
                     {{ getPlanStatusTag(group).label }}
                   </span>
@@ -352,7 +350,7 @@ onMounted(() => {
                     {{ t('page.portal.btnExecute') }}
                   </Button>
                 </div>
-              </Card>
+              </div>
             </div>
 
             <div v-else class="py-16 flex flex-col items-center justify-center bg-white dark:bg-zinc-900 border border-dashed border-slate-200 dark:border-zinc-800 rounded-none text-center px-4">
