@@ -11,7 +11,7 @@ import {
   Progress 
 } from 'ant-design-vue';
 import { useI18n } from '@vben/locales';
-import { useUserStore, useAccessStore } from '@vben/stores';
+import { useUserStore } from '@vben/stores';
 import dayjs, { type Dayjs } from 'dayjs';
 import { getChecklistSessionsApi } from '#/api/ops/checklist';
 import { listMaintenanceSchedulesApi } from '#/api/ops/maintenance-plans';
@@ -286,11 +286,11 @@ watch(selectedDate, () => {
         </div>
 
         <!-- Tab Switcher (Checklist vs Maintenance) -->
-        <div class="flex p-1 bg-slate-200/60 dark:bg-zinc-900/80 rounded-xl border border-slate-100 dark:border-zinc-800/60 shadow-inner">
+        <div class="flex p-1 bg-indigo-600 dark:bg-indigo-900 rounded-xl shadow-md">
           <button
             type="button"
             @click="activeTab = 'checklist'"
-            :class="[activeTab === 'checklist' ? 'bg-indigo-600 text-white font-bold shadow-xs' : 'text-slate-500 dark:text-zinc-400 font-medium hover:text-slate-800']"
+            :class="[activeTab === 'checklist' ? 'bg-white text-indigo-700 font-bold shadow-xs' : 'text-white/80 font-medium hover:text-white']"
             class="flex-1 py-2 text-xs text-center rounded-lg transition-all border-0 cursor-pointer outline-none"
           >
             Checklist ({{ myChecklistSessions.length }})
@@ -298,7 +298,7 @@ watch(selectedDate, () => {
           <button
             type="button"
             @click="activeTab = 'maintenance'"
-            :class="[activeTab === 'maintenance' ? 'bg-indigo-600 text-white font-bold shadow-xs' : 'text-slate-500 dark:text-zinc-400 font-medium hover:text-slate-800']"
+            :class="[activeTab === 'maintenance' ? 'bg-white text-indigo-700 font-bold shadow-xs' : 'text-white/80 font-medium hover:text-white']"
             class="flex-1 py-2 text-xs text-center rounded-lg transition-all border-0 cursor-pointer outline-none"
           >
             Kế hoạch bảo trì ({{ myMaintenancePlans.length }})
@@ -439,21 +439,21 @@ watch(selectedDate, () => {
       <button
         type="button"
         @click="router.push('/portal/incident-report')"
-        class="flex-1 flex flex-col items-center justify-center gap-0.5 py-1.5 rounded-xl bg-rose-50 hover:bg-rose-100 text-rose-600 dark:bg-rose-950/20 dark:hover:bg-rose-950/30 dark:text-rose-400 transition-all border-0 cursor-pointer outline-none"
+        class="h-10 px-4 rounded-lg bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-xs border-0 cursor-pointer outline-none transition-colors"
       >
-        <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-alert-triangle"><path d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3Z"/><line x1="12" x2="12" y1="9" y2="13"/><line x1="12" x2="12.01" y1="17" y2="17"/></svg>
-        <span class="text-[10px] font-bold">Báo cáo sự cố</span>
+        Báo cáo sự cố
       </button>
 
       <!-- Center Floating Scan Button Spacer -->
-      <div class="w-20 relative flex justify-center">
-        <!-- Floating Scan Button -->
+      <div class="w-16 relative flex justify-center">
+        <!-- Floating Scan Button (Black circle with V logo) -->
         <button
           type="button"
           @click="router.push('/portal/equipment')"
-          class="absolute -top-10 w-14 h-14 bg-indigo-600 hover:bg-indigo-700 active:scale-95 text-white rounded-full flex items-center justify-center shadow-lg hover:shadow-indigo-500/30 transition-all duration-200 border-4 border-white dark:border-zinc-950 cursor-pointer outline-none"
+          class="absolute -top-7 w-12 h-12 bg-black hover:bg-zinc-900 active:scale-95 text-white rounded-full flex items-center justify-center shadow-md border-4 border-white dark:border-zinc-950 cursor-pointer outline-none transition-all duration-200"
         >
-          <svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-qr-code"><rect width="5" height="5" x="3" y="3" rx="1"/><rect width="5" height="5" x="16" y="3" rx="1"/><rect width="5" height="5" x="3" y="16" rx="1"/><path d="M21 16V21H16"/><path d="M21 12H21.01"/><path d="M12 21H12.01"/><path d="M12 12H12.01"/><path d="M16 16H16.01"/><path d="M16 12H16.01"/><path d="M12 16H12.01"/></svg>
+          <!-- V logo icon -->
+          <span class="text-white font-black text-lg select-none font-sans">V</span>
         </button>
       </div>
 
@@ -461,10 +461,9 @@ watch(selectedDate, () => {
       <button
         type="button"
         @click="router.push('/portal/emergency-stop')"
-        class="flex-1 flex flex-col items-center justify-center gap-0.5 py-1.5 rounded-xl bg-orange-50 hover:bg-orange-100 text-orange-600 dark:bg-orange-950/20 dark:hover:bg-orange-950/30 dark:text-orange-400 transition-all border-0 cursor-pointer outline-none"
+        class="h-10 px-4 rounded-lg bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-xs border-0 cursor-pointer outline-none transition-colors"
       >
-        <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-octagon-alert"><polygon points="7.86 2 16.14 2 22 7.86 22 16.14 16.14 22 7.86 22 2 16.14 2 7.86 7.86 2"/><line x1="12" x2="12" y1="8" y2="12"/><line x1="12" x2="12.01" y1="16" y2="16"/></svg>
-        <span class="text-[10px] font-bold">Dừng khẩn cấp</span>
+        Dừng khẩn cấp
       </button>
 
     </div>
