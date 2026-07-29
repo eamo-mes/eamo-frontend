@@ -148,22 +148,6 @@ function handleBack() {
   router.push('/portal');
 }
 
-function navigateToEntity(item: BackendNotification) {
-  if (!item.read_at) {
-    handleMarkRead(item);
-  }
-  const entityType = item.data?.entity_type;
-  if (entityType === 'checklist_session') {
-    router.push('/portal/checklist');
-  } else if (entityType === 'maintenance_schedule' || entityType === 'maintenance_item') {
-    router.push('/portal/maintain-plan');
-  } else if (entityType === 'error_log') {
-    router.push('/portal/equipment');
-  } else {
-    router.push('/portal');
-  }
-}
-
 onMounted(() => {
   fetchNotifications();
 });
@@ -191,10 +175,11 @@ watch(filterStatus, () => {
         </h1>
       </div>
 
+      <!-- Rounded mark all read button using brand color #5c3e35 -->
       <Button
         type="primary"
         size="small"
-        class="bg-indigo-600 hover:bg-indigo-700 border-none text-[11px] font-bold h-8 rounded-lg px-2.5"
+        class="bg-[#5c3e35] hover:bg-[#4b332b] border-none text-[11px] font-bold h-8 rounded-lg px-2.5"
         :loading="submitting"
         @click="handleMarkAllRead"
       >
@@ -203,13 +188,13 @@ watch(filterStatus, () => {
     </div>
 
     <!-- ─── FILTER TABS ─── -->
-    <div class="mb-4 flex items-center gap-1.5 p-1 bg-white dark:bg-zinc-900 border border-slate-200/80 dark:border-zinc-800 rounded-xl shadow-3xs">
+    <div class="mb-4 flex items-center gap-1.5 p-1 bg-white dark:bg-zinc-900/60 border border-slate-200/80 dark:border-zinc-800 rounded-xl shadow-3xs">
       <button
         type="button"
         :class="[
           'flex-1 py-1.5 text-xs font-bold rounded-lg transition-colors border-0 cursor-pointer outline-none',
           filterStatus === 'all'
-            ? 'bg-indigo-600 text-white shadow-xs'
+            ? 'bg-[#5c3e35] text-white shadow-xs'
             : 'bg-transparent text-slate-500 dark:text-zinc-400 hover:bg-slate-100 dark:hover:bg-zinc-800'
         ]"
         @click="filterStatus = 'all'"
@@ -221,7 +206,7 @@ watch(filterStatus, () => {
         :class="[
           'flex-1 py-1.5 text-xs font-bold rounded-lg transition-colors border-0 cursor-pointer outline-none',
           filterStatus === 'unread'
-            ? 'bg-indigo-600 text-white shadow-xs'
+            ? 'bg-[#5c3e35] text-white shadow-xs'
             : 'bg-transparent text-slate-500 dark:text-zinc-400 hover:bg-slate-100 dark:hover:bg-zinc-800'
         ]"
         @click="filterStatus = 'unread'"
@@ -233,7 +218,7 @@ watch(filterStatus, () => {
         :class="[
           'flex-1 py-1.5 text-xs font-bold rounded-lg transition-colors border-0 cursor-pointer outline-none',
           filterStatus === 'read'
-            ? 'bg-indigo-600 text-white shadow-xs'
+            ? 'bg-[#5c3e35] text-white shadow-xs'
             : 'bg-transparent text-slate-500 dark:text-zinc-400 hover:bg-slate-100 dark:hover:bg-zinc-800'
         ]"
         @click="filterStatus = 'read'"
@@ -287,10 +272,12 @@ watch(filterStatus, () => {
           >
             {{ t('page.notification.btnMarkRead') || 'Đã đọc' }}
           </Button>
+          
+          <!-- View details button using brand color #5c3e35 -->
           <Button
             type="primary"
             size="small"
-            class="bg-indigo-600 hover:bg-indigo-700 border-none text-[11px] h-7 rounded-lg font-bold"
+            class="bg-[#5c3e35] hover:bg-[#4b332b] border-none text-[11px] h-7 rounded-lg font-bold"
             @click="navigateToEntity(item)"
           >
             {{ t('page.notification.btnViewDetail') || 'Xem chi tiết' }}
