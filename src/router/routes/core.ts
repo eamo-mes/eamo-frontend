@@ -162,6 +162,28 @@ const coreRoutes: RouteRecordRaw[] = [
         },
       },
       {
+        name: 'MobilePortalIncidentReport',
+        path: '/portal/incident-report',
+        component: () => import('#/views/mobile/portal/incident-report/index.vue'),
+        meta: {
+          title: 'Báo cáo sự cố',
+          ignoreAccess: true,
+          hideInMenu: true,
+          hideInTab: true,
+        },
+      },
+      {
+        name: 'MobilePortalEmergencyStop',
+        path: '/portal/emergency-stop',
+        component: () => import('#/views/mobile/portal/emergency-stop/index.vue'),
+        meta: {
+          title: 'Dừng khẩn cấp',
+          ignoreAccess: true,
+          hideInMenu: true,
+          hideInTab: true,
+        },
+      },
+      {
         name: 'MobilePortalProfile',
         path: '/portal/profile',
         component: () => import('#/views/mobile/profile/index.vue'),
