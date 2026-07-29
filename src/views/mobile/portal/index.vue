@@ -173,7 +173,6 @@ function getCycleText(type?: string): string {
   }
 }
 
-// Completed item count helper
 function getCompletedCount(session: any): number {
   if (!session.details) return 0;
   return session.details.filter((d: any) => {
@@ -207,13 +206,13 @@ onMounted(() => {
   <div class="portal-container min-h-[85vh] bg-slate-50 dark:bg-zinc-950/40 pb-28 relative flex flex-col transition-colors duration-300">
 
     <div class="relative z-10 w-full flex-1 flex flex-col">
-      <!-- ─── TOP AREA: TAB SWITCHER (Blue Banner Mockup style) ─── -->
-      <div class="mb-5">
-        <div class="flex bg-[#3b65b9] p-1 rounded-none shadow-md">
+      <!-- ─── TOP AREA: TAB SWITCHER (Blue Banner Mockup style, now rounded) ─── -->
+      <div class="mb-5 px-1">
+        <div class="flex bg-[#3b65b9] p-1 rounded-2xl shadow-sm">
           <button
             type="button"
             @click="activeTab = 'checklist'"
-            :class="[activeTab === 'checklist' ? 'bg-[#214389] text-white font-bold' : 'text-slate-100/90 font-medium hover:text-white']"
+            :class="[activeTab === 'checklist' ? 'bg-[#214389] text-white font-bold rounded-xl' : 'text-slate-100/90 font-medium hover:text-white']"
             class="flex-1 py-3 text-xs text-center border-0 cursor-pointer outline-none transition-all"
           >
             {{ t('page.portal.checklistTitle') }} ({{ myChecklistSessions.length }})
@@ -221,7 +220,7 @@ onMounted(() => {
           <button
             type="button"
             @click="activeTab = 'maintenance'"
-            :class="[activeTab === 'maintenance' ? 'bg-[#214389] text-white font-bold' : 'text-slate-100/90 font-medium hover:text-white']"
+            :class="[activeTab === 'maintenance' ? 'bg-[#214389] text-white font-bold rounded-xl' : 'text-slate-100/90 font-medium hover:text-white']"
             class="flex-1 py-3 text-xs text-center border-0 cursor-pointer outline-none transition-all"
           >
             {{ t('page.portal.maintenanceTitle') }} ({{ myMaintenancePlans.length }})
@@ -229,18 +228,18 @@ onMounted(() => {
         </div>
       </div>
 
-      <!-- ─── MIDDLE CONTENT AREA: SCROLLABLE LIST (Mockup Blue Boxes style using raw divs) ─── -->
-      <div class="flex-1 overflow-y-auto pb-4">
+      <!-- ─── MIDDLE CONTENT AREA: SCROLLABLE LIST ─── -->
+      <div class="flex-1 overflow-y-auto pb-4 px-1">
         <Spin :spinning="loading">
           
           <!-- Checklist Tab Content -->
           <div v-if="activeTab === 'checklist'">
             <div v-if="myChecklistSessions.length > 0" class="flex flex-col gap-4">
-              <!-- Using raw HTML div to bypass Ant Design Card background overrides in light mode -->
+              <!-- Cards rounded dynamically to rounded-2xl -->
               <div
                 v-for="session in myChecklistSessions"
                 :key="session.id"
-                class="rounded-none shadow-sm border-0 bg-[#3b65b9] overflow-hidden p-[18px] text-white flex flex-col"
+                class="rounded-2xl shadow-sm border-0 bg-[#3b65b9] overflow-hidden p-[18px] text-white flex flex-col"
               >
                 <div class="flex items-start justify-between gap-3">
                   <div class="flex-1 min-w-0">
@@ -255,7 +254,8 @@ onMounted(() => {
                     </p>
                   </div>
                   
-                  <span :class="[getSessionStatusTag(session).bgClass]" class="m-0 text-[9px] uppercase font-bold px-1.5 py-0.5 rounded-none shrink-0 border border-solid border-white text-white">
+                  <!-- Tag rounded to rounded-md -->
+                  <span :class="[getSessionStatusTag(session).bgClass]" class="m-0 text-[9px] uppercase font-bold px-2 py-0.5 rounded-md shrink-0 border border-solid border-white text-white">
                     {{ getSessionStatusTag(session).label }}
                   </span>
                 </div>
@@ -280,9 +280,10 @@ onMounted(() => {
                 </div>
 
                 <div class="flex items-center gap-2 mt-4.5">
+                  <!-- Button rounded to rounded-xl -->
                   <Button
                     type="primary"
-                    class="flex-1 bg-[#214389] hover:bg-[#152e60] border-none text-xs h-9 rounded-none font-bold flex items-center justify-center gap-1.5 text-white"
+                    class="flex-1 bg-[#214389] hover:bg-[#152e60] border-none text-xs h-9 rounded-xl font-bold flex items-center justify-center gap-1.5 text-white"
                     @click="router.push('/portal/checklist')"
                   >
                     {{ t('page.portal.btnStart') }}
@@ -291,7 +292,7 @@ onMounted(() => {
               </div>
             </div>
 
-            <div v-else class="py-16 flex flex-col items-center justify-center bg-white dark:bg-zinc-900 border border-dashed border-slate-200 dark:border-zinc-800 rounded-none text-center px-4">
+            <div v-else class="py-16 flex flex-col items-center justify-center bg-white dark:bg-zinc-900 border border-dashed border-slate-200 dark:border-zinc-800 rounded-2xl text-center px-4">
               <Empty :description="t('page.portal.noChecklistsAssigned')" />
             </div>
           </div>
@@ -299,11 +300,11 @@ onMounted(() => {
           <!-- Maintenance Tab Content -->
           <div v-if="activeTab === 'maintenance'">
             <div v-if="myMaintenancePlans.length > 0" class="flex flex-col gap-4">
-              <!-- Using raw HTML div to bypass Ant Design Card background overrides in light mode -->
+              <!-- Cards rounded dynamically to rounded-2xl -->
               <div
                 v-for="group in myMaintenancePlans"
                 :key="group.key"
-                class="rounded-none shadow-sm border-0 bg-[#3b65b9] overflow-hidden p-[18px] text-white flex flex-col"
+                class="rounded-2xl shadow-sm border-0 bg-[#3b65b9] overflow-hidden p-[18px] text-white flex flex-col"
               >
                 <div class="flex items-start justify-between gap-3">
                   <div class="flex-1 min-w-0">
@@ -318,7 +319,8 @@ onMounted(() => {
                     </p>
                   </div>
                   
-                  <span :class="[getPlanStatusTag(group).bgClass]" class="m-0 text-[9px] uppercase font-bold px-1.5 py-0.5 rounded-none shrink-0 border border-solid border-white text-white">
+                  <!-- Tag rounded to rounded-md -->
+                  <span :class="[getPlanStatusTag(group).bgClass]" class="m-0 text-[9px] uppercase font-bold px-2 py-0.5 rounded-md shrink-0 border border-solid border-white text-white">
                     {{ getPlanStatusTag(group).label }}
                   </span>
                 </div>
@@ -342,9 +344,10 @@ onMounted(() => {
                 </div>
 
                 <div class="flex items-center gap-2 mt-4.5">
+                  <!-- Button rounded to rounded-xl -->
                   <Button
                     type="primary"
-                    class="flex-1 bg-[#214389] hover:bg-[#152e60] border-none text-xs h-9 rounded-none font-bold flex items-center justify-center gap-1.5 text-white"
+                    class="flex-1 bg-[#214389] hover:bg-[#152e60] border-none text-xs h-9 rounded-xl font-bold flex items-center justify-center gap-1.5 text-white"
                     @click="router.push('/portal/maintain-plan')"
                   >
                     {{ t('page.portal.btnExecute') }}
@@ -353,7 +356,7 @@ onMounted(() => {
               </div>
             </div>
 
-            <div v-else class="py-16 flex flex-col items-center justify-center bg-white dark:bg-zinc-900 border border-dashed border-slate-200 dark:border-zinc-800 rounded-none text-center px-4">
+            <div v-else class="py-16 flex flex-col items-center justify-center bg-white dark:bg-zinc-900 border border-dashed border-slate-200 dark:border-zinc-800 rounded-2xl text-center px-4">
               <Empty :description="t('page.portal.noMaintenanceAssigned')" />
             </div>
           </div>
@@ -370,7 +373,7 @@ onMounted(() => {
         <button
           type="button"
           @click="router.push('/portal/incident-report')"
-          class="h-14 w-full bg-[#3b65b9] hover:bg-[#214389] text-white font-bold text-xs border-0 rounded-none outline-none transition-colors select-none flex items-center justify-center"
+          class="h-14 w-full bg-[#3b65b9] hover:bg-[#214389] text-white font-bold text-xs border-0 rounded-xl outline-none transition-colors select-none flex items-center justify-center"
         >
           {{ t('page.portal.reportIncident') }}
         </button>
@@ -392,7 +395,7 @@ onMounted(() => {
         <button
           type="button"
           @click="router.push('/portal/emergency-stop')"
-          class="h-14 w-full bg-[#3b65b9] hover:bg-[#214389] text-white font-bold text-xs border-0 rounded-none outline-none transition-colors select-none flex items-center justify-center"
+          class="h-14 w-full bg-[#3b65b9] hover:bg-[#214389] text-white font-bold text-xs border-0 rounded-xl outline-none transition-colors select-none flex items-center justify-center"
         >
           {{ t('page.portal.emergencyStop') }}
         </button>
