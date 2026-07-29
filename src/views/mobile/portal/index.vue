@@ -136,7 +136,7 @@ const myMaintenancePlans = computed(() => {
 
 // ─── Status Tags ───
 function getSessionStatusTag(session: any) {
-  if (!session.details || session.details.length === 0) return { bgClass: 'bg-[#1a365d]', label: t('page.portal.statusPending') };
+  if (!session.details || session.details.length === 0) return { bgClass: 'bg-[#4b332b]', label: t('page.portal.statusPending') };
   
   const completedCount = session.details.filter((d: any) => {
     const logs = d.logs || [];
@@ -144,7 +144,7 @@ function getSessionStatusTag(session: any) {
   }).length;
   
   const allCompleted = completedCount === session.details.length;
-  if (!allCompleted) return { bgClass: 'bg-[#1a365d]', label: t('page.portal.statusPending') };
+  if (!allCompleted) return { bgClass: 'bg-[#4b332b]', label: t('page.portal.statusPending') };
   
   const allPassed = session.details.every((d: any) => {
     const logs = d.logs || [];
@@ -160,7 +160,7 @@ function getPlanStatusTag(group: any) {
   } else if (group.status === 'fail') {
     return { bgClass: 'bg-rose-600/90', label: t('page.portal.statusFail') };
   }
-  return { bgClass: 'bg-[#1a365d]', label: t('page.portal.statusPending') };
+  return { bgClass: 'bg-[#4b332b]', label: t('page.portal.statusPending') };
 }
 
 function getCycleText(type?: string): string {
@@ -206,13 +206,13 @@ onMounted(() => {
   <div class="portal-container min-h-[85vh] bg-slate-50 dark:bg-zinc-950/40 pb-28 relative flex flex-col transition-colors duration-300">
 
     <div class="relative z-10 w-full flex-1 flex flex-col">
-      <!-- ─── TOP AREA: TAB SWITCHER (Modern Light Gray/Dark Gray Bubble Switcher) ─── -->
+      <!-- ─── TOP AREA: TAB SWITCHER (Brand color matching notifications index) ─── -->
       <div class="mb-5 px-1">
         <div class="flex bg-slate-200/80 dark:bg-zinc-900/80 p-1 rounded-2xl shadow-xs">
           <button
             type="button"
             @click="activeTab = 'checklist'"
-            :class="[activeTab === 'checklist' ? 'bg-white dark:bg-zinc-800 shadow-xs text-slate-900 dark:text-white font-bold rounded-xl' : 'text-slate-500 dark:text-zinc-400 font-medium hover:text-slate-700']"
+            :class="[activeTab === 'checklist' ? 'bg-[#5c3e35] text-white font-bold rounded-xl' : 'text-slate-500 dark:text-zinc-400 font-medium hover:text-slate-700']"
             class="flex-1 py-3 text-xs text-center border-0 cursor-pointer outline-none transition-all"
           >
             {{ t('page.portal.checklistTitle') }} ({{ myChecklistSessions.length }})
@@ -220,7 +220,7 @@ onMounted(() => {
           <button
             type="button"
             @click="activeTab = 'maintenance'"
-            :class="[activeTab === 'maintenance' ? 'bg-white dark:bg-zinc-800 shadow-xs text-slate-900 dark:text-white font-bold rounded-xl' : 'text-slate-500 dark:text-zinc-400 font-medium hover:text-slate-700']"
+            :class="[activeTab === 'maintenance' ? 'bg-[#5c3e35] text-white font-bold rounded-xl' : 'text-slate-500 dark:text-zinc-400 font-medium hover:text-slate-700']"
             class="flex-1 py-3 text-xs text-center border-0 cursor-pointer outline-none transition-all"
           >
             {{ t('page.portal.maintenanceTitle') }} ({{ myMaintenancePlans.length }})
@@ -228,7 +228,7 @@ onMounted(() => {
         </div>
       </div>
 
-      <!-- ─── MIDDLE CONTENT AREA: SCROLLABLE LIST (Premium Slate Navy cards) ─── -->
+      <!-- ─── MIDDLE CONTENT AREA: SCROLLABLE LIST (Brand Color #5c3e35 cards) ─── -->
       <div class="flex-1 overflow-y-auto pb-4 px-1">
         <Spin :spinning="loading">
           
@@ -238,7 +238,7 @@ onMounted(() => {
               <div
                 v-for="session in myChecklistSessions"
                 :key="session.id"
-                class="rounded-2xl shadow-sm border-0 bg-[#2b4c7e] overflow-hidden p-[18px] text-white flex flex-col"
+                class="rounded-2xl shadow-sm border-0 bg-[#5c3e35] overflow-hidden p-[18px] text-white flex flex-col"
               >
                 <div class="flex items-start justify-between gap-3">
                   <div class="flex-1 min-w-0">
@@ -278,10 +278,10 @@ onMounted(() => {
                 </div>
 
                 <div class="flex items-center gap-2 mt-4.5">
-                  <!-- Premium white button on dark card -->
+                  <!-- Premium white button on brand-colored card -->
                   <Button
                     type="default"
-                    class="flex-1 bg-white hover:bg-slate-100 border-none text-xs h-9 rounded-xl font-bold flex items-center justify-center gap-1.5 text-[#2b4c7e]"
+                    class="flex-1 bg-white hover:bg-slate-100 border-none text-xs h-9 rounded-xl font-bold flex items-center justify-center gap-1.5 text-[#5c3e35]"
                     @click="router.push('/portal/checklist')"
                   >
                     {{ t('page.portal.btnStart') }}
@@ -301,7 +301,7 @@ onMounted(() => {
               <div
                 v-for="group in myMaintenancePlans"
                 :key="group.key"
-                class="rounded-2xl shadow-sm border-0 bg-[#2b4c7e] overflow-hidden p-[18px] text-white flex flex-col"
+                class="rounded-2xl shadow-sm border-0 bg-[#5c3e35] overflow-hidden p-[18px] text-white flex flex-col"
               >
                 <div class="flex items-start justify-between gap-3">
                   <div class="flex-1 min-w-0">
@@ -340,10 +340,10 @@ onMounted(() => {
                 </div>
 
                 <div class="flex items-center gap-2 mt-4.5">
-                  <!-- Premium white button on dark card -->
+                  <!-- Premium white button on brand-colored card -->
                   <Button
                     type="default"
-                    class="flex-1 bg-white hover:bg-slate-100 border-none text-xs h-9 rounded-xl font-bold flex items-center justify-center gap-1.5 text-[#2b4c7e]"
+                    class="flex-1 bg-white hover:bg-slate-100 border-none text-xs h-9 rounded-xl font-bold flex items-center justify-center gap-1.5 text-[#5c3e35]"
                     @click="router.push('/portal/maintain-plan')"
                   >
                     {{ t('page.portal.btnExecute') }}
@@ -361,15 +361,15 @@ onMounted(() => {
       </div>
     </div>
 
-    <!-- ─── FIXED BOTTOM ACTION BAR (Modern Dock theme) ─── -->
+    <!-- ─── FIXED BOTTOM ACTION BAR ─── -->
     <div class="fixed bottom-0 left-0 right-0 h-20 bg-white/95 dark:bg-zinc-900/95 px-4 flex items-center z-30 border-t border-slate-200/80 dark:border-zinc-800/80 shadow-[0_-4px_16px_rgba(0,0,0,0.05)] backdrop-blur-md">
       <div class="grid grid-cols-3 gap-3 w-full items-center">
         
-        <!-- Báo cáo sự cố (Brand Blue) -->
+        <!-- Báo cáo sự cố (Brand Color #5c3e35) -->
         <button
           type="button"
           @click="router.push('/portal/incident-report')"
-          class="h-14 w-full bg-[#4172cd] hover:bg-blue-700 text-white font-bold text-xs border-0 rounded-xl outline-none transition-colors select-none flex items-center justify-center"
+          class="h-14 w-full bg-[#5c3e35] hover:bg-[#4b332b] text-white font-bold text-xs border-0 rounded-xl outline-none transition-colors select-none flex items-center justify-center"
         >
           {{ t('page.portal.reportIncident') }}
         </button>
@@ -387,7 +387,7 @@ onMounted(() => {
           </button>
         </div>
 
-        <!-- Dừng khẩn cấp (Warning Red!) -->
+        <!-- Dừng khẩn cấp (Emergency Red!) -->
         <button
           type="button"
           @click="router.push('/portal/emergency-stop')"
