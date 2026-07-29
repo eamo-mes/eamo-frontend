@@ -100,7 +100,7 @@ async function startCamera() {
   } catch (err: any) {
     console.warn('Camera access error / restricted:', err);
     isCameraStreaming.value = false;
-    cameraError.value = 'Không thể mở trực tiếp Camera (vui lòng chọn ảnh để quét)';
+    cameraError.value = 'Không thể mở trực tiếp Camera. Bạn có thể bấm nút bên dưới để chọn ảnh hoặc chụp.';
   }
 }
 
@@ -115,7 +115,23 @@ function stopCamera() {
   isCameraStreaming.value = false;
 }
 
-// ─── Actions ───
+// ─── Click Handlers ───
+function handleFrameClick() {
+  if (!isCameraStreaming.value) {
+    startCamera();
+  } else {
+    captureAndDecode();
+  }
+}
+
+function handleMainButtonClick() {
+  if (!isCameraStreaming.value) {
+    startCamera();
+  } else {
+    captureAndDecode();
+  }
+}
+
 function triggerFileInput() {
   fileInputRef.value?.click();
 }
@@ -234,7 +250,7 @@ onUnmounted(() => {
         <TabPane key="qrcode" :tab="t('page.portal.qrCodeTab')">
           <div class="flex flex-col items-center pt-2 pb-6">
             
-            <!-- Hidden File Input for Fallback Capture -->
+            <!-- Hidden File Input for Native Camera / Fallback Capture -->
             <input
               ref="fileInputRef"
               type="file"
@@ -244,8 +260,11 @@ onUnmounted(() => {
               @change="handleImageCaptured"
             />
 
-            <!-- Frame for Viewfinder & Live Camera Stream -->
-            <div class="relative w-72 h-72 border border-slate-200/80 dark:border-zinc-800 bg-black rounded-3xl flex flex-col items-center justify-center overflow-hidden shadow-inner p-0">
+            <!-- Frame for Viewfinder & Live Camera Stream (Clickable to start/capture camera) -->
+            <div 
+              class="relative w-72 h-72 border border-slate-200/80 dark:border-zinc-800 bg-black rounded-3xl flex flex-col items-center justify-center overflow-hidden shadow-inner cursor-pointer p-0 group"
+              @click="handleFrameClick"
+            >
               
               <!-- Live Video Feed -->
               <video
@@ -266,27 +285,19 @@ onUnmounted(() => {
               <div class="absolute bottom-4 right-4 w-6 h-6 border-b-4 border-r-4 border-indigo-500 rounded-br-lg z-10 pointer-events-none"></div>
 
               <!-- Fallback UI overlay if camera is not active -->
-              <div v-if="!isCameraStreaming" class="text-center z-5 flex flex-col items-center justify-center p-4 bg-slate-900/80 w-full h-full">
-                <div class="mb-3 p-3.5 bg-indigo-500/20 rounded-2xl text-indigo-400">
+              <div v-if="!isCameraStreaming" class="text-center z-5 flex flex-col items-center justify-center p-4 bg-slate-900/80 w-full h-full hover:bg-slate-900/70 transition-colors">
+                <div class="mb-3 p-3.5 bg-indigo-500/20 rounded-2xl text-indigo-400 group-hover:scale-110 transition-transform">
                   <svg xmlns="http://www.w3.org/2000/svg" width="44" height="44" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
-                    <rect width="5" height="5" x="3" y="3" rx="1"/>
-                    <rect width="5" height="5" x="16" y="3" rx="1"/>
-                    <rect width="5" height="5" x="3" y="16" rx="1"/>
-                    <path d="M21 16V21H16"/>
-                    <path d="M21 12H21.01"/>
-                    <path d="M12 21H12.01"/>
-                    <path d="M12 12H12.01"/>
-                    <path d="M16 16H16.01"/>
-                    <path d="M16 12H16.01"/>
-                    <path d="M12 16H12.01"/>
+                    <path d="M14.5 4h-5L7 7H4a2 2 0 0 0-2 2v9a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2V9a2 2 0 0 0-2-2h-3l-2.5-3z"/>
+                    <circle cx="12" cy="13" r="3"/>
                   </svg>
                 </div>
-                <p class="text-xs text-slate-300 font-medium m-0">
+                <p class="text-xs text-white font-bold m-0">
+                  Bấm vào đây để mở Camera
+                </p>
+                <p class="text-[11px] text-slate-400 mt-1 px-2">
                   {{ cameraError || t('page.portal.systemWillOpenCamera') }}
                 </p>
-                <Button size="small" type="dashed" class="mt-3 text-indigo-400 border-indigo-400" @click="startCamera">
-                  Thử mở lại Camera
-                </Button>
               </div>
             </div>
 
@@ -298,20 +309,20 @@ onUnmounted(() => {
                 size="large" 
                 :loading="uploading"
                 class="bg-indigo-600 hover:bg-indigo-700 border-none rounded-xl font-bold flex items-center justify-center gap-1.5"
-                @click="captureAndDecode"
+                @click="handleMainButtonClick"
               >
                 <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-camera"><path d="M14.5 4h-5L7 7H4a2 2 0 0 0-2 2v9a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2V9a2 2 0 0 0-2-2h-3l-2.5-3z"/><circle cx="12" cy="13" r="3"/></svg>
-                {{ uploading ? t('page.portal.sendingImageToDecode') : t('page.portal.captureAndScanQr') }}
+                {{ uploading ? t('page.portal.sendingImageToDecode') : (isCameraStreaming ? t('page.portal.captureAndScanQr') : 'Mở Camera để quét mã') }}
               </Button>
 
               <Button 
                 type="default" 
                 block 
                 size="middle" 
-                class="rounded-xl font-medium text-xs text-slate-500 border-slate-200 dark:border-zinc-800"
+                class="rounded-xl font-medium text-xs text-slate-600 border-slate-200 dark:border-zinc-800"
                 @click="triggerFileInput"
               >
-                Tải ảnh QR từ thư viện
+                Tải ảnh QR từ thiết bị
               </Button>
             </div>
 
