@@ -1,65 +1,117 @@
 <script lang="ts" setup>
-import { ref, computed, onMounted } from 'vue';
+import { ref, onMounted } from 'vue';
 import { useRouter } from 'vue-router';
 import { 
-  Card,
-  Tag,
   Spin, 
   Empty,
-  Progress
 } from 'ant-design-vue';
+import dayjs from 'dayjs';
 import { useI18n } from '@vben/locales';
-import { useUserStore } from '@vben/stores';
+
 import { getChecklistSessionsApi } from '#/api/ops/checklist';
 import { listMaintenanceSchedulesApi } from '#/api/ops/maintenance-plans';
+import type {
+  ChecklistSession,
+  ChecklistDetailItem,
+  ChecklistLog,
+  ScheduleRow,
+} from '#/views/dashboard/workspace/types';
 
 defineOptions({ name: 'MobilePortalHome' });
 
 const router = useRouter();
 const { t } = useI18n();
-const userStore = useUserStore();
-
 const activeTab = ref<'checklist' | 'maintenance'>('checklist');
 const loading = ref(false);
 
-const checklistSessions = ref<any[]>([]);
-const maintenanceSchedules = ref<any[]>([]);
+const checklistSessions = ref<ChecklistSession[]>([]);
 
-const currentUserId = computed(() => userStore.userInfo?.userId || (userStore.userInfo as { id?: string } | null)?.id || '');
+interface MaintenancePlanGroup {
+  key: string;
+  plan_id: string;
+  plan_code: string;
+  date: string;
+  equipment_code: string;
+  equipment_name: string | null;
+  maintenance_type: string;
+  schedules: ScheduleRow[];
+  total_items: number;
+  completed_items: number;
+  status: 'pass' | 'fail' | 'pending';
+  users: Array<{ id: string; name?: string }>;
+}
 
-// ─── Fetch Checklist Sessions (All of them) ───
+const maintenanceSchedules = ref<MaintenancePlanGroup[]>([]);
+
+// ─── Touch Gesture Logic for Swipe Switching ───
+const touchStartX = ref(0);
+const touchStartY = ref(0);
+
+function handleTouchStart(e: TouchEvent) {
+  const touch = e.touches?.[0];
+  if (touch) {
+    touchStartX.value = touch.clientX;
+    touchStartY.value = touch.clientY;
+  }
+}
+
+function handleTouchEnd(e: TouchEvent) {
+  if (!e.changedTouches || e.changedTouches.length === 0) return;
+  const endTouch = e.changedTouches[0];
+  if (!endTouch) return;
+  const deltaX = endTouch.clientX - touchStartX.value;
+  const deltaY = endTouch.clientY - touchStartY.value;
+
+  // Swipe left -> Maintenance, Swipe right -> Checklist
+  if (Math.abs(deltaX) > 40 && Math.abs(deltaX) > Math.abs(deltaY) * 1.3) {
+    if (deltaX < 0 && activeTab.value === 'checklist') {
+      activeTab.value = 'maintenance';
+    } else if (deltaX > 0 && activeTab.value === 'maintenance') {
+      activeTab.value = 'checklist';
+    }
+  }
+}
+
+// ─── Fetch Checklist Sessions (Loaded identically to /portal/checklist for today) ───
 async function fetchChecklists() {
   try {
+    const todayStr = dayjs().format('YYYY-MM-DD');
     const raw = await getChecklistSessionsApi({
       include_details: true,
-      per_page: 1000,
+      start_date: todayStr,
+      end_date: todayStr,
+      per_page: 100,
     });
-    const responseData = (raw as any)?.data ?? (raw as any)?.items ?? (Array.isArray(raw) ? raw : []);
-    const sessions = Array.isArray(responseData) ? responseData : [];
+    const responseData = (raw as { data?: ChecklistSession[]; items?: ChecklistSession[] })?.data 
+      ?? (raw as { items?: ChecklistSession[] })?.items 
+      ?? (Array.isArray(raw) ? raw : []);
+    const sessions = Array.isArray(responseData) ? (responseData as ChecklistSession[]) : [];
     
     // Sort by session_date descending (latest first)
-    checklistSessions.value = sessions.sort((a: any, b: any) => (b.session_date || '').localeCompare(a.session_date || ''));
-  } catch (err) {
+    checklistSessions.value = sessions.sort((a, b) => (b.session_date || '').localeCompare(a.session_date || ''));
+  } catch (err: unknown) {
     console.error('Failed to fetch checklists:', err);
   }
 }
 
-// ─── Fetch Maintenance Schedules (All of them) ───
+// ─── Fetch Maintenance Schedules (Loaded identically to /portal/maintain-plan for today) ───
 async function fetchMaintenance() {
   try {
+    const todayStr = dayjs().format('YYYY-MM-DD');
     const rawSchedules = await listMaintenanceSchedulesApi({
+      start_date: todayStr,
+      end_date: todayStr,
       with_logs: true,
-      per_page: 1000,
     });
-    const scheduleArray = Array.isArray(rawSchedules) ? rawSchedules : [];
-    maintenanceSchedules.value = groupSchedulesByPlan(scheduleArray);
-  } catch (err) {
+    const scheduleArray = Array.isArray(rawSchedules) ? (rawSchedules as ScheduleRow[]) : [];
+    maintenanceSchedules.value = groupSchedulesByPlan(scheduleArray, todayStr);
+  } catch (err: unknown) {
     console.error('Failed to fetch maintenance:', err);
   }
 }
 
-// Group schedules by plan code & date
-function getLatestResult(schedule: any): string | null {
+// Helper: Group maintenance schedules
+function getLatestResult(schedule: ScheduleRow): string | null {
   if (schedule.result) return schedule.result;
   if (schedule.maintenance_logs && schedule.maintenance_logs.length > 0) {
     return schedule.maintenance_logs[0]?.result || null;
@@ -67,13 +119,24 @@ function getLatestResult(schedule: any): string | null {
   return null;
 }
 
-function groupSchedulesByPlan(rows: any[]): any[] {
-  const planMap = new Map<string, any>();
+function groupSchedulesByPlan(rows: ScheduleRow[], dateStr: string): MaintenancePlanGroup[] {
+  const planMap = new Map<string, MaintenancePlanGroup>();
+  const planItemSeenMap = new Map<string, Set<string>>();
+  const dayRows = rows.filter((s) => s.date && s.date.startsWith(dateStr));
 
-  for (const s of rows) {
-    if (!s.date) continue;
-    const dateStr = s.date.slice(0, 10);
-    const planKey = `${s.maintenance_plan_id || s.plan_code || s.id || 'unknown'}-${dateStr}`;
+  for (const s of dayRows) {
+    const planKey = s.maintenance_plan_id || s.plan_code || s.id || 'unknown';
+    const itemKey = s.maintenance_item_id || s.item_name || s.maintenance_item?.name || s.id || '';
+
+    if (!planItemSeenMap.has(planKey)) {
+      planItemSeenMap.set(planKey, new Set());
+    }
+    const itemSeenSet = planItemSeenMap.get(planKey)!;
+    if (itemSeenSet.has(itemKey)) {
+      continue;
+    }
+    itemSeenSet.add(itemKey);
+
     const latestRes = getLatestResult(s);
     const isCompleted = Boolean(latestRes);
     const isPassed = latestRes === 'pass' || latestRes === 'normal' || latestRes === 'completed';
@@ -83,11 +146,11 @@ function groupSchedulesByPlan(rows: any[]): any[] {
     const eqName = s.equipment_name || s.maintenance_plan?.equipment?.name || null;
     const planCode = s.plan_code || s.maintenance_plan?.plan_code || 'KẾ HOẠCH BẢO TRÌ';
     const mType = s.maintenance_type || s.maintenance_plan?.maintenance_type || '—';
-    const users = s.users || s.maintenance_plan?.users || [];
+    const users = (s.users || s.maintenance_plan?.users || []) as Array<{ id: string; name?: string }>;
 
     if (!planMap.has(planKey)) {
       planMap.set(planKey, {
-        key: `plan-${planKey}`,
+        key: `plan-${planKey}-${dateStr}`,
         plan_id: s.maintenance_plan_id || '',
         plan_code: planCode,
         date: dateStr,
@@ -118,78 +181,65 @@ function groupSchedulesByPlan(rows: any[]): any[] {
     }
   }
   
-  // Sort by date descending
-  return Array.from(planMap.values()).sort((a, b) => b.date.localeCompare(a.date));
+  return Array.from(planMap.values());
 }
 
-// ─── Filter lists to show ONLY current logged-in user ───
-const myChecklistSessions = computed(() => {
-  return checklistSessions.value.filter((s) => {
-    return s.users?.some((u: any) => u.id === currentUserId.value) || s.created_by === currentUserId.value;
-  });
-});
-
-const myMaintenancePlans = computed(() => {
-  return maintenanceSchedules.value.filter((p) => {
-    return p.users?.some((u: any) => u.id === currentUserId.value);
-  });
-});
-
-// ─── Status Tags ───
-function getSessionStatusTag(session: any) {
-  if (!session.details || session.details.length === 0) return { color: 'warning', label: t('page.portal.statusPending') || 'Chưa xong' };
-  
-  const completedCount = session.details.filter((d: any) => {
-    const logs = d.logs || [];
-    return logs.some((log: any) => log.status === 'completed');
-  }).length;
-  
-  const allCompleted = completedCount === session.details.length;
-  if (!allCompleted) return { color: 'warning', label: t('page.portal.statusPending') || 'Chưa xong' };
-  
-  const allPassed = session.details.every((d: any) => {
-    const logs = d.logs || [];
-    const latestLog = logs.filter((log: any) => log.status === 'completed').sort((l: any, r: any) => (l.checked_at ?? '').localeCompare(r.checked_at ?? '')).at(-1);
-    return latestLog?.result === 'pass';
-  });
-  return allPassed ? { color: 'success', label: t('page.portal.statusPass') || 'Đạt' } : { color: 'error', label: t('page.portal.statusFail') || 'Không đạt' };
+// ─── Checklist Status & Progress Logic (Identical to /portal/checklist) ───
+function getLatestCompletedLog(detail: ChecklistDetailItem): ChecklistLog | undefined {
+  return detail.logs
+    ?.filter((log) => log.status === 'completed')
+    .sort((left, right) => (left.checked_at ?? '').localeCompare(right.checked_at ?? ''))
+    .at(-1);
 }
 
-function getPlanStatusTag(group: any) {
-  if (group.status === 'pass') {
-    return { color: 'success', label: t('page.portal.statusPass') || 'Đạt' };
-  } else if (group.status === 'fail') {
-    return { color: 'error', label: t('page.portal.statusFail') || 'Không đạt' };
-  }
-  return { color: 'warning', label: t('page.portal.statusPending') || 'Chưa xong' };
+function getSessionStatus(session: ChecklistSession): 'pass' | 'fail' | 'pending' {
+  if (!session.details || session.details.length === 0) return 'pending';
+  const completedLogs = session.details.map(getLatestCompletedLog);
+  const allCompleted = completedLogs.every((log) => log !== undefined);
+  if (!allCompleted) return 'pending';
+  const allPassed = completedLogs.every((log) => log?.result === 'pass');
+  return allPassed ? 'pass' : 'fail';
 }
 
-function getCycleText(type?: string): string {
-  switch (type) {
-    case 'daily': return 'Hàng ngày';
-    case 'weekly': return 'Hàng tuần';
-    case 'monthly': return 'Hàng tháng';
-    case 'yearly': return 'Hàng năm';
-    default: return type || '—';
-  }
-}
 
-function getCompletedCount(session: any): number {
+
+function getCompletedCount(session: ChecklistSession): number {
   if (!session.details) return 0;
-  return session.details.filter((d: any) => {
-    const logs = d.logs || [];
-    return logs.some((log: any) => log.status === 'completed');
-  }).length;
+  return session.details.filter((d) => getLatestCompletedLog(d) !== undefined).length;
 }
 
-function getProgressPercent(session: any): number {
+function getProgressPercent(session: ChecklistSession): number {
   if (!session.details || session.details.length === 0) return 0;
   return Math.round((getCompletedCount(session) / session.details.length) * 100);
 }
 
-function getProgressPercentForPlan(group: any): number {
+function getProgressColor(session: ChecklistSession): string {
+  const status = getSessionStatus(session);
+  if (status === 'pass') return '#52c41a';
+  if (status === 'fail') return '#f5222d';
+  return '#1890ff';
+}
+
+function getProgressPercentForPlan(group: MaintenancePlanGroup): number {
   if (!group.total_items) return 0;
   return Math.round((group.completed_items / group.total_items) * 100);
+}
+
+function getProgressColorForPlan(group: MaintenancePlanGroup): string {
+  if (group.status === 'pass') return '#52c41a';
+  if (group.status === 'fail') return '#f5222d';
+  return '#1890ff';
+}
+
+function goToChecklistDetail(session: ChecklistSession) {
+  if (session.id) {
+    router.push(`/portal/checklist/${session.id}`);
+  }
+}
+
+function goToMaintainPlanDetail(group: MaintenancePlanGroup) {
+  const targetId = group.plan_id || group.plan_code;
+  router.push(`/portal/maintain-plan/${targetId}?date=${group.date}`);
 }
 
 async function loadData() {
@@ -204,181 +254,188 @@ onMounted(() => {
 </script>
 
 <template>
-  <div class="portal-container min-h-[85vh] bg-slate-50 dark:bg-zinc-950/40 pb-24 relative flex flex-col transition-colors duration-300">
+  <div class="min-h-[85vh] bg-slate-50 dark:bg-zinc-950/40 flex flex-col pb-28 select-none">
 
-    <div class="relative z-10 w-full flex-1 flex flex-col">
-      <!-- ─── TOP AREA: FILTER TABS ─── -->
-      <div class="mb-4 flex items-center gap-1.5 p-1 bg-white dark:bg-zinc-900 border border-slate-200/80 dark:border-zinc-800 rounded-xl shadow-3xs">
+    <!-- ─── HEADER: date chip + underline tabs ─── -->
+    <div class="bg-white dark:bg-zinc-900 border-b border-slate-200/70 dark:border-zinc-800 px-4 pt-4 pb-0">
+  
+      <!-- Underline tab bar -->
+      <div class="flex">
         <button
           type="button"
           @click="activeTab = 'checklist'"
           :class="[
-            'flex-1 py-2 text-xs font-bold rounded-lg transition-colors border-0 cursor-pointer outline-none',
+            'flex-1 flex items-center justify-center gap-2 pb-3 text-xs font-bold border-0 bg-transparent cursor-pointer outline-none transition-all duration-200',
             activeTab === 'checklist'
-              ? 'bg-indigo-600 text-white shadow-xs'
-              : 'bg-transparent text-slate-500 dark:text-zinc-400 hover:bg-slate-100 dark:hover:bg-zinc-800'
+              ? 'text-indigo-600 dark:text-indigo-400 border-b-2 border-indigo-600 dark:border-indigo-400 -mb-px'
+              : 'text-slate-400 dark:text-zinc-500 hover:text-slate-600 dark:hover:text-zinc-300'
           ]"
         >
-          {{ t('page.portal.checklistTitle') }} ({{ myChecklistSessions.length }})
+          {{ t('page.portal.checklistTitle') || 'Kiểm tra' }}
+          <span :class="[
+            'text-[10px] font-bold rounded-full px-1.5 py-0.5 min-w-[20px] text-center tabular-nums',
+            activeTab === 'checklist'
+              ? 'bg-indigo-100 dark:bg-indigo-900/50 text-indigo-600 dark:text-indigo-400'
+              : 'bg-slate-100 dark:bg-zinc-800 text-slate-400 dark:text-zinc-500'
+          ]">{{ checklistSessions.length }}</span>
         </button>
+
         <button
           type="button"
           @click="activeTab = 'maintenance'"
           :class="[
-            'flex-1 py-2 text-xs font-bold rounded-lg transition-colors border-0 cursor-pointer outline-none',
+            'flex-1 flex items-center justify-center gap-2 pb-3 text-xs font-bold border-0 bg-transparent cursor-pointer outline-none transition-all duration-200',
             activeTab === 'maintenance'
-              ? 'bg-indigo-600 text-white shadow-xs'
-              : 'bg-transparent text-slate-500 dark:text-zinc-400 hover:bg-slate-100 dark:hover:bg-zinc-800'
+              ? 'text-indigo-600 dark:text-indigo-400 border-b-2 border-indigo-600 dark:border-indigo-400 -mb-px'
+              : 'text-slate-400 dark:text-zinc-500 hover:text-slate-600 dark:hover:text-zinc-300'
           ]"
         >
-          {{ t('page.portal.maintenanceTitle') }} ({{ myMaintenancePlans.length }})
+          {{ t('page.portal.maintenanceTitle') || 'Bảo trì' }}
+          <span :class="[
+            'text-[10px] font-bold rounded-full px-1.5 py-0.5 min-w-[20px] text-center tabular-nums',
+            activeTab === 'maintenance'
+              ? 'bg-indigo-100 dark:bg-indigo-900/50 text-indigo-600 dark:text-indigo-400'
+              : 'bg-slate-100 dark:bg-zinc-800 text-slate-400 dark:text-zinc-500'
+          ]">{{ maintenanceSchedules.length }}</span>
         </button>
-      </div>
-
-      <!-- ─── MIDDLE CONTENT AREA: CLICKABLE CARDS ─── -->
-      <div class="flex-1 overflow-y-auto pb-4">
-        <Spin :spinning="loading">
-          
-          <!-- Checklist Tab Content -->
-          <div v-if="activeTab === 'checklist'">
-            <div v-if="myChecklistSessions.length > 0" class="flex flex-col gap-3.5">
-              <Card
-                v-for="session in myChecklistSessions"
-                :key="session.id"
-                class="rounded-2xl shadow-3xs border-slate-200/80 dark:border-zinc-800/80 bg-white dark:bg-zinc-900/60 backdrop-blur-md overflow-hidden cursor-pointer hover:border-indigo-300 dark:hover:border-indigo-800 transition-colors"
-                :body-style="{ padding: '16px' }"
-                @click="router.push('/portal/checklist')"
-              >
-                <div class="flex items-start justify-between gap-3 mb-1">
-                  <div class="flex-1 min-w-0">
-                    <h3 class="text-xs font-bold text-slate-800 dark:text-zinc-200 m-0 leading-snug">
-                      {{ session.name || session.equipment?.name || t('page.portal.cellButtonLabel') }}
-                    </h3>
-                    <p class="text-[11px] font-mono text-slate-500 dark:text-zinc-400 mt-1 mb-0 font-medium">
-                      {{ t('page.portal.codeLabel') }}: <span class="font-bold text-slate-700 dark:text-zinc-300">{{ session.equipment?.code || '—' }}</span>
-                      <span v-if="session.equipment?.name" class="text-slate-400"> — {{ session.equipment.name }}</span>
-                    </p>
-                  </div>
-
-                  <Tag :color="getSessionStatusTag(session).color" class="m-0 text-[9px] uppercase font-bold px-1.5 py-0.5 rounded-md shrink-0">
-                    {{ getSessionStatusTag(session).label }}
-                  </Tag>
-                </div>
-
-                <div class="flex justify-between items-center text-[11px] text-slate-500 dark:text-zinc-400 mt-2.5">
-                  <span>
-                    {{ t('page.portal.cycleLabel') }}: <strong class="text-slate-700 dark:text-zinc-300">{{ getCycleText(session.cycle_type) }}</strong>
-                  </span>
-                  <span>
-                    {{ t('page.portal.itemsLabel') }}: <strong class="text-slate-700 dark:text-zinc-300">{{ getCompletedCount(session) }}/{{ session.details?.length || 0 }}</strong>
-                  </span>
-                </div>
-
-                <div class="mt-2">
-                  <Progress
-                    :percent="getProgressPercent(session)"
-                    :show-info="false"
-                    size="small"
-                    class="m-0"
-                    stroke-color="#4f46e5"
-                    trail-color="#f1f5f9"
-                  />
-                </div>
-
-                <div class="mt-3 pt-2.5 border-t border-slate-100 dark:border-zinc-800/80 text-[10px] font-mono text-slate-400 dark:text-zinc-500">
-                  <span>{{ t('page.portal.dateLabel') }}: {{ session.session_date || '—' }}</span>
-                </div>
-              </Card>
-            </div>
-
-            <div v-else class="py-12 flex flex-col items-center justify-center bg-white dark:bg-zinc-900 border border-dashed border-slate-200 dark:border-zinc-800 rounded-2xl">
-              <Empty :description="t('page.portal.noChecklistsAssigned')" />
-            </div>
-          </div>
-
-          <!-- Maintenance Tab Content -->
-          <div v-if="activeTab === 'maintenance'">
-            <div v-if="myMaintenancePlans.length > 0" class="flex flex-col gap-3.5">
-              <Card
-                v-for="group in myMaintenancePlans"
-                :key="group.key"
-                class="rounded-2xl shadow-3xs border-slate-200/80 dark:border-zinc-800/80 bg-white dark:bg-zinc-900/60 backdrop-blur-md overflow-hidden cursor-pointer hover:border-indigo-300 dark:hover:border-indigo-800 transition-colors"
-                :body-style="{ padding: '16px' }"
-                @click="router.push('/portal/maintain-plan')"
-              >
-                <div class="flex items-start justify-between gap-3 mb-1">
-                  <div class="flex-1 min-w-0">
-                    <h3 class="text-xs font-bold text-slate-800 dark:text-zinc-200 m-0 leading-snug">
-                      {{ group.plan_code }}
-                    </h3>
-                    <p class="text-[11px] font-mono text-slate-500 dark:text-zinc-400 mt-1 mb-0 font-medium">
-                      {{ t('page.portal.equipmentLabel') }}: <span class="font-bold text-slate-700 dark:text-zinc-300">{{ group.equipment_code }}</span>
-                      <span v-if="group.equipment_name" class="text-slate-400"> — {{ group.equipment_name }}</span>
-                    </p>
-                  </div>
-
-                  <Tag :color="getPlanStatusTag(group).color" class="m-0 text-[9px] uppercase font-bold px-1.5 py-0.5 rounded-md shrink-0">
-                    {{ getPlanStatusTag(group).label }}
-                  </Tag>
-                </div>
-
-                <div class="flex justify-between items-center text-[11px] text-slate-500 dark:text-zinc-400 mt-2.5">
-                  <span>
-                    {{ t('page.portal.typeLabel') }}: <strong class="text-slate-700 dark:text-zinc-300">{{ group.maintenance_type || t('page.dashboard.normal') }}</strong>
-                  </span>
-                  <span>
-                    {{ t('page.portal.itemsLabel') }}: <strong class="text-slate-700 dark:text-zinc-300">{{ group.completed_items }}/{{ group.total_items }}</strong>
-                  </span>
-                </div>
-
-                <div class="mt-2">
-                  <Progress
-                    :percent="getProgressPercentForPlan(group)"
-                    :show-info="false"
-                    size="small"
-                    class="m-0"
-                    stroke-color="#4f46e5"
-                    trail-color="#f1f5f9"
-                  />
-                </div>
-
-                <div class="mt-3 pt-2.5 border-t border-slate-100 dark:border-zinc-800/80 text-[10px] font-mono text-slate-400 dark:text-zinc-500">
-                  <span>{{ t('page.portal.dateLabel') }}: {{ group.date }}</span>
-                </div>
-              </Card>
-            </div>
-
-            <div v-else class="py-12 flex flex-col items-center justify-center bg-white dark:bg-zinc-900 border border-dashed border-slate-200 dark:border-zinc-800 rounded-2xl">
-              <Empty :description="t('page.portal.noMaintenanceAssigned')" />
-            </div>
-          </div>
-
-        </Spin>
       </div>
     </div>
 
-    <!-- ─── FIXED BOTTOM ACTION BAR (50% / 50% split) ─── -->
-    <div class="fixed bottom-0 left-0 right-0 h-16 bg-white/95 dark:bg-zinc-900/95 px-4 flex items-center z-30 border-t border-slate-200/80 dark:border-zinc-800/80 shadow-[0_-4px_16px_rgba(0,0,0,0.05)] backdrop-blur-md">
-      <div class="grid grid-cols-2 gap-3 w-full items-center">
-        
-        <!-- Báo cáo sự cố (50% width) -->
+    <!-- ─── CONTENT WITH SWIPE & SLIDE TRANSITION ─── -->
+    <div 
+      class="flex-1 overflow-hidden pt-4"
+      @touchstart="handleTouchStart"
+      @touchend="handleTouchEnd"
+    >
+      <Spin :spinning="loading">
+
+        <div 
+          class="flex w-[200%] transition-transform duration-300 ease-out"
+          :style="{ transform: activeTab === 'checklist' ? 'translateX(0%)' : 'translateX(-50%)' }"
+        >
+          <!-- Checklist Slide -->
+          <div class="w-1/2 px-4 shrink-0">
+            <div v-if="checklistSessions.length > 0" class="space-y-3">
+              <div
+                v-for="session in checklistSessions"
+                :key="session.id"
+                class="group flex items-center gap-3 bg-white dark:bg-zinc-900 border border-slate-100 dark:border-zinc-800 rounded-2xl px-3.5 py-3.5 cursor-pointer hover:border-indigo-200 dark:hover:border-indigo-800/60 hover:shadow-sm active:scale-[0.99] transition-all duration-150"
+                @click="goToChecklistDetail(session)"
+              >
+                <!-- Info -->
+                <div class="flex-1 min-w-0">
+                  <p class="text-sm font-semibold text-slate-800 dark:text-zinc-100 truncate m-0 leading-tight">
+                    {{ session.name || session.equipment?.name || '—' }}
+                  </p>
+                  <p class="text-[11px] text-slate-400 dark:text-zinc-500 font-mono mt-0.5 mb-0 truncate">
+                    {{ session.equipment?.code || '—' }}
+                  </p>
+                </div>
+
+                <!-- Progress ring -->
+                <div class="shrink-0 w-10 h-10 relative flex items-center justify-center">
+                  <svg class="w-10 h-10 -rotate-90" viewBox="0 0 36 36">
+                    <circle cx="18" cy="18" r="15.5" fill="none" stroke-width="2.5" class="stroke-slate-100 dark:stroke-zinc-800" />
+                    <circle cx="18" cy="18" r="15.5" fill="none" stroke-width="2.5"
+                      :stroke="getProgressColor(session)"
+                      :stroke-dasharray="`${getProgressPercent(session) * 0.974} 97.4`"
+                      stroke-linecap="round" />
+                  </svg>
+                  <span class="absolute text-[9px] font-bold text-slate-600 dark:text-zinc-400">
+                    {{ getProgressPercent(session) }}%
+                  </span>
+                </div>
+
+                <!-- Chevron -->
+                <svg class="w-3.5 h-3.5 text-slate-300 dark:text-zinc-600 shrink-0 group-hover:text-indigo-400 transition-colors" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" d="m9 18 6-6-6-6" />
+                </svg>
+              </div>
+            </div>
+
+            <div v-else class="py-16 flex flex-col items-center justify-center bg-white dark:bg-zinc-900 border border-dashed border-slate-200 dark:border-zinc-800 rounded-2xl">
+              <Empty :description="t('page.portal.noChecklistsAssigned') || 'Không có phiên kiểm tra nào hôm nay'" />
+            </div>
+          </div>
+
+          <!-- Maintenance Slide -->
+          <div class="w-1/2 px-4 shrink-0">
+            <div v-if="maintenanceSchedules.length > 0" class="space-y-3">
+              <div
+                v-for="group in maintenanceSchedules"
+                :key="group.key"
+                class="group flex items-center gap-3 bg-white dark:bg-zinc-900 border border-slate-100 dark:border-zinc-800 rounded-2xl px-3.5 py-3.5 cursor-pointer hover:border-indigo-200 dark:hover:border-indigo-800/60 hover:shadow-sm active:scale-[0.99] transition-all duration-150"
+                @click="goToMaintainPlanDetail(group)"
+              >
+                <!-- Info -->
+                <div class="flex-1 min-w-0">
+                  <p class="text-sm font-semibold text-slate-800 dark:text-zinc-100 truncate m-0 leading-tight">
+                    {{ group.plan_code }}
+                  </p>
+                  <p class="text-[11px] text-slate-400 dark:text-zinc-500 font-mono mt-0.5 mb-0 truncate">
+                    {{ group.equipment_code }}
+                    <span class="text-slate-300 dark:text-zinc-600 mx-1">·</span>
+                    {{ group.maintenance_type}}
+                  </p>
+                </div>
+
+                <!-- Progress ring -->
+                <div class="shrink-0 w-10 h-10 relative flex items-center justify-center">
+                  <svg class="w-10 h-10 -rotate-90" viewBox="0 0 36 36">
+                    <circle cx="18" cy="18" r="15.5" fill="none" stroke-width="2.5" class="stroke-slate-100 dark:stroke-zinc-800" />
+                    <circle cx="18" cy="18" r="15.5" fill="none" stroke-width="2.5"
+                      :stroke="getProgressColorForPlan(group)"
+                      :stroke-dasharray="`${getProgressPercentForPlan(group) * 0.974} 97.4`"
+                      stroke-linecap="round" />
+                  </svg>
+                  <span class="absolute text-[9px] font-bold text-slate-600 dark:text-zinc-400">
+                    {{ getProgressPercentForPlan(group) }}%
+                  </span>
+                </div>
+
+                <!-- Chevron -->
+                <svg class="w-3.5 h-3.5 text-slate-300 dark:text-zinc-600 shrink-0 group-hover:text-indigo-400 transition-colors" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" d="m9 18 6-6-6-6" />
+                </svg>
+              </div>
+            </div>
+
+            <div v-else class="py-16 flex flex-col items-center justify-center bg-white dark:bg-zinc-900 border border-dashed border-slate-200 dark:border-zinc-800 rounded-2xl">
+              <Empty :description="t('page.portal.noMaintenanceAssigned') || 'Không có kế hoạch bảo trì hôm nay'" />
+            </div>
+          </div>
+
+        </div>
+
+      </Spin>
+    </div>
+
+    <!-- ─── BOTTOM BAR ─── -->
+    <div class="fixed bottom-0 left-0 right-0 z-30 bg-white/95 dark:bg-zinc-900/95 backdrop-blur-xl border-t border-slate-200/60 dark:border-zinc-800/60">
+      <div class="px-4 pt-2.5 pb-4 grid grid-cols-2 gap-2">
+        <!-- Báo cáo sự cố -->
         <button
           type="button"
           @click="router.push('/portal/incident-report')"
-          class="h-12 w-full bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-xs border-0 rounded-xl outline-none transition-colors select-none flex items-center justify-center shadow-xs cursor-pointer"
+          class="h-11 flex flex-col items-center justify-center gap-0.5 rounded-2xl bg-indigo-50 dark:bg-indigo-950/40 border border-indigo-200/70 dark:border-indigo-800/50 text-indigo-600 dark:text-indigo-400 cursor-pointer outline-none transition-all hover:bg-indigo-100 dark:hover:bg-indigo-900/60 active:scale-95 select-none"
         >
-          {{ t('page.portal.reportIncident') }}
+          <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M12 9v3.75m-9.303 3.376c-.866 1.5.217 3.374 1.948 3.374h14.71c1.73 0 2.813-1.874 1.948-3.374L13.949 3.378c-.866-1.5-3.032-1.5-3.898 0L2.697 16.126ZM12 15.75h.007v.008H12v-.008Z" />
+          </svg>
+          <span class="text-[11px] font-bold tracking-wide">{{ t('page.portal.reportIncident') || 'Báo cáo sự cố' }}</span>
         </button>
 
-        <!-- Dừng khẩn cấp (50% width) -->
+        <!-- Dừng khẩn cấp -->
         <button
           type="button"
           @click="router.push('/portal/emergency-stop')"
-          class="h-12 w-full bg-rose-600 hover:bg-rose-700 text-white font-bold text-xs border-0 rounded-xl outline-none transition-colors select-none flex items-center justify-center shadow-xs cursor-pointer"
+          class="h-11 flex flex-col items-center justify-center gap-0.5 rounded-2xl bg-rose-50 dark:bg-rose-950/40 border border-rose-200/70 dark:border-rose-800/50 text-rose-600 dark:text-rose-400 cursor-pointer outline-none transition-all hover:bg-rose-100 dark:hover:bg-rose-900/60 active:scale-95 select-none"
         >
-          {{ t('page.portal.emergencyStop') }}
+          <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M5.25 7.5A2.25 2.25 0 0 1 7.5 5.25h9a2.25 2.25 0 0 1 2.25 2.25v9a2.25 2.25 0 0 1-2.25 2.25h-9a2.25 2.25 0 0 1-2.25-2.25v-9Z" />
+          </svg>
+          <span class="text-[11px] font-bold tracking-wide">{{ t('page.portal.emergencyStop') || 'Dừng khẩn cấp' }}</span>
         </button>
-
       </div>
     </div>
 
@@ -386,11 +443,7 @@ onMounted(() => {
 </template>
 
 <style scoped>
-.portal-container {
-  padding: 16px;
-  position: relative;
-}
-:deep(.ant-card) {
-  margin-bottom: 0 !important;
+:deep(.ant-spin-container) {
+  padding-bottom: 8px;
 }
 </style>

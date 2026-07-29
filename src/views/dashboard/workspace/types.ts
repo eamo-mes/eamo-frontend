@@ -20,6 +20,7 @@ export interface ScheduleRow extends BaseScheduleRow {
     maintenance_type?: string;
     equipment?: { code?: string; name?: string };
     maintenance_category?: { name?: string };
+    users?: Array<{ id: string; name?: string }>;
   };
   maintenance_item?: {
     name?: string;

@@ -140,7 +140,6 @@ async function handleUpdate() {
     <!-- Profile Form Card -->
     <Card class="rounded-2xl border border-slate-200/80 dark:border-zinc-800/80 bg-white/80 dark:bg-zinc-900/80 backdrop-blur-md shadow-2xs">
       <h3 class="text-sm font-bold text-slate-800 dark:text-zinc-100 mb-4 flex items-center gap-2">
-        <IconifyIcon icon="lucide:user-cog" class="text-indigo-500 text-base" />
         <span>{{ $t('page.auth.profile') }}</span>
       </h3>
 

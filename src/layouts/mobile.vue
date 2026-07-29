@@ -10,7 +10,7 @@ import {
   Avatar
 } from 'ant-design-vue';
 import { useUserStore, useAccessStore } from '@vben/stores';
-import { preferences, usePreferences, updatePreferences } from '@vben/preferences';
+import { usePreferences, updatePreferences } from '@vben/preferences';
 import { Notification } from '@vben/layouts';
 import MobileUserDropdown from '#/views/mobile/components/MobileUserDropdown.vue';
 import { VbenIconButton } from '@vben/common-ui';
@@ -164,16 +164,6 @@ const avatar = computed(() => {
   return '/avatar.png';
 });
 
-const userMenus = computed(() => [
-  {
-    handler: () => {
-      router.push({ name: 'Profile' });
-    },
-    icon: 'lucide:user',
-    text: $t('page.auth.profile') || 'Trang cá nhân',
-  },
-]);
-
 // User Actions
 async function handleLogout() {
   await authStore.logout(false);
@@ -181,7 +171,7 @@ async function handleLogout() {
 
 function handleReload() {
   isRefreshing.value = true;
-  message.loading({ content: 'Đang tải lại...', key: 'reload', duration: 0.5 });
+  message.loading({ content: t('page.portal.reloading') || 'Đang tải lại...', key: 'reload', duration: 0.5 });
   setTimeout(() => {
     isRefreshing.value = false;
     window.location.reload();
@@ -202,18 +192,10 @@ function handleNavigate(path: string) {
   router.push(path);
 }
 
-function handleBack() {
-  if (window.history.state?.back) {
-    router.back();
-  } else {
-    router.push('/portal');
-  }
-}
-
 // Search System Pages dynamically built from webAdminMenus
 const searchItems = computed(() => {
   const list: { title: string; path: string; icon?: string; category: string }[] = [
-    { title: 'Trang chủ Mobile Portal', path: '/portal', icon: 'lucide:smartphone', category: 'Mobile' }
+    { title: t('page.portal.homeTitle') || 'Trang chủ Mobile Portal', path: '/portal', icon: 'lucide:smartphone', category: 'Mobile' }
   ];
   webAdminMenus.value.forEach(menu => {
     const parentTitle = getMenuTitle(menu);
@@ -298,15 +280,6 @@ function handleNotificationClick(item: NotificationItem) {
       <!-- Left: Back Button & Open Sidebar Drawer Button -->
       <div class="flex items-center gap-1">
         <VbenIconButton 
-          v-if="route.path !== '/portal'"
-          class="text-foreground"
-          tooltip="Quay lại"
-          @click="handleBack"
-        >
-          <IconifyIcon icon="lucide:arrow-left" class="size-4" />
-        </VbenIconButton>
-
-        <VbenIconButton 
           class="text-foreground"
           @click="drawerVisible = true"
         >
@@ -375,7 +348,6 @@ function handleNotificationClick(item: NotificationItem) {
           <Avatar src="/avatar.png" :size="42" class="border border-indigo-400/40" />
           <div class="flex flex-col min-w-0">
             <span class="font-bold text-sm text-slate-100 truncate">{{ userStore.userInfo?.realName || userStore.userInfo?.username }}</span>
-            <span class="text-[11px] text-slate-400 truncate">{{ userStore.userInfo?.roles?.[0] || 'User' }}</span>
           </div>
         </div>
 
@@ -400,7 +372,7 @@ function handleNotificationClick(item: NotificationItem) {
           <!-- 2. Equipment -->
           <button
             @click="handleNavigate('/portal/equipment')"
-            :class="[route.path.startsWith('/portal/equipment') ? 'bg-amber-600 text-white font-bold shadow-xs' : 'text-slate-300 hover:bg-slate-800/80']"
+            :class="[route.path.startsWith('/portal/equipment') ? 'bg-indigo-600 text-white font-bold shadow-xs' : 'text-slate-300 hover:bg-slate-800/80']"
             class="w-full flex items-center gap-3 px-3.5 py-2.5 rounded-xl text-xs transition-all cursor-pointer border-0 text-left"
           >
             <IconifyIcon icon="lucide:wrench" class="text-base flex-shrink-0" />
@@ -410,7 +382,7 @@ function handleNotificationClick(item: NotificationItem) {
           <!-- 3. Notifications (Dashboard) -->
           <button
             @click="handleNavigate('/portal/dashboard')"
-            :class="[route.path.startsWith('/portal/dashboard') ? 'bg-purple-600 text-white font-bold shadow-xs' : 'text-slate-300 hover:bg-slate-800/80']"
+            :class="[route.path.startsWith('/portal/dashboard') ? 'bg-indigo-600 text-white font-bold shadow-xs' : 'text-slate-300 hover:bg-slate-800/80']"
             class="w-full flex items-center gap-3 px-3.5 py-2.5 rounded-xl text-xs transition-all cursor-pointer border-0 text-left"
           >
             <IconifyIcon icon="lucide:bell" class="text-base flex-shrink-0" />
@@ -420,7 +392,7 @@ function handleNotificationClick(item: NotificationItem) {
           <!-- 4. Checklist -->
           <button
             @click="handleNavigate('/portal/checklist')"
-            :class="[route.path.startsWith('/portal/checklist') ? 'bg-blue-600 text-white font-bold shadow-xs' : 'text-slate-300 hover:bg-slate-800/80']"
+            :class="[route.path.startsWith('/portal/checklist') ? 'bg-indigo-600 text-white font-bold shadow-xs' : 'text-slate-300 hover:bg-slate-800/80']"
             class="w-full flex items-center gap-3 px-3.5 py-2.5 rounded-xl text-xs transition-all cursor-pointer border-0 text-left"
           >
             <IconifyIcon icon="lucide:clipboard-check" class="text-base flex-shrink-0" />
@@ -430,7 +402,7 @@ function handleNotificationClick(item: NotificationItem) {
           <!-- 5. Maintenance Plans -->
           <button
             @click="handleNavigate('/portal/maintain-plan')"
-            :class="[route.path.startsWith('/portal/maintain-plan') ? 'bg-emerald-600 text-white font-bold shadow-xs' : 'text-slate-300 hover:bg-slate-800/80']"
+            :class="[route.path.startsWith('/portal/maintain-plan') ? 'bg-indigo-600 text-white font-bold shadow-xs' : 'text-slate-300 hover:bg-slate-800/80']"
             class="w-full flex items-center gap-3 px-3.5 py-2.5 rounded-xl text-xs transition-all cursor-pointer border-0 text-left"
           >
             <IconifyIcon icon="lucide:calendar-clock" class="text-base flex-shrink-0" />
@@ -549,7 +521,7 @@ function handleNotificationClick(item: NotificationItem) {
       <div class="py-2">
         <Input 
           v-model:value="searchQuery" 
-          placeholder="Tìm kiếm trang, thiết bị, bài kiểm tra..." 
+          :placeholder="t('page.portal.searchAllPlaceholder') || 'Tìm kiếm trang, thiết bị...'" 
           allow-clear 
           autofocus
           class="rounded-xl py-2 mb-4"

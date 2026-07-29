@@ -444,7 +444,6 @@ onMounted(() => {
                   class="rounded hover:border-primary hover:text-primary flex items-center gap-1"
                   @click="openQrModal(record as EquipmentItem)"
                 >
-                  <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-qr-code"><rect width="5" height="5" x="3" y="3" rx="1"/><rect width="5" height="5" x="16" y="3" rx="1"/><rect width="5" height="5" x="3" y="16" rx="1"/><path d="M21 16V21H16"/><path d="M21 12H21.01"/><path d="M12 21H12.01"/><path d="M12 12H12.01"/><path d="M16 16H16.01"/><path d="M16 12H16.01"/><path d="M12 16H12.01"/></svg>
                   {{ $t('page.equipment.btnQrCode') }}
                 </Button>
                 <Button

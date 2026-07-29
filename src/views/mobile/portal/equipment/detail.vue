@@ -178,7 +178,7 @@ async function loadDailyChecklist(equipmentId: string) {
       params: { equipment_id: equipmentId },
     });
     dailyChecklistData.value = res.data?.data ?? res.data ?? null;
-  } catch (err: any) {
+  } catch (err: unknown) {
     console.error('loadDailyChecklist error:', err);
     dailyChecklistData.value = null;
   } finally {
@@ -213,10 +213,11 @@ async function loadEquipmentDetails() {
     } else {
       fetchError.value = 'Thiết bị không tồn tại trong hệ thống.';
     }
-  } catch (err: any) {
+  } catch (err: unknown) {
     console.error('loadEquipmentDetails error:', err);
-    errorStatus.value = err?.response?.status || 500;
-    fetchError.value = err?.response?.data?.message || 'Không thể tải thông tin chi tiết thiết bị.';
+    const errTyped = err as { response?: { status?: number; data?: { message?: string } } };
+    errorStatus.value = errTyped?.response?.status || 500;
+    fetchError.value = errTyped?.response?.data?.message || 'Không thể tải thông tin chi tiết thiết bị.';
   } finally {
     loading.value = false;
   }
@@ -272,22 +273,19 @@ onMounted(() => {
 </script>
 
 <template>
-  <div class="p-4 sm:p-6 min-h-[85vh] bg-slate-50 dark:bg-zinc-950/40">
-    <!-- ─── HEADER / ACTION BAR ─── -->
-    <div class="mb-5 flex items-center justify-between">
-      <div class="flex items-center gap-2">
-        <Button
-          type="default"
-          size="small"
-          class="flex items-center justify-center p-1 rounded-lg"
-          @click="handleBack"
-        >
-          <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-chevron-left"><path d="m15 18-6-6 6-6"/></svg>
-        </Button>
-        <h1 class="text-base font-bold text-slate-800 dark:text-zinc-200 m-0">
-          {{ t('page.portal.equipmentDetailTitle') }}
-        </h1>
-      </div>
+  <div class="min-h-[85vh] bg-slate-50 dark:bg-zinc-950/40 pb-6">
+    <!-- ─── HEADER ─── -->
+    <div class="bg-white dark:bg-zinc-900 border-b border-slate-200/70 dark:border-zinc-800 px-4 pt-4 pb-3 flex items-center gap-3 mb-4">
+      <button
+        type="button"
+        class="h-8 w-8 shrink-0 flex items-center justify-center rounded-xl bg-slate-100/80 dark:bg-zinc-800/80 hover:bg-slate-200 dark:hover:bg-zinc-700 text-slate-600 dark:text-zinc-300 transition-colors border-0 cursor-pointer outline-none"
+        @click="handleBack"
+      >
+        <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="m15 18-6-6 6-6"/></svg>
+      </button>
+      <h1 class="text-sm font-bold text-slate-800 dark:text-zinc-200 m-0 flex-1 truncate">
+        {{ t('page.portal.equipmentDetailTitle') }}
+      </h1>
     </div>
 
     <!-- ─── LOADING STATE ─── -->
@@ -295,8 +293,8 @@ onMounted(() => {
       <Spin size="large" />
     </div>
 
-    <!-- ─── EXCEPTION/ERROR STATE (Does not exist or soft-deleted) ─── -->
-    <div v-else-if="fetchError" class="py-12 bg-white dark:bg-zinc-900 rounded-2xl shadow-xs border border-slate-200 dark:border-zinc-800/80 px-4 text-center">
+    <!-- ─── EXCEPTION/ERROR STATE ─── -->
+    <div v-else-if="fetchError" class="py-12 mx-4 bg-white dark:bg-zinc-900 rounded-2xl shadow-xs border border-slate-200 dark:border-zinc-800/80 px-4 text-center">
       <Result
         status="warning"
         :title="t('page.portal.equipmentError')"
@@ -310,8 +308,8 @@ onMounted(() => {
       </Result>
     </div>
 
-    <!-- ─── DETAILS VIEW (When Equipment is Loaded) ─── -->
-    <div v-else-if="activeEquipment" class="flex flex-col gap-5 mb-6">
+    <!-- ─── DETAILS VIEW ─── -->
+    <div v-else-if="activeEquipment" class="flex flex-col gap-5 mb-6 px-4">
       <!-- Card 1: General Info Card -->
       <Card class="rounded-2xl shadow-xs border-slate-200/80 dark:border-zinc-800/80 bg-white dark:bg-zinc-900/60 backdrop-blur-md p-0 overflow-hidden">
         <!-- Image Header (If any images available) -->
@@ -386,7 +384,6 @@ onMounted(() => {
       <!-- Card 2: Operating & Maintenance Status Card -->
       <Card class="rounded-2xl shadow-xs border-slate-200/80 dark:border-zinc-800/80 bg-white dark:bg-zinc-900/60 backdrop-blur-md p-4 overflow-hidden">
         <h3 class="text-sm font-bold text-slate-800 dark:text-zinc-200 mb-3 flex items-center gap-1.5">
-          <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="text-indigo-600 dark:text-indigo-400"><circle cx="12" cy="12" r="10"/><path d="M12 6v6l4 2"/></svg>
           {{ t('page.portal.operatingMaintenanceTitle') }}
         </h3>
         
@@ -435,7 +432,6 @@ onMounted(() => {
       <!-- ─── TODAY'S CHECKLIST SECTION ─── -->
       <div class="border border-slate-200/80 dark:border-zinc-800/80 rounded-2xl p-4 bg-white dark:bg-zinc-900/60 backdrop-blur-md shadow-xs">
         <h3 class="text-sm font-bold text-slate-800 dark:text-zinc-200 mb-3 flex items-center gap-1.5">
-          <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="text-indigo-600 dark:text-indigo-400"><rect width="8" height="4" x="8" y="2" rx="1" ry="1"/><path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2"/><path d="m9 14 2 2 4-4"/></svg>
           {{ t('page.portal.todayChecklistTitle') }}
         </h3>
         
