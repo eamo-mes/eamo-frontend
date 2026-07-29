@@ -46,6 +46,7 @@
     "ant-design-vue": "catalog:",
     "axios": "catalog:",
     "dayjs": "catalog:",
+    "html5-qrcode": "^2.3.8",
     "pinia": "catalog:",
     "vue": "catalog:",
     "vue-router": "catalog:",

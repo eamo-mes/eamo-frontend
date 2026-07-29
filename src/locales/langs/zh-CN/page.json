@@ -837,6 +837,15 @@
     "operatingMaintenanceTitle": "Vận hành & Bảo trì",
     "generalInfoTitle": "Thông tin chung",
     "maintenanceInterval": "Chu kỳ bảo trì",
-    "operatingHours": "Thời gian đã chạy"
+    "operatingHours": "Thời gian đã chạy",
+    "qrDecodeSuccess": "Giải mã QR thành công!",
+    "sendingImageToDecode": "Đang gửi ảnh giải mã...",
+    "pressButtonToCapture": "Nhấn nút bên dưới để chụp ảnh QR",
+    "systemWillOpenCamera": "Hệ thống sẽ mở camera chụp ảnh thiết bị và tự tìm kiếm",
+    "captureAndScanQr": "Chụp ảnh quét mã QR",
+    "unableToDecodeQr": "Không thể giải mã QR từ ảnh chụp.",
+    "searchPlaceholder": "Tìm kiếm mã hoặc tên thiết bị...",
+    "noEquipmentFound": "Không tìm thấy thiết bị nào",
+    "immediateMaintenanceRequired": "Cần bảo trì ngay lập tức (Đã quá hạn)!"
   }
 }

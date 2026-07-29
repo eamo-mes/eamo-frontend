@@ -844,6 +844,15 @@
     "operatingMaintenanceTitle": "Operating & Maintenance",
     "generalInfoTitle": "General Information",
     "maintenanceInterval": "Maintenance Interval",
-    "operatingHours": "Operating Hours"
+    "operatingHours": "Operating Hours",
+    "qrDecodeSuccess": "QR code decoded successfully!",
+    "sendingImageToDecode": "Sending image for decoding...",
+    "pressButtonToCapture": "Press the button below to capture QR",
+    "systemWillOpenCamera": "System will open camera to capture equipment and search automatically",
+    "captureAndScanQr": "Capture & Scan QR Code",
+    "unableToDecodeQr": "Unable to decode QR from captured image.",
+    "searchPlaceholder": "Search by code or equipment name...",
+    "noEquipmentFound": "No equipment found",
+    "immediateMaintenanceRequired": "Immediate maintenance required (Overdue)!"
   }
 }

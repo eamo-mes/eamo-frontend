@@ -82,7 +82,7 @@ function normalizeDateTime(value: string | null | undefined): string {
   }
 
   const parsed = dayjs(value);
-  return parsed.isValid() ? parsed.format('YYYY-MM-DD HH:mm') : '';
+  return parsed.isValid() ? parsed.format('YYYY-MM-DD') : '';
 }
 
 async function loadEquipments() {
@@ -280,7 +280,7 @@ onMounted(() => {
     editId.value = null;
     const now = new Date();
     const pad = (n: number) => n.toString().padStart(2, '0');
-    formState.value.session_date = `${now.getFullYear()}-${pad(now.getMonth() + 1)}-${pad(now.getDate())} ${pad(now.getHours())}:${pad(now.getMinutes())}`;
+    formState.value.session_date = `${now.getFullYear()}-${pad(now.getMonth() + 1)}-${pad(now.getDate())}`;
     formState.value.user_ids = userStore.userInfo?.userId ? [userStore.userInfo.userId] : [];
   }
 });
@@ -358,9 +358,8 @@ onMounted(() => {
                 <FormItem :label="$t('page.ops.colDate')" name="session_date" class="col-span-1">
                   <DatePicker
                     v-model:value="formState.session_date"
-                    show-time
-                    value-format="YYYY-MM-DD HH:mm"
-                    format="YYYY-MM-DD HH:mm"
+                    value-format="YYYY-MM-DD"
+                    format="YYYY-MM-DD"
                     class="w-full"
                     :placeholder="$t('page.ops.placeholderDate')"
                   />
