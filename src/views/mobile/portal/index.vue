@@ -285,12 +285,8 @@ onMounted(() => {
                   />
                 </div>
 
-                <div class="flex items-center justify-between gap-2 mt-3 pt-2.5 border-t border-slate-100 dark:border-zinc-800/80 text-[10px] font-mono text-slate-400 dark:text-zinc-500">
+                <div class="mt-3 pt-2.5 border-t border-slate-100 dark:border-zinc-800/80 text-[10px] font-mono text-slate-400 dark:text-zinc-500">
                   <span>{{ t('page.portal.dateLabel') }}: {{ session.session_date || '—' }}</span>
-                  <span class="text-indigo-600 dark:text-indigo-400 font-bold flex items-center gap-0.5">
-                    Chi tiết
-                    <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="m9 18 6-6-6-6"/></svg>
-                  </span>
                 </div>
               </Card>
             </div>
@@ -346,12 +342,8 @@ onMounted(() => {
                   />
                 </div>
 
-                <div class="flex items-center justify-between gap-2 mt-3 pt-2.5 border-t border-slate-100 dark:border-zinc-800/80 text-[10px] font-mono text-slate-400 dark:text-zinc-500">
+                <div class="mt-3 pt-2.5 border-t border-slate-100 dark:border-zinc-800/80 text-[10px] font-mono text-slate-400 dark:text-zinc-500">
                   <span>{{ t('page.portal.dateLabel') }}: {{ group.date }}</span>
-                  <span class="text-indigo-600 dark:text-indigo-400 font-bold flex items-center gap-0.5">
-                    Chi tiết
-                    <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="m9 18 6-6-6-6"/></svg>
-                  </span>
                 </div>
               </Card>
             </div>
@@ -365,7 +357,7 @@ onMounted(() => {
       </div>
     </div>
 
-    <!-- ─── FIXED BOTTOM ACTION BAR (50% / 50% split, NO QR button) ─── -->
+    <!-- ─── FIXED BOTTOM ACTION BAR (50% / 50% split) ─── -->
     <div class="fixed bottom-0 left-0 right-0 h-16 bg-white/95 dark:bg-zinc-900/95 px-4 flex items-center z-30 border-t border-slate-200/80 dark:border-zinc-800/80 shadow-[0_-4px_16px_rgba(0,0,0,0.05)] backdrop-blur-md">
       <div class="grid grid-cols-2 gap-3 w-full items-center">
         
