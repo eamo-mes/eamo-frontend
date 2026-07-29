@@ -1,6 +1,6 @@
 <script lang="ts" setup>
 import { useRouter } from 'vue-router';
-import { Button, Card, Empty } from 'ant-design-vue';
+import { Button } from 'ant-design-vue';
 import { useI18n } from '@vben/locales';
 
 defineOptions({ name: 'MobilePortalIncidentReport' });
@@ -29,9 +29,7 @@ function handleBack() {
       </h1>
     </div>
 
-    <!-- Empty/Mockup Body -->
-    <Card class="rounded-2xl border-slate-200/80 dark:border-zinc-800/80 bg-white dark:bg-zinc-900/60 backdrop-blur-md p-6 text-center shadow-3xs">
-      <Empty :description="t('page.portal.incidentReportMock')" />
-    </Card>
+    <!-- Empty blank area as requested -->
+    <div class="w-full h-[65vh] bg-white dark:bg-zinc-900/60 border border-slate-200/80 dark:border-zinc-800/80 rounded-2xl shadow-3xs"></div>
   </div>
 </template>

@@ -17,9 +17,9 @@ function handleEmergencyTrigger() {
 </script>
 
 <template>
-  <div class="p-4 min-h-[85vh] bg-slate-50 dark:bg-zinc-950/40 pb-20 flex flex-col">
+  <div class="p-4 h-[75vh] bg-slate-50 dark:bg-zinc-950/40 flex flex-col">
     <!-- Header -->
-    <div class="mb-5 flex items-center gap-2">
+    <div class="mb-5 flex items-center gap-2 shrink-0">
       <Button
         type="default"
         size="small"
@@ -33,14 +33,14 @@ function handleEmergencyTrigger() {
       </h1>
     </div>
 
-    <!-- Centered Circular Button Area -->
-    <div class="flex-1 flex flex-col items-center justify-center py-10">
+    <!-- Centered Circular Button Area (Perfectly Centered vertically and horizontally) -->
+    <div class="flex-1 flex flex-col items-center justify-center">
       <div class="text-center mb-6">
         <p class="text-xs text-red-500 font-bold uppercase tracking-widest">{{ t('page.portal.emergencySystem') }}</p>
         <p class="text-[11px] text-slate-400 dark:text-zinc-500 mt-1 max-w-[240px]">{{ t('page.portal.emergencyInstruction') }}</p>
       </div>
 
-      <!-- Large Circular Button -->
+      <!-- Large Circular Button in the center -->
       <button
         type="button"
         @click="handleEmergencyTrigger"
