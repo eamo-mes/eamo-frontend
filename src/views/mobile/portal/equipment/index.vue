@@ -83,7 +83,7 @@ function selectEquipment(id: string) {
   router.push(`/portal/equipment/${id}`);
 }
 
-// ─── Live Camera Control (Starts ONLY on user click) ───
+// ─── Live Camera Control ───
 async function startCamera() {
   cameraError.value = '';
   try {
@@ -221,7 +221,6 @@ watch(activeTabKey, (newVal) => {
 
 onMounted(() => {
   loadEquipments();
-  // DO NOT auto start camera on mount — wait for explicit user click!
 });
 
 onUnmounted(() => {
@@ -312,6 +311,18 @@ onUnmounted(() => {
                 {{ uploading ? t('page.portal.sendingImageToDecode') : (isCameraStreaming ? t('page.portal.captureAndScanQr') : 'Mở Camera để quét mã') }}
               </Button>
 
+              <!-- Dedicated Turn Off Camera Button when streaming -->
+              <Button
+                v-if="isCameraStreaming"
+                type="default"
+                block
+                size="middle"
+                class="rounded-xl font-bold text-xs text-red-500 border-red-200 dark:border-red-900/40 hover:bg-red-50 dark:hover:bg-red-950/20"
+                @click="stopCamera"
+              >
+                Tắt Camera
+              </Button>
+
               <Button 
                 type="default" 
                 block 
@@ -343,7 +354,7 @@ onUnmounted(() => {
 
             <div v-else-if="filteredEquipments.length > 0" class="space-y-2.5 max-h-[50vh] overflow-y-auto pr-1 scrollbar-thin">
               <div
-                v-for="eq in filteredEquipments"
+                v-for="eq" in filteredEquipments"
                 :key="eq.id"
                 class="flex items-center justify-between p-3.5 bg-slate-50 hover:bg-slate-100/80 dark:bg-zinc-950/30 dark:hover:bg-zinc-900/40 border border-slate-100 dark:border-zinc-800/40 rounded-xl cursor-pointer transition-all duration-200"
                 @click="selectEquipment(eq.id)"
