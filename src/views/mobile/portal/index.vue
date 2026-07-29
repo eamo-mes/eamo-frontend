@@ -153,6 +153,19 @@ function getSessionStatusTag(session: any) {
   return allPassed ? { color: 'success', label: 'Đạt' } : { color: 'error', label: 'Không đạt' };
 }
 
+// Check checklist session status
+function getSessionStatus(session: any): 'pass' | 'fail' | 'pending' {
+  if (!session.details || session.details.length === 0) return 'pending';
+  const completedLogs = session.details.map((d: any) => {
+    const logs = d.logs || [];
+    return logs.filter((log: any) => log.status === 'completed').sort((l: any, r: any) => (l.checked_at ?? '').localeCompare(r.checked_at ?? '')).at(-1);
+  });
+  const allCompleted = completedLogs.every((log: any) => log !== undefined);
+  if (!allCompleted) return 'pending';
+  const allPassed = completedLogs.every((log: any) => log?.result === 'pass');
+  return allPassed ? 'pass' : 'fail';
+}
+
 function getPlanStatusTag(group: any) {
   if (group.status === 'pass') {
     return { color: 'success', label: 'Đạt' };
@@ -178,18 +191,6 @@ function getCompletedCount(session: any): number {
     const logs = d.logs || [];
     return logs.some((log: any) => log.status === 'completed');
   }).length;
-}
-
-function getSessionStatus(session: any): 'pass' | 'fail' | 'pending' {
-  if (!session.details || session.details.length === 0) return 'pending';
-  const completedLogs = session.details.map((d: any) => {
-    const logs = d.logs || [];
-    return logs.filter((log: any) => log.status === 'completed').sort((l: any, r: any) => (l.checked_at ?? '').localeCompare(r.checked_at ?? '')).at(-1);
-  });
-  const allCompleted = completedLogs.every((log: any) => log !== undefined);
-  if (!allCompleted) return 'pending';
-  const allPassed = completedLogs.every((log: any) => log?.result === 'pass');
-  return allPassed ? 'pass' : 'fail';
 }
 
 async function loadData() {
@@ -334,39 +335,41 @@ onMounted(() => {
     </div>
 
     <!-- ─── FIXED BOTTOM ACTION BAR ─── -->
-    <div class="fixed bottom-0 left-0 right-0 h-16 bg-slate-50 dark:bg-zinc-950 px-4 py-2 flex items-center justify-between z-30 border-t border-slate-200/80 dark:border-zinc-800/80">
-      
-      <!-- Báo cáo sự cố (Bottom Left) -->
-      <button
-        type="button"
-        @click="router.push('/portal/incident-report')"
-        class="h-12 w-[42%] bg-[#4172cd] hover:bg-blue-700 text-white font-bold text-xs border-0 cursor-pointer outline-none transition-colors select-none"
-      >
-        {{ t('page.portal.reportIncident') }}
-      </button>
-
-      <!-- Center Floating Scan Button (V logo) -->
-      <div class="w-[16%] flex justify-center items-center">
+    <div class="fixed bottom-0 left-0 right-0 h-20 bg-slate-50 dark:bg-zinc-950 px-4 flex items-center z-30 border-t border-slate-200/80 dark:border-zinc-800/80 shadow-[0_-4px_16px_rgba(0,0,0,0.04)]">
+      <div class="grid grid-cols-3 gap-3 w-full items-center">
+        
+        <!-- Báo cáo sự cố -->
         <button
           type="button"
-          @click="router.push('/portal/equipment')"
-          class="w-11 h-11 bg-black hover:bg-zinc-900 active:scale-95 text-white rounded-full flex items-center justify-center border-0 cursor-pointer outline-none transition-all duration-200"
-          style="margin-bottom: -15px;"
+          @click="router.push('/portal/incident-report')"
+          class="h-14 w-full bg-[#4172cd] hover:bg-blue-700 text-white font-bold text-xs border-0 cursor-pointer outline-none transition-colors select-none flex items-center justify-center"
         >
-          <!-- V logo icon -->
-          <span class="text-white font-black text-lg select-none font-sans">V</span>
+          {{ t('page.portal.reportIncident') }}
         </button>
+
+        <!-- Center Scan Button -->
+        <div class="flex justify-center items-center">
+          <button
+            type="button"
+            @click="router.push('/portal/equipment')"
+            class="w-14 h-14 bg-black hover:bg-zinc-900 active:scale-95 text-white rounded-full flex items-center justify-center border-0 cursor-pointer outline-none transition-all duration-200"
+            style="margin-bottom: -20px;"
+          >
+            <!-- V logo icon -->
+            <span class="text-white font-black text-xl select-none font-sans">V</span>
+          </button>
+        </div>
+
+        <!-- Dừng khẩn cấp -->
+        <button
+          type="button"
+          @click="router.push('/portal/emergency-stop')"
+          class="h-14 w-full bg-[#4172cd] hover:bg-blue-700 text-white font-bold text-xs border-0 cursor-pointer outline-none transition-colors select-none flex items-center justify-center"
+        >
+          {{ t('page.portal.emergencyStop') }}
+        </button>
+
       </div>
-
-      <!-- Dừng khẩn cấp (Bottom Right) -->
-      <button
-        type="button"
-        @click="router.push('/portal/emergency-stop')"
-        class="h-12 w-[42%] bg-[#4172cd] hover:bg-blue-700 text-white font-bold text-xs border-0 cursor-pointer outline-none transition-colors select-none"
-      >
-        {{ t('page.portal.emergencyStop') }}
-      </button>
-
     </div>
 
   </div>
