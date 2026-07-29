@@ -129,6 +129,17 @@ const coreRoutes: RouteRecordRaw[] = [
         },
       },
       {
+        name: 'MobilePortalEquipmentDetail',
+        path: '/portal/equipment/:id',
+        component: () => import('#/views/mobile/portal/equipment/detail.vue'),
+        meta: {
+          title: 'Chi tiết thiết bị',
+          ignoreAccess: true,
+          hideInMenu: true,
+          hideInTab: true,
+        },
+      },
+      {
         name: 'MobilePortalDashboard',
         path: '/portal/dashboard',
         component: () => import('#/views/mobile/portal/dashboard/index.vue'),
