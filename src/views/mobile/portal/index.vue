@@ -216,7 +216,7 @@ onMounted(() => {
             :class="[activeTab === 'checklist' ? 'bg-[#2f55a4] text-white font-bold' : 'text-white/80 font-medium hover:text-white']"
             class="flex-1 py-3 text-xs text-center border-0 cursor-pointer outline-none transition-all"
           >
-            Checklist ({{ myChecklistSessions.length }})
+            {{ t('page.portal.checklistTitle') }} ({{ myChecklistSessions.length }})
           </button>
           <button
             type="button"
@@ -224,12 +224,12 @@ onMounted(() => {
             :class="[activeTab === 'maintenance' ? 'bg-[#2f55a4] text-white font-bold' : 'text-white/80 font-medium hover:text-white']"
             class="flex-1 py-3 text-xs text-center border-0 cursor-pointer outline-none transition-all"
           >
-            Kế hoạch bảo trì ({{ myMaintenancePlans.length }})
+            {{ t('page.portal.maintenanceTitle') }} ({{ myMaintenancePlans.length }})
           </button>
         </div>
       </div>
 
-      <!-- ─── MIDDLE CONTENT AREA: SCROLLABLE LIST (Notification List style) ─── -->
+      <!-- ─── MIDDLE CONTENT AREA: SCROLLABLE LIST ─── -->
       <div class="flex-1 overflow-y-auto pb-4">
         <Spin :spinning="loading">
           
@@ -251,13 +251,13 @@ onMounted(() => {
                 <!-- Content -->
                 <div class="flex-1 min-w-0 pl-2">
                   <h3 class="text-xs font-bold text-slate-800 dark:text-zinc-200 truncate m-0">
-                    {{ session.name || session.equipment?.name || 'Phiên kiểm tra' }}
+                    {{ session.name || session.equipment?.name || t('page.portal.cellButtonLabel') }}
                   </h3>
                   <p class="text-[11px] text-slate-500 dark:text-zinc-400 mt-1 mb-0.5 line-clamp-1">
-                    Mã: {{ session.equipment?.code || '—' }} | Chu kỳ: {{ getCycleText(session.cycle_type) }} | Hạng mục: {{ getCompletedCount(session) }}/{{ session.details?.length || 0 }}
+                    {{ t('page.portal.codeLabel') }}: {{ session.equipment?.code || '—' }} | {{ t('page.portal.cycleLabel') }}: {{ getCycleText(session.cycle_type) }} | {{ t('page.portal.itemsLabel') }}: {{ getCompletedCount(session) }}/{{ session.details?.length || 0 }}
                   </p>
                   <span class="text-[10px] text-slate-400 dark:text-zinc-500 font-mono block">
-                    Ngày: {{ session.session_date || '—' }}
+                    {{ t('page.portal.dateLabel') }}: {{ session.session_date || '—' }}
                   </span>
                 </div>
 
@@ -270,14 +270,14 @@ onMounted(() => {
                     type="button"
                     class="h-7 px-3 bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-[10px] border-0 rounded-lg cursor-pointer outline-none transition-colors"
                   >
-                    Bắt đầu
+                    {{ t('page.portal.btnStart') }}
                   </button>
                 </div>
               </div>
             </div>
 
             <div v-else class="py-16 flex flex-col items-center justify-center bg-white dark:bg-zinc-900 border border-dashed border-slate-200 dark:border-zinc-800 rounded-none text-center px-4">
-              <Empty description="Không có phiên kiểm tra nào được giao cho bạn." />
+              <Empty :description="t('page.portal.noChecklistsAssigned')" />
             </div>
           </div>
 
@@ -302,10 +302,10 @@ onMounted(() => {
                     {{ group.plan_code }}
                   </h3>
                   <p class="text-[11px] text-slate-500 dark:text-zinc-400 mt-1 mb-0.5 line-clamp-1">
-                    Thiết bị: {{ group.equipment_code }} | Loại: {{ group.maintenance_type || 'Định kỳ' }} | Hạng mục: {{ group.completed_items }}/{{ group.total_items }}
+                    {{ t('page.portal.equipmentLabel') }}: {{ group.equipment_code }} | {{ t('page.portal.typeLabel') }}: {{ group.maintenance_type || t('page.dashboard.normal') }} | {{ t('page.portal.itemsLabel') }}: {{ group.completed_items }}/{{ group.total_items }}
                   </p>
                   <span class="text-[10px] text-slate-400 dark:text-zinc-500 font-mono block">
-                    Ngày: {{ group.date }}
+                    {{ t('page.portal.dateLabel') }}: {{ group.date }}
                   </span>
                 </div>
 
@@ -318,14 +318,14 @@ onMounted(() => {
                     type="button"
                     class="h-7 px-3 bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-[10px] border-0 rounded-lg cursor-pointer outline-none transition-colors"
                   >
-                    Thực hiện
+                    {{ t('page.portal.btnExecute') }}
                   </button>
                 </div>
               </div>
             </div>
 
             <div v-else class="py-16 flex flex-col items-center justify-center bg-white dark:bg-zinc-900 border border-dashed border-slate-200 dark:border-zinc-800 rounded-none text-center px-4">
-              <Empty description="Không có kế hoạch bảo trì nào được giao cho bạn." />
+              <Empty :description="t('page.portal.noMaintenanceAssigned')" />
             </div>
           </div>
 
@@ -342,7 +342,7 @@ onMounted(() => {
         @click="router.push('/portal/incident-report')"
         class="h-12 w-[42%] bg-[#4172cd] hover:bg-blue-700 text-white font-bold text-xs border-0 cursor-pointer outline-none transition-colors select-none"
       >
-        Báo cáo sự cố
+        {{ t('page.portal.reportIncident') }}
       </button>
 
       <!-- Center Floating Scan Button (V logo) -->
@@ -364,7 +364,7 @@ onMounted(() => {
         @click="router.push('/portal/emergency-stop')"
         class="h-12 w-[42%] bg-[#4172cd] hover:bg-blue-700 text-white font-bold text-xs border-0 cursor-pointer outline-none transition-colors select-none"
       >
-        Dừng khẩn cấp
+        {{ t('page.portal.emergencyStop') }}
       </button>
 
     </div>

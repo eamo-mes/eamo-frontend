@@ -1,16 +1,18 @@
 <script lang="ts" setup>
 import { useRouter } from 'vue-router';
 import { Button, message } from 'ant-design-vue';
+import { useI18n } from '@vben/locales';
 
 defineOptions({ name: 'MobilePortalEmergencyStop' });
 const router = useRouter();
+const { t } = useI18n();
 
 function handleBack() {
   router.push('/portal');
 }
 
 function handleEmergencyTrigger() {
-  message.error('ĐÃ KÍCH HOẠT DỪNG KHẨN CẤP TOÀN HỆ THỐNG!');
+  message.error(t('page.portal.systemAlertEmergency'));
 }
 </script>
 
@@ -27,15 +29,15 @@ function handleEmergencyTrigger() {
         <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-chevron-left"><path d="m15 18-6-6 6-6"/></svg>
       </Button>
       <h1 class="text-base font-bold text-slate-800 dark:text-zinc-200 m-0">
-        Dừng khẩn cấp
+        {{ t('page.portal.emergencyStopTitle') }}
       </h1>
     </div>
 
     <!-- Centered Circular Button Area -->
     <div class="flex-1 flex flex-col items-center justify-center py-10">
       <div class="text-center mb-6">
-        <p class="text-xs text-red-500 font-bold uppercase tracking-widest">Emergency System</p>
-        <p class="text-[11px] text-slate-400 dark:text-zinc-500 mt-1 max-w-[240px]">Nhấn nút tròn ở giữa để gửi tín hiệu dừng khẩn cấp cho thiết bị</p>
+        <p class="text-xs text-red-500 font-bold uppercase tracking-widest">{{ t('page.portal.emergencySystem') }}</p>
+        <p class="text-[11px] text-slate-400 dark:text-zinc-500 mt-1 max-w-[240px]">{{ t('page.portal.emergencyInstruction') }}</p>
       </div>
 
       <!-- Large Circular Button -->
@@ -46,8 +48,8 @@ function handleEmergencyTrigger() {
       >
         <!-- Warning Icon -->
         <svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-octagon-alert mb-1 animate-pulse"><polygon points="7.86 2 16.14 2 22 7.86 22 16.14 16.14 22 7.86 22 2 16.14 2 7.86 7.86 2"/><line x1="12" x2="12" y1="8" y2="12"/><line x1="12" x2="12.01" y1="16" y2="16"/></svg>
-        <span>Dừng</span>
-        <span>Khẩn Cấp</span>
+        <span>{{ t('page.portal.emergencyBtnLabel') }}</span>
+        <span>{{ t('page.portal.emergencyBtnSub') }}</span>
       </button>
     </div>
   </div>
