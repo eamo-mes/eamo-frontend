@@ -347,12 +347,19 @@ onMounted(async () => {
       </Button>
 
       <div class="ml-auto flex items-center gap-2">
-        <Button type="default" @click="toggleCharts" :class="{ 'border-[#1890ff] text-[#1890ff]': showCharts }">
+        <Button
+          type="default"
+          @click="toggleCharts"
+          :class="[
+            'dark:text-zinc-100 dark:border-zinc-700 dark:hover:text-white',
+            showCharts ? 'border-[#1890ff] text-[#1890ff] dark:border-indigo-500 dark:text-indigo-400' : ''
+          ]"
+        >
           {{ showCharts ? $t('page.ops.btnHideCharts') : $t('page.ops.btnShowCharts') }}
         </Button>
         <Button
           type="primary"
-          class="bg-[#1890ff] hover:bg-[#40a9ff] border-[#1890ff] rounded-md font-medium text-white h-full"
+          class="bg-[#1890ff] hover:bg-[#40a9ff] dark:bg-indigo-600 dark:hover:bg-indigo-500 border-[#1890ff] dark:border-indigo-600 rounded-md font-medium text-white h-full"
           @click="openAddModal"
         >
           {{ $t('page.equipment.btnAddError') }}

@@ -27,11 +27,14 @@ interface MappedItem {
   name: string;
 }
 
+import { usePreferences } from '@vben/preferences';
+
 const props = defineProps<{
   errors: ErrorItem[];
   loading: boolean;
 }>();
 
+const { isDark } = usePreferences();
 const barChartRef = ref<EchartsUIType>();
 const pieChartRef = ref<EchartsUIType>();
 const { renderEcharts: renderBarChart } = useEcharts(barChartRef);
@@ -57,16 +60,22 @@ async function updateCharts() {
   const counts = chartData.map((d: MappedItem) => d.count);
   const totalLinked = counts.reduce((sum: number, val: number) => sum + val, 0);
 
-  // Signature color palette for pie chart slices, matching the operating times charts theme
+  const axisTextColor = isDark.value ? '#f1f5f9' : '#4b5563';
+  const textColor = isDark.value ? '#cbd5e1' : '#4b5563';
+  const labelColor = isDark.value ? '#f8fafc' : '#1e293b';
+  const pieBorderColor = isDark.value ? '#0f172a' : '#ffffff';
+  const splitLineColor = isDark.value ? 'rgba(255,255,255,0.1)' : '#e5e7eb';
+
+  // Signature color palette for pie chart slices
   const signatureColors = [
-    '#1890ff', // Primary Blue
-    '#5ab1ef', // Light Blue
-    '#3aa0ff', // Medium Light Blue
-    '#94a3b8', // Slate Grey
-    '#cbd5e1', // Light Grey/Slate
-    '#0076e4', // Deep Blue
-    '#7ec2f4', // Very Light Blue
-    '#64748b', // Dark Slate Grey
+    '#1890ff',
+    '#5ab1ef',
+    '#3aa0ff',
+    '#94a3b8',
+    '#cbd5e1',
+    '#0076e4',
+    '#7ec2f4',
+    '#64748b',
   ];
 
   renderBarChart({
@@ -80,7 +89,7 @@ async function updateCharts() {
     legend: {
       data: [{ name: $t('page.equipment.chartEquipmentLinks'), icon: 'roundRect' }],
       bottom: 0,
-      textStyle: { color: '#4b5563', fontSize: 11 },
+      textStyle: { color: textColor, fontSize: 11 },
     },
     series: [
       {
@@ -90,7 +99,7 @@ async function updateCharts() {
             show: true,
             position: 'right',
             formatter: `{c}`,
-            color: '#4b5563',
+            color: axisTextColor,
             fontSize: 11,
           },
           itemStyle: {
@@ -107,7 +116,7 @@ async function updateCharts() {
     ],
     textStyle: {
       fontFamily: 'system-ui, -apple-system, sans-serif',
-      color: '#4b5563',
+      color: textColor,
     },
     tooltip: {
       axisPointer: { type: 'shadow' },
@@ -128,15 +137,15 @@ async function updateCharts() {
     xAxis: {
       minInterval: 1,
       type: 'value',
-      axisLabel: { color: '#9ca3af', fontSize: 11 },
+      axisLabel: { color: axisTextColor, fontSize: 11 },
       splitLine: {
-        lineStyle: { type: 'dashed', color: '#e5e7eb', opacity: 0.6 },
+        lineStyle: { type: 'dashed', color: splitLineColor, opacity: 0.6 },
       },
     },
     yAxis: {
       axisLabel: {
         fontSize: 11,
-        color: '#4b5563',
+        color: axisTextColor,
         overflow: 'truncate',
         width: 140,
       },
@@ -151,7 +160,7 @@ async function updateCharts() {
       orient: 'vertical',
       right: '2%',
       top: 'middle',
-      textStyle: { color: '#4b5563', fontSize: 11 },
+      textStyle: { color: textColor, fontSize: 11 },
       formatter: (name: string) => {
         const item = chartData.find((d) => d.name === name);
         const pct = totalLinked > 0 ? Math.round(((item?.count ?? 0) / totalLinked) * 100) : 0;
@@ -172,14 +181,14 @@ async function updateCharts() {
           label: { fontSize: 14, fontWeight: 'bold', show: true },
         },
         itemStyle: {
-          borderColor: '#fff',
+          borderColor: pieBorderColor,
           borderRadius: 8,
           borderWidth: 2,
         },
         label: {
           show: true,
           position: 'center',
-          color: '#1e293b',
+          color: labelColor,
           fontSize: 14,
           fontWeight: 'bold',
           formatter: `${totalLinked}\n${$t('page.equipment.chartLinksLabel')}`,
@@ -192,7 +201,7 @@ async function updateCharts() {
     ],
     textStyle: {
       fontFamily: 'system-ui, -apple-system, sans-serif',
-      color: '#4b5563',
+      color: textColor,
     },
     tooltip: {
       formatter: (params: unknown) => {
@@ -209,7 +218,7 @@ async function updateCharts() {
 }
 
 watch(
-  () => props.errors,
+  [() => props.errors, () => isDark.value],
   () => {
     updateCharts();
   },
