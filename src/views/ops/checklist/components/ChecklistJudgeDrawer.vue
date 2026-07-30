@@ -6,6 +6,7 @@ import {
   Button,
   Select,
   Tag,
+  Popconfirm,
   message,
   Empty,
 } from 'ant-design-vue';
@@ -193,7 +194,7 @@ function handleClose(): void {
 }
 
 function goToChecklistDetail(): void {
-  const sessionId = props.session?.id || props.session?.checklist_id;
+  const sessionId = props.session?.id || (props.session as { checklist_id?: string })?.checklist_id;
   const eqId = props.session?.equipment_id || props.session?.equipment?.id;
   if (sessionId) {
     router.push({
@@ -329,6 +330,14 @@ function goToChecklistDetail(): void {
           <Button @click="handleClose">
             {{ $t('page.ops.btnCancel') || 'Hủy' }}
           </Button>
+          <Popconfirm
+            :title="$t('page.ops.confirmDeleteSchedule') || 'Bạn có chắc chắn muốn xóa lịch này?'"
+            @confirm="handleDeleteSchedule"
+          >
+            <Button danger :loading="deletingSchedule">
+              {{ $t('page.ops.btnDelete') || 'Xóa' }}
+            </Button>
+          </Popconfirm>
           <Button type="primary" @click="goToChecklistDetail">
             {{ $t('page.ops.btnGoToChecklist') || 'Đi tới Checklist' }}
           </Button>
