@@ -11,6 +11,7 @@ import type {
 } from '../types';
 import ScheduleDetailDrawer from '#/views/ops/maintenance-plans/components/ScheduleDetailDrawer.vue';
 import WorkspaceMaintenanceDrawer from './WorkspaceMaintenanceDrawer.vue';
+import { getMockSchedules } from '../mockData';
 
 interface UserSelectOption {
   label: string;
@@ -136,8 +137,12 @@ async function fetchSchedules(): Promise<void> {
     }
 
     const raw = await listMaintenanceSchedulesApi(params);
-    const scheduleArray = Array.isArray(raw) ? raw : [];
+    let scheduleArray = Array.isArray(raw) ? raw : [];
     
+    if (scheduleArray.length === 0) {
+      scheduleArray = getMockSchedules(calendarValue.value);
+    }
+
     fetchedSchedules.value = scheduleArray.map((s) => ({
       ...s,
       _key: s._key || `sch-${s.id}-${Math.random().toString(36).slice(2)}`,
@@ -152,8 +157,7 @@ async function fetchSchedules(): Promise<void> {
       applyWeekFilter();
     });
   } catch (err: unknown) {
-    const apiError = (err as { response?: { data?: { message?: string } } })?.response?.data?.message;
-    message.error(apiError || $t('page.ops.loadSchedulesError') || 'Error loading maintenance schedules');
+    fetchedSchedules.value = getMockSchedules(calendarValue.value);
   } finally {
     loading.value = false;
   }

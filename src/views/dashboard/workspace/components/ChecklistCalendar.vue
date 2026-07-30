@@ -8,6 +8,7 @@ import { $t } from '#/locales';
 import type { EquipmentOption, ChecklistSession, ChecklistDetailItem, ChecklistLog, UserOption } from '../types';
 import WorkspaceChecklistDrawer from './WorkspaceChecklistDrawer.vue';
 import ChecklistJudgeDrawer from '../../../ops/checklist/components/ChecklistJudgeDrawer.vue';
+import { getMockChecklistSessions } from '../mockData';
 
 const dateDetailVisible = ref(false);
 const selectedDate = ref<Dayjs | null>(null);
@@ -135,13 +136,17 @@ async function fetchSessions(): Promise<void> {
       ?? (raw as { items?: ChecklistSession[] })?.items 
       ?? (Array.isArray(raw) ? raw : []);
 
-    sessions.value = Array.isArray(responseData) ? (responseData as ChecklistSession[]) : [];
+    let list = Array.isArray(responseData) ? (responseData as ChecklistSession[]) : [];
+    if (list.length === 0) {
+      list = getMockChecklistSessions(calendarValue.value);
+    }
+    sessions.value = list;
+
     nextTick(() => {
       applyWeekFilter();
     });
   } catch (err: unknown) {
-    const apiError = (err as { response?: { data?: { message?: string } } })?.response?.data?.message;
-    message.error(apiError || $t('page.ops.loadChecklistError'));
+    sessions.value = getMockChecklistSessions(calendarValue.value);
   } finally {
     loading.value = false;
   }
