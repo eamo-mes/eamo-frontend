@@ -407,7 +407,7 @@ onMounted(async () => {
                 <Button
                   size="small"
                   :disabled="isSoftDeleted(record as ErrorItem)"
-                  class="rounded hover:border-primary hover:text-primary"
+                  class="rounded border-slate-300 dark:border-zinc-700 text-slate-700 dark:text-zinc-100 hover:border-primary hover:text-primary dark:hover:text-indigo-400 dark:hover:border-indigo-500"
                   @click="openEditModal(record as ErrorItem)"
                 >
                   {{ $t('page.company.btnEdit') }}
@@ -422,7 +422,7 @@ onMounted(async () => {
                     size="small"
                     danger
                     :disabled="isSoftDeleted(record as ErrorItem)"
-                    class="rounded bg-red-50/50 hover:bg-red-500 hover:text-white border-red-200"
+                    class="rounded bg-red-50/50 dark:bg-red-950/40 hover:bg-red-500 hover:text-white border-red-200 dark:border-red-900/50 text-red-600 dark:text-red-400"
                   >
                     {{ $t('page.company.btnDelete') }}
                   </Button>
@@ -481,3 +481,22 @@ onMounted(async () => {
     </Modal>
   </div>
 </template>
+
+<style scoped>
+:deep(.dark .ant-table) {
+  color: rgba(255, 255, 255, 0.92) !important;
+}
+
+:deep(.dark .ant-table-thead > tr > th) {
+  color: rgba(255, 255, 255, 0.95) !important;
+  font-weight: 700 !important;
+}
+
+:deep(.dark .ant-table-tbody > tr > td) {
+  color: rgba(255, 255, 255, 0.9) !important;
+}
+
+:deep(.dark .ant-table-pagination) {
+  color: rgba(255, 255, 255, 0.85) !important;
+}
+</style>
