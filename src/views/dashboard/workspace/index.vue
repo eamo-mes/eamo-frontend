@@ -18,7 +18,6 @@ import type {
   ScheduleRow,
   UserOption,
 } from './types';
-import { mockEquipmentsList, getMockSchedules } from './mockData';
 
 const TabPane = Tabs.TabPane;
 const router = useRouter();
@@ -51,10 +50,9 @@ async function loadEquipments(): Promise<void> {
     const raw = await requestClient.get('/v1/equipment', {
       params: { per_page: 1000 },
     });
-    const list = Array.isArray(raw) ? (raw as EquipmentOption[]) : [];
-    equipments.value = list.length > 0 ? list : mockEquipmentsList;
+    equipments.value = Array.isArray(raw) ? (raw as EquipmentOption[]) : [];
   } catch {
-    equipments.value = mockEquipmentsList;
+    // silently fail
   }
 }
 
@@ -76,11 +74,7 @@ async function loadAllSchedules(startDate?: string, endDate?: string): Promise<v
     if (endDate) params.end_date = endDate;
 
     const raw = await requestClient.get('/v1/maintenance-schedules', { params });
-    let scheduleArray = Array.isArray(raw) ? (raw as ScheduleRow[]) : [];
-
-    if (scheduleArray.length === 0) {
-      scheduleArray = getMockSchedules(calendarRange.value ? dayjs(calendarRange.value.start_date) : dayjs());
-    }
+    const scheduleArray = Array.isArray(raw) ? (raw as ScheduleRow[]) : [];
 
     allSchedules.value = scheduleArray.map((s) => ({
       id: s.id,
@@ -101,7 +95,7 @@ async function loadAllSchedules(startDate?: string, endDate?: string): Promise<v
       item_description: s.item_description || s.maintenance_item?.description || '',
     }));
   } catch {
-    allSchedules.value = getMockSchedules(calendarRange.value ? dayjs(calendarRange.value.start_date) : dayjs());
+    // silently fail
   }
 }
 
