@@ -71,6 +71,9 @@ function useEcharts(chartRef: Ref<EchartsUIType>) {
 
     return {
       backgroundColor: 'transparent',
+      textStyle: {
+        color: '#f8fafc',
+      },
     };
   });
 

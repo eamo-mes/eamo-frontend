@@ -60,9 +60,9 @@ async function updateCharts() {
   const counts = chartData.map((d: MappedItem) => d.count);
   const totalLinked = counts.reduce((sum: number, val: number) => sum + val, 0);
 
-  const axisTextColor = isDark.value ? '#f1f5f9' : '#4b5563';
-  const textColor = isDark.value ? '#cbd5e1' : '#4b5563';
-  const labelColor = isDark.value ? '#f8fafc' : '#1e293b';
+  const axisTextColor = isDark.value ? '#ffffff' : '#4b5563';
+  const textColor = isDark.value ? '#ffffff' : '#4b5563';
+  const labelColor = isDark.value ? '#ffffff' : '#1e293b';
   const pieBorderColor = isDark.value ? '#0f172a' : '#ffffff';
   const splitLineColor = isDark.value ? 'rgba(255,255,255,0.1)' : '#e5e7eb';
 
