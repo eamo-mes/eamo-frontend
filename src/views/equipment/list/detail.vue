@@ -23,7 +23,8 @@ import type { UploadFile, UploadProps } from 'ant-design-vue';
 import axios from 'axios';
 import { useAccessStore } from '@vben/stores';
 import { API_BASE_URL } from '#/api/config';
-import EquipmentQrModal from './components/EquipmentQrModal.vue';
+import EquipmentUnifiedModal from './components/EquipmentUnifiedModal.vue';
+import EquipmentHierarchyFlow from './components/EquipmentHierarchyFlow.vue';
 
 const UploadOutlined = createIconifyIcon('ant-design:upload-outlined');
 
@@ -77,19 +78,7 @@ const formState = ref({
 });
 
 const qrModalOpen = ref(false);
-
-const currentEquipmentObject = computed(() => {
-  if (!editId.value) return null;
-  const category = categories.value.find((c) => c.id === formState.value.equipment_category_id);
-  return {
-    id: editId.value,
-    code: formState.value.code,
-    name: formState.value.name,
-    equipment_category_id: formState.value.equipment_category_id,
-    equipment_category: category || null,
-    is_active: formState.value.is_active,
-  };
-});
+const showDiagram = ref(false);
 
 const fileList = ref<UploadFile[]>([]);
 
@@ -475,6 +464,12 @@ function goBack() {
   router.push({ name: 'EquipmentList' });
 }
 
+function handleParentUpdated() {
+  if (editId.value) {
+    loadEquipmentDetail(editId.value);
+  }
+}
+
 onMounted(() => {
   loadCategories();
   loadErrors();
@@ -518,10 +513,17 @@ onMounted(() => {
         <Button
           v-if="isEditing"
           type="default"
+          :disabled="submitting"
+          @click="showDiagram = !showDiagram"
+        >
+          {{ showDiagram ? $t('page.equipment.btnFormView') : $t('page.equipment.btnHierarchyChart') }}
+        </Button>
+        <Button
+          v-if="isEditing"
+          type="default"
           class="flex items-center gap-1.5 font-medium"
           @click="qrModalOpen = true"
         >
-          <svg xmlns="http://www.w3.org/2000/svg" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-qr-code"><rect width="5" height="5" x="3" y="3" rx="1"/><rect width="5" height="5" x="16" y="3" rx="1"/><rect width="5" height="5" x="3" y="16" rx="1"/><path d="M21 16V21H16"/><path d="M21 12H21.01"/><path d="M12 21H12.01"/><path d="M12 12H12.01"/><path d="M16 16H16.01"/><path d="M16 12H16.01"/><path d="M12 16H12.01"/></svg>
           {{ $t('page.equipment.btnQrCode') }}
         </Button>
         <Button type="default" @click="goBack" :disabled="submitting">
@@ -533,144 +535,159 @@ onMounted(() => {
       </div>
     </div>
 
-    <!-- Form Container -->
-    <Spin :spinning="loading || submitting">
-      <Form
-        ref="formRef"
-        :model="formState"
-        :rules="rules"
-        layout="vertical"
-        class="space-y-6"
-      >
-        <!-- Main Information Card -->
-        <Card class="shadow-sm border-border rounded-xl">
-          <div class="grid grid-cols-2 gap-x-4">
-            <FormItem :label="$t('page.equipment.colCode')" name="code" class="col-span-1">
-              <Input v-model:value="formState.code" :placeholder="$t('page.equipment.placeholderCode')" :disabled="isEditing" />
-            </FormItem>
-            <FormItem :label="$t('page.equipment.colName')" name="name" class="col-span-1">
-              <Input v-model:value="formState.name" :placeholder="$t('page.equipment.placeholderName')" />
-            </FormItem>
-            <FormItem :label="$t('page.equipment.colCategory')" name="equipment_category_id" class="col-span-1">
-              <Select
-                v-model:value="formState.equipment_category_id"
-                :placeholder="$t('page.equipment.placeholderCategory')"
-                allow-clear
-              >
-                <Select.Option v-for="c in categories" :key="c.id" :value="c.id">
-                  {{ c.name }}
-                </Select.Option>
-              </Select>
-            </FormItem>
-            <FormItem :label="$t('page.equipment.colMaintenanceIntervalHours')" name="maintenance_interval_hours" class="col-span-1">
-              <InputNumber
-                v-model:value="formState.maintenance_interval_hours"
-                :placeholder="$t('page.equipment.placeholderMaintenanceIntervalHours')"
-                :min="0"
-                style="width: 100%"
-              />
-            </FormItem>
-            <FormItem :label="$t('page.equipment.colErrors')" name="equipment_error_ids" class="col-span-1">
-              <Select
-                v-model:value="formState.equipment_error_ids"
-                mode="multiple"
-                option-filter-prop="label"
-                :placeholder="$t('page.equipment.placeholderErrors')"
-                allow-clear
-              >
-                <Select.Option v-for="err in errorsList" :key="err.id" :value="err.id" :label="err.name">
-                  {{ err.name }}
-                </Select.Option>
-              </Select>
-            </FormItem>
+    <!-- Equipment Form and Hierarchy Diagram Body -->
+    <div>
+      <!-- List View: Main Information + Parameters + Embedded Hierarchy Flow -->
+      <div v-show="!showDiagram">
+        <Spin :spinning="loading || submitting">
+          <Form
+            ref="formRef"
+            :model="formState"
+            :rules="rules"
+            layout="vertical"
+            class="space-y-6"
+          >
+            <!-- Main Information Card -->
+            <Card class="shadow-sm border-border rounded-xl">
+              <div class="grid grid-cols-2 gap-x-4">
+                <FormItem :label="$t('page.equipment.colCode')" name="code" class="col-span-1">
+                  <Input v-model:value="formState.code" :placeholder="$t('page.equipment.placeholderCode')" :disabled="isEditing" />
+                </FormItem>
+                <FormItem :label="$t('page.equipment.colName')" name="name" class="col-span-1">
+                  <Input v-model:value="formState.name" :placeholder="$t('page.equipment.placeholderName')" />
+                </FormItem>
+                <FormItem :label="$t('page.equipment.colCategory')" name="equipment_category_id" class="col-span-1">
+                  <Select
+                    v-model:value="formState.equipment_category_id"
+                    :placeholder="$t('page.equipment.placeholderCategory')"
+                    allow-clear
+                  >
+                    <Select.Option v-for="c in categories" :key="c.id" :value="c.id">
+                      {{ c.name }}
+                    </Select.Option>
+                  </Select>
+                </FormItem>
+                <FormItem :label="$t('page.equipment.colMaintenanceIntervalHours')" name="maintenance_interval_hours" class="col-span-1">
+                  <InputNumber
+                    v-model:value="formState.maintenance_interval_hours"
+                    :placeholder="$t('page.equipment.placeholderMaintenanceIntervalHours')"
+                    :min="0"
+                    style="width: 100%"
+                  />
+                </FormItem>
+                <FormItem :label="$t('page.equipment.colErrors')" name="equipment_error_ids" class="col-span-1">
+                  <Select
+                    v-model:value="formState.equipment_error_ids"
+                    mode="multiple"
+                    option-filter-prop="label"
+                    :placeholder="$t('page.equipment.placeholderErrors')"
+                    allow-clear
+                  >
+                    <Select.Option v-for="err in errorsList" :key="err.id" :value="err.id" :label="err.name">
+                      {{ err.name }}
+                    </Select.Option>
+                  </Select>
+                </FormItem>
 
-            <FormItem :label="$t('page.equipment.colActive')" name="is_active" class="col-span-1">
-              <Switch v-model:checked="formState.is_active" />
-            </FormItem>
+                <FormItem :label="$t('page.equipment.colActive')" name="is_active" class="col-span-1">
+                  <Switch v-model:checked="formState.is_active" />
+                </FormItem>
 
-            <!-- Images Dynamic List -->
-            <div class="col-span-2 border-t border-gray-150 pt-4 mt-2">
-              <FormItem :label="$t('page.equipment.imagesTitle')">
-                <Upload
-                  v-model:file-list="fileList"
-                  list-type="picture"
-                  class="upload-list-inline"
-                  :before-upload="handleBeforeUpload"
-                  @preview="handlePreviewFile"
-                  @remove="handleRemoveFile"
-                >
-                  <Button>
-                    <UploadOutlined />
-                    {{ $t('page.equipment.btnChooseImages') }}
-                  </Button>
-                </Upload>
-              </FormItem>
-            </div>
-          </div>
-        </Card>
+                <!-- Images Dynamic List -->
+                <div class="col-span-2 border-t border-gray-150 pt-4 mt-2">
+                  <FormItem :label="$t('page.equipment.imagesTitle')">
+                    <Upload
+                      v-model:file-list="fileList"
+                      list-type="picture"
+                      class="upload-list-inline"
+                      :before-upload="handleBeforeUpload"
+                      @preview="handlePreviewFile"
+                      @remove="handleRemoveFile"
+                    >
+                      <Button>
+                        <UploadOutlined />
+                        {{ $t('page.equipment.btnChooseImages') }}
+                      </Button>
+                    </Upload>
+                  </FormItem>
+                </div>
+              </div>
+            </Card>
 
-        <!-- Independent Equipment Parameters Card -->
-        <Card class="shadow-sm border-border rounded-xl mt-6">
-          <div class="mb-3 flex items-end justify-between gap-3">
-            <div>
-              <div class="font-semibold text-gray-800 text-base">
-                {{ $t('page.equipment.parametersTitle') }}
+            <!-- Independent Equipment Parameters Card -->
+            <Card class="shadow-sm border-border rounded-xl mt-6">
+              <div class="mb-3 flex items-end justify-between gap-3">
+                <div>
+                  <div class="font-semibold text-gray-800 text-base">
+                    {{ $t('page.equipment.parametersTitle') }}
+                  </div>
+                </div>
               </div>
-            </div>
-          </div>
-          <div v-if="formState.equipment_parameters.length === 0" class="py-6 flex justify-center">
-            <Empty :description="$t('page.equipment.noParameters')" />
-          </div>
-          <div v-else class="max-h-[320px] divide-y divide-border overflow-y-auto">
-            <div v-for="(param, index) in formState.equipment_parameters" :key="index" class="flex flex-wrap items-end gap-2 py-3 first:pt-0 last:pb-0">
-              <div class="flex-1 min-w-[150px]">
-                <span class="text-xs text-gray-500 block mb-1 font-medium">{{ $t('page.equipment.parameterCode') }}</span>
-                <Input v-model:value="param.code" :placeholder="$t('page.equipment.parameterCode')" />
+              <div v-if="formState.equipment_parameters.length === 0" class="py-6 flex justify-center">
+                <Empty :description="$t('page.equipment.noParameters')" />
               </div>
-              <div class="w-[120px]">
-                <span class="text-xs text-gray-500 block mb-1 font-medium">{{ $t('page.equipment.parameterStandard') }}</span>
-                <InputNumber v-model:value="param.standard" :placeholder="$t('page.equipment.parameterStandard')" class="w-full" />
+              <div v-else class="max-h-[320px] divide-y divide-border overflow-y-auto">
+                <div v-for="(param, index) in formState.equipment_parameters" :key="index" class="flex flex-wrap items-end gap-2 py-3 first:pt-0 last:pb-0">
+                  <div class="flex-1 min-w-[150px]">
+                    <span class="text-xs text-gray-500 block mb-1 font-medium">{{ $t('page.equipment.parameterCode') }}</span>
+                    <Input v-model:value="param.code" :placeholder="$t('page.equipment.parameterCode')" />
+                  </div>
+                  <div class="w-[120px]">
+                    <span class="text-xs text-gray-500 block mb-1 font-medium">{{ $t('page.equipment.parameterStandard') }}</span>
+                    <InputNumber v-model:value="param.standard" :placeholder="$t('page.equipment.parameterStandard')" class="w-full" />
+                  </div>
+                  <div class="w-[120px]">
+                    <span class="text-xs text-gray-500 block mb-1 font-medium">{{ $t('page.equipment.parameterMin') }}</span>
+                    <InputNumber v-model:value="param.standard_min" :placeholder="$t('page.equipment.parameterMin')" class="w-full" />
+                  </div>
+                  <div class="w-[120px]">
+                    <span class="text-xs text-gray-500 block mb-1 font-medium">{{ $t('page.equipment.parameterMax') }}</span>
+                    <InputNumber v-model:value="param.standard_max" :placeholder="$t('page.equipment.parameterMax')" class="w-full" />
+                  </div>
+                  <div class="w-[180px]">
+                    <span class="text-xs text-gray-500 block mb-1 font-medium">{{ $t('page.equipment.parameterUnit') }}</span>
+                    <Select v-model:value="param.unit_id" :placeholder="$t('page.equipment.parameterUnit')" class="w-full" allow-clear>
+                      <Select.Option v-for="u in units" :key="u.id" :value="u.id">
+                        {{ u.name }} ({{ u.code }})
+                      </Select.Option>
+                    </Select>
+                  </div>
+                  <div class="pb-1">
+                    <Button type="text" danger class="shrink-0 px-2" @click="removeParameterRow(index)">
+                      {{ $t('page.equipment.btnDeleteParameter') }}
+                    </Button>
+                  </div>
+                </div>
               </div>
-              <div class="w-[120px]">
-                <span class="text-xs text-gray-500 block mb-1 font-medium">{{ $t('page.equipment.parameterMin') }}</span>
-                <InputNumber v-model:value="param.standard_min" :placeholder="$t('page.equipment.parameterMin')" class="w-full" />
-              </div>
-              <div class="w-[120px]">
-                <span class="text-xs text-gray-500 block mb-1 font-medium">{{ $t('page.equipment.parameterMax') }}</span>
-                <InputNumber v-model:value="param.standard_max" :placeholder="$t('page.equipment.parameterMax')" class="w-full" />
-              </div>
-              <div class="w-[180px]">
-                <span class="text-xs text-gray-500 block mb-1 font-medium">{{ $t('page.equipment.parameterUnit') }}</span>
-                <Select v-model:value="param.unit_id" :placeholder="$t('page.equipment.parameterUnit')" class="w-full" allow-clear>
-                  <Select.Option v-for="u in units" :key="u.id" :value="u.id">
-                    {{ u.name }} ({{ u.code }})
-                  </Select.Option>
-                </Select>
-              </div>
-              <div class="pb-1">
-                <Button type="text" danger class="shrink-0 px-2" @click="removeParameterRow(index)">
-                  {{ $t('page.equipment.btnDeleteParameter') }}
-                </Button>
-              </div>
-            </div>
-          </div>
 
-          <Button type="dashed" block class="mt-3" @click="addParameterRow">
-            {{ $t('page.equipment.btnAddParameter') }}
-          </Button>
-        </Card>
-      </Form>
-    </Spin>
+              <Button type="dashed" block class="mt-3" @click="addParameterRow">
+                {{ $t('page.equipment.btnAddParameter') }}
+              </Button>
+            </Card>
+          </Form>
+        </Spin>
+      </div>
+
+      <!-- Diagram View: Dedicated Full-Page Node Hierarchy Diagram -->
+      <div v-if="showDiagram && isEditing && editId">
+        <EquipmentHierarchyFlow
+          :current-equipment-id="editId"
+          height="calc(100vh - 220px)"
+          @parent-updated="handleParentUpdated"
+        />
+      </div>
+    </div>
 
     <!-- Image Preview Modal -->
     <Modal :open="previewVisible" :title="previewTitle" :footer="null" width="600px" @cancel="previewVisible = false">
       <img alt="preview" style="width: 100%" :src="previewImage" />
     </Modal>
 
-    <!-- Equipment QR Modal -->
-    <EquipmentQrModal
+    <!-- Equipment Unified Modal (QR Tab) -->
+    <EquipmentUnifiedModal
       v-model:open="qrModalOpen"
-      :equipment="currentEquipmentObject"
+      :equipment-id="editId"
+      initial-tab-key="qr"
     />
   </div>
 </template>

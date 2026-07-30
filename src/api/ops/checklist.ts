@@ -23,6 +23,7 @@ export interface UpdateChecklistSessionPayload {
   cycle_type?: string;
   cycle_interval?: number;
   user_ids?: string[];
+  schedules?: Array<{ id: string; date?: string; user_ids?: string[] }>;
 }
 
 export interface UpdateChecklistDetailsPayload {
@@ -56,7 +57,7 @@ export async function getChecklistSessionsApi(params?: Record<string, unknown>) 
  */
 export async function getChecklistSessionDetailApi(id: string) {
   return requestClient.get(`/v1/checklist-sessions/${id}`, {
-    params: { include_details: true },
+    params: { include_details: true, include_equipment: true },
   });
 }
 

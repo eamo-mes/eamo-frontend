@@ -3,8 +3,7 @@
 These rules apply to all AI agents working on this project.
 
 ## 1. No Placeholders or Boilerplate Components
-* **Constraint**: Do not generate dummy text, sample files, placeholder layouts, or boilerplate component structures unless explicitly instructed.
-* **Requirement**: Write complete, production-ready implementation code. If demo mock data is needed, provide realistic, well-formed mock data reflecting the domain.
+ * **Requirement**: Write complete, production-ready implementation code. If demo mock data is needed, provide realistic, well-formed mock data reflecting the domain.
 
 ## 2. Bilingual Translation Requirement (English & Vietnamese)
 * **Requirement**: All internationalization (i18n) content, labels, menu items, or UI texts added to the codebase MUST contain both English (`en-US`) and Vietnamese (`zh-CN`) versions.

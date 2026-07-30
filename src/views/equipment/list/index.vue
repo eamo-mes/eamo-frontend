@@ -1,7 +1,6 @@
 <script lang="ts" setup>
 import { ref, computed, onMounted } from 'vue';
 import { useRouter } from 'vue-router';
-import { Eye, EyeOff } from '@vben/icons';
 import { $t } from '#/locales';
 import {
   Button,
@@ -17,10 +16,9 @@ import axios from 'axios';
 import { useAccessStore } from '@vben/stores';
 import { API_BASE_URL } from '#/api/config';
 import { isSoftDeleted, softDeletedRowClass, sortBySoftDeleted } from '#/utils/soft-delete';
-import EquipmentSummaryWidgets from './components/EquipmentSummaryWidgets.vue';
 import ExpandableContainer from '#/components/ExpandableContainer.vue';
 import EquipmentChecklistSessionsModal from './components/EquipmentChecklistSessionsModal.vue';
-import EquipmentQrModal from './components/EquipmentQrModal.vue';
+import EquipmentUnifiedModal from './components/EquipmentUnifiedModal.vue';
 
 interface CategoryOption {
   id: string;
@@ -77,16 +75,24 @@ const activeSearch = ref('');
 
 
 
+const unifiedModalOpen = ref(false);
+const selectedEquipmentId = ref<string | null>(null);
+const unifiedModalTab = ref('info');
+
 const checklistModalOpen = ref(false);
-const checklistModalEquipmentId = ref<string | null>(null);
-const checklistModalEquipmentName = ref<string | null>(null);
+const checklistEquipmentId = ref<string | null>(null);
+const checklistEquipmentName = ref<string | null>(null);
 
-const qrModalOpen = ref(false);
-const qrModalEquipment = ref<EquipmentItem | null>(null);
+function openUnifiedModal(record?: EquipmentItem, tab = 'info') {
+  selectedEquipmentId.value = record?.id || null;
+  unifiedModalTab.value = tab;
+  unifiedModalOpen.value = true;
+}
 
-function openQrModal(record: EquipmentItem) {
-  qrModalEquipment.value = record;
-  qrModalOpen.value = true;
+function openChecklistModal(record: EquipmentItem) {
+  checklistEquipmentId.value = record.id;
+  checklistEquipmentName.value = record.name || record.code;
+  checklistModalOpen.value = true;
 }
 
 // Summary Widgets State
@@ -110,13 +116,6 @@ interface DashboardSummary {
 
 const summaryData = ref<DashboardSummary | null>(null);
 const summaryLoading = ref(false);
-const showWidgets = ref(true);
-const _icons = { Eye, EyeOff };
-
-function toggleWidgets() {
-  showWidgets.value = !showWidgets.value;
-  localStorage.setItem('equipment_list_show_widgets', String(showWidgets.value));
-}
 
 async function loadDashboardSummary() {
   summaryLoading.value = true;
@@ -140,9 +139,7 @@ async function loadDashboardSummary() {
 
 
 
-function goToErrorsPage() {
-  router.push({ name: 'EquipmentErrors' });
-}
+
 
 function getAuthHeaders() {
   const accessStore = useAccessStore();
@@ -265,12 +262,6 @@ const columns = computed(() => [
     sorter: (a: EquipmentItem, b: EquipmentItem) => (a.maintenance_interval_hours || 0) - (b.maintenance_interval_hours || 0),
   },
   {
-    title: $t('page.equipment.colErrors'),
-    dataIndex: 'equipment_errors',
-    key: 'equipment_errors',
-    width: 320,
-  },
-  {
     title: $t('page.equipment.parametersTitle'),
     dataIndex: 'equipment_parameters',
     key: 'equipment_parameters',
@@ -294,14 +285,6 @@ function openEditModal(record: EquipmentItem) {
   router.push({ name: 'EquipmentDetail', query: { id: record.id } });
 }
 
-
-
-function openChecklistModal(record: EquipmentItem) {
-  checklistModalEquipmentId.value = record.id;
-  checklistModalEquipmentName.value = record.name || record.code;
-  checklistModalOpen.value = true;
-}
-
 async function handleDelete(id: string) {
   try {
     await axios.delete(`${API_BASE_URL}/v1/equipment/${id}`, {
@@ -319,10 +302,6 @@ onMounted(() => {
   loadEquipments();
   loadCategories();
   loadDashboardSummary();
-  const saved = localStorage.getItem('equipment_list_show_widgets');
-  if (saved !== null) {
-    showWidgets.value = saved !== 'false';
-  }
 });
 </script>
 
@@ -407,22 +386,7 @@ onMounted(() => {
             <template v-else-if="column.key === 'maintenance_interval_hours'">
               <span>{{ record.maintenance_interval_hours !== null && record.maintenance_interval_hours !== undefined ? `${record.maintenance_interval_hours} hrs` : '—' }}</span>
             </template>
-            <template v-else-if="column.key === 'equipment_errors'">
-               <div class="flex flex-col gap-1 max-w-[260px]">
-                 <ExpandableContainer :items="record.equipment_errors">
-                   <Tag
-                     v-for="err in record.equipment_errors"
-                     :key="err.id"
-                     color="red"
-                     class="cursor-pointer transition-all duration-200 hover:bg-[#ff4d4f] hover:text-white hover:border-[#ff4d4f] hover:-translate-y-0.5 hover:shadow-sm max-w-full truncate"
-                     @click="goToErrorsPage"
-                   >
-                     {{ err.name }}
-                   </Tag>
-                 </ExpandableContainer>
-               </div>
-             </template>
-             <template v-else-if="column.key === 'equipment_parameters'">
+            <template v-else-if="column.key === 'equipment_parameters'">
                <div class="flex flex-col gap-1 max-w-[260px]">
                  <ExpandableContainer :items="record.equipment_parameters">
                    <Tag
@@ -436,16 +400,24 @@ onMounted(() => {
                  </ExpandableContainer>
                </div>
               </template>
-             <template v-else-if="column.key === 'actions'">
+            <template v-else-if="column.key === 'actions'">
               <div class="flex items-center justify-end gap-2 whitespace-nowrap">
                 <Button
                   size="small"
                   :disabled="isSoftDeleted(record as EquipmentItem)"
-                  class="rounded hover:border-primary hover:text-primary flex items-center gap-1"
-                  @click="openQrModal(record as EquipmentItem)"
+                  class="rounded hover:border-primary hover:text-primary"
+                  @click="openChecklistModal(record as EquipmentItem)"
                 >
-                  <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-qr-code"><rect width="5" height="5" x="3" y="3" rx="1"/><rect width="5" height="5" x="16" y="3" rx="1"/><rect width="5" height="5" x="3" y="16" rx="1"/><path d="M21 16V21H16"/><path d="M21 12H21.01"/><path d="M12 21H12.01"/><path d="M12 12H12.01"/><path d="M16 16H16.01"/><path d="M16 12H16.01"/><path d="M12 16H12.01"/></svg>
-                  {{ $t('page.equipment.btnQrCode') }}
+                  {{ $t('page.equipment.btnChecklist') }}
+                </Button>
+                <Button
+                  size="small"
+                  type="default"
+                  :disabled="isSoftDeleted(record as EquipmentItem)"
+                  class="rounded bg-white hover:border-primary hover:text-primary border-gray-200 text-gray-700 shadow-2xs font-medium"
+                  @click="openUnifiedModal(record as EquipmentItem, 'info')"
+                >
+                  {{ $t('page.equipment.btnDetail') }}
                 </Button>
                 <Button
                   size="small"
@@ -454,14 +426,6 @@ onMounted(() => {
                   @click="openEditModal(record as EquipmentItem)"
                 >
                   {{ $t('page.company.btnEdit') }}
-                </Button>
-                <Button
-                  size="small"
-                  :disabled="isSoftDeleted(record as EquipmentItem)"
-                  class="rounded hover:border-primary hover:text-primary"
-                  @click="openChecklistModal(record as EquipmentItem)"
-                >
-                  Checklist
                 </Button>
                 <Popconfirm
                   :title="$t('page.company.deleteConfirm')"
@@ -488,14 +452,16 @@ onMounted(() => {
     <!-- Checklist Sessions Modal -->
     <EquipmentChecklistSessionsModal
       v-model:open="checklistModalOpen"
-      :equipment-id="checklistModalEquipmentId"
-      :equipment-name="checklistModalEquipmentName"
+      :equipment-id="checklistEquipmentId"
+      :equipment-name="checklistEquipmentName"
     />
 
-    <!-- Equipment QR Modal -->
-    <EquipmentQrModal
-      v-model:open="qrModalOpen"
-      :equipment="qrModalEquipment"
+    <!-- Equipment Unified Modal (Info, QR Code) -->
+    <EquipmentUnifiedModal
+      v-model:open="unifiedModalOpen"
+      :equipment-id="selectedEquipmentId"
+      :initial-tab-key="unifiedModalTab"
+      @saved="loadEquipments"
     />
   </div>
 </template>

@@ -83,10 +83,12 @@ function handleReset() {
   loadUnits(1);
 }
 
-function handleTableChange(pagination: { current: number; pageSize: number }) {
-  currentPage.value = pagination.current;
-  pageSize.value = pagination.pageSize;
-  loadUnits(pagination.current, pagination.pageSize);
+function handleTableChange(pagination: { current?: number; pageSize?: number }) {
+  const current = pagination.current ?? 1;
+  const size = pagination.pageSize ?? pageSize.value;
+  currentPage.value = current;
+  pageSize.value = size;
+  loadUnits(current, size);
 }
 
 const filteredUnits = computed(() => units.value);

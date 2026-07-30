@@ -162,11 +162,33 @@ const coreRoutes: RouteRecordRaw[] = [
         },
       },
       {
+        name: 'MobilePortalChecklistDetail',
+        path: '/portal/checklist/:id',
+        component: () => import('#/views/mobile/portal/checklist/detail.vue'),
+        meta: {
+          title: 'Đánh giá Checklist',
+          ignoreAccess: true,
+          hideInMenu: true,
+          hideInTab: true,
+        },
+      },
+      {
         name: 'MobilePortalMaintainPlan',
         path: '/portal/maintain-plan',
         component: () => import('#/views/mobile/portal/maintain-plan/index.vue'),
         meta: {
           title: 'Maintain Plan',
+          ignoreAccess: true,
+          hideInMenu: true,
+          hideInTab: true,
+        },
+      },
+      {
+        name: 'MobilePortalMaintainPlanDetail',
+        path: '/portal/maintain-plan/:id',
+        component: () => import('#/views/mobile/portal/maintain-plan/detail.vue'),
+        meta: {
+          title: 'Đánh giá Kế hoạch Bảo trì',
           ignoreAccess: true,
           hideInMenu: true,
           hideInTab: true,

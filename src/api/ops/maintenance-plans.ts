@@ -132,36 +132,15 @@ export interface SaveMaintenanceLogPayload {
   equipment_id?: string;
   datetime?: string;
   result: string;
+  note?: string | null;
   notes?: string | null;
-}
-
-interface RawMaintenanceItemResponse {
-  id: string;
-  name: string;
-  description: string | null;
-  maintenance_category_id: string;
-  users?: Array<{ id: string }>;
-}
-
-export interface FetchMaintenancePlansParams {
-  page: number;
-  per_page: number;
-  with_trashed?: boolean;
-  q?: string;
-  equipment_id?: string;
-  maintenance_category_id?: string;
-}
-
-export interface FetchMaintenancePlansResult {
-  data?: MaintenancePlanRecord[];
-  total?: number;
-  current_page?: number;
-  per_page?: number;
 }
 
 export interface FetchMaintenanceSchedulesParams {
   start_date?: string;
   end_date?: string;
+  date_from?: string;
+  date_to?: string;
   with_logs?: boolean;
   equipment_id?: string;
   per_page?: number;
@@ -172,14 +151,21 @@ export interface FetchMaintenanceSchedulesParams {
 export async function listMaintenanceSchedulesApi(
   params: FetchMaintenanceSchedulesParams,
 ): Promise<ScheduleRow[]> {
-  const raw = await requestClient.get<ScheduleRow[]>('/v1/maintenance-schedules', {
+  const { start_date, end_date, ...rest } = params;
+  const raw = await requestClient.get<ScheduleRow[] | { data: ScheduleRow[] }>('/v1/maintenance-schedules', {
     params: {
       per_page: 1000,
       with_logs: true,
-      ...params,
+      ...(start_date ? { date_from: start_date } : {}),
+      ...(end_date ? { date_to: end_date } : {}),
+      ...rest,
     },
   });
-  return Array.isArray(raw) ? raw : [];
+  if (Array.isArray(raw)) return raw;
+  if (raw && Array.isArray((raw as { data?: ScheduleRow[] }).data)) {
+    return (raw as { data: ScheduleRow[] }).data;
+  }
+  return [];
 }
 
 export async function listEquipmentsApi(): Promise<EquipmentOption[]> {
@@ -257,8 +243,9 @@ export async function updateMaintenancePlanApi(id: string, payload: SaveMaintena
 
 export async function createMaintenanceLogApi(payload: SaveMaintenanceLogPayload): Promise<MaintenanceLog> {
   return await requestClient.post<MaintenanceLog>('/v1/maintenance-logs', {
-    ...payload,
-    datetime: payload.datetime || new Date().toISOString().replace('T', ' ').slice(0, 19),
+    maintenance_schedule_id: payload.maintenance_schedule_id,
+    result: payload.result,
+    note: payload.note || payload.notes || null,
   });
 }
 

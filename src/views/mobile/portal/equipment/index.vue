@@ -3,9 +3,6 @@ import { ref, computed, onMounted, onUnmounted, watch } from 'vue';
 import { useRouter } from 'vue-router';
 import { useI18n } from '@vben/locales';
 import {
-  Card,
-  Tabs,
-  TabPane,
   Button,
   Spin,
   Empty,
@@ -72,8 +69,9 @@ async function loadEquipments() {
     });
     const raw = res.data?.data ?? res.data ?? [];
     equipments.value = Array.isArray(raw) ? raw : [];
-  } catch (err: any) {
-    message.error(err?.response?.data?.message || 'Không thể tải danh sách thiết bị');
+  } catch (err: unknown) {
+    const apiErr = (err as { response?: { data?: { message?: string } } })?.response?.data?.message;
+    message.error(apiErr || 'Không thể tải danh sách thiết bị');
   } finally {
     loading.value = false;
   }
@@ -97,7 +95,7 @@ async function startCamera() {
       await videoRef.value.play();
     }
     isCameraStreaming.value = true;
-  } catch (err: any) {
+  } catch (err: unknown) {
     console.warn('Camera access error / restricted:', err);
     isCameraStreaming.value = false;
     cameraError.value = 'Không thể mở Camera (vui lòng chọn ảnh từ thiết bị để quét)';
@@ -179,9 +177,9 @@ async function uploadAndDecodeQr(file: File) {
       stopCamera();
       router.push(`/portal/equipment/${equipmentData.id}`);
     }
-  } catch (err: any) {
+  } catch (err: unknown) {
     console.error('QR decode error:', err);
-    const apiMsg = err?.response?.data?.message || t('page.portal.unableToDecodeQr');
+    const apiMsg = (err as { response?: { data?: { message?: string } } })?.response?.data?.message || t('page.portal.unableToDecodeQr');
     cameraError.value = apiMsg;
     message.error(apiMsg);
   } finally {
@@ -229,23 +227,62 @@ onUnmounted(() => {
 </script>
 
 <template>
-  <div class="p-4 sm:p-6 min-h-[85vh] bg-slate-50 dark:bg-zinc-950/40">
-    <!-- ─── HEADER / ACTION BAR ─── -->
-    <div class="mb-5 flex items-center justify-between">
-      <div class="flex items-center gap-2">
-        <h1 class="text-base font-bold text-slate-800 dark:text-zinc-200 m-0">
-          {{ t('page.portal.equipment') }}
-        </h1>
+  <div class="min-h-[85vh] bg-slate-50 dark:bg-zinc-950/40 pb-6">
+    <!-- ─── HEADER ─── -->
+    <div class="bg-white dark:bg-zinc-900 border-b border-slate-200/70 dark:border-zinc-800 px-4 pt-4 pb-0">
+      <h1 class="text-sm font-bold text-slate-800 dark:text-zinc-200 m-0 mb-3">
+        {{ t('page.portal.equipment') }}
+      </h1>
+
+      <!-- Underline tab bar -->
+      <div class="flex">
+        <button
+          type="button"
+          @click="activeTabKey = 'qrcode'"
+          :class="[
+            'flex-1 flex items-center justify-center gap-2 pb-3 text-xs font-bold border-0 bg-transparent cursor-pointer outline-none transition-all duration-200',
+            activeTabKey === 'qrcode'
+              ? 'text-indigo-600 dark:text-indigo-400 border-b-2 border-indigo-600 dark:border-indigo-400 -mb-px'
+              : 'text-slate-400 dark:text-zinc-500 hover:text-slate-600 dark:hover:text-zinc-300'
+          ]"
+        >
+          <svg class="w-4 h-4 shrink-0" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M3.75 4.875c0-.621.504-1.125 1.125-1.125h4.5c.621 0 1.125.504 1.125 1.125v4.5c0 .621-.504 1.125-1.125 1.125h-4.5A1.125 1.125 0 0 1 3.75 9.375v-4.5ZM3.75 14.625c0-.621.504-1.125 1.125-1.125h4.5c.621 0 1.125.504 1.125 1.125v4.5c0 .621-.504 1.125-1.125 1.125h-4.5a1.125 1.125 0 0 1-1.125-1.125v-4.5ZM13.5 4.875c0-.621.504-1.125 1.125-1.125h4.5c.621 0 1.125.504 1.125 1.125v4.5c0 .621-.504 1.125-1.125 1.125h-4.5A1.125 1.125 0 0 1 13.5 9.375v-4.5Z" />
+            <path stroke-linecap="round" stroke-linejoin="round" d="M6.75 6.75h.75v.75h-.75v-.75ZM6.75 16.5h.75v.75h-.75v-.75ZM16.5 6.75h.75v.75h-.75v-.75ZM13.5 13.5h.75v.75h-.75v-.75ZM13.5 19.5h.75v.75h-.75v-.75ZM19.5 13.5h.75v.75h-.75v-.75ZM19.5 19.5h.75v.75h-.75v-.75ZM16.5 16.5h.75v.75h-.75v-.75Z" />
+          </svg>
+          {{ t('page.portal.qrCodeTab') }}
+        </button>
+
+        <button
+          type="button"
+          @click="activeTabKey = 'list'"
+          :class="[
+            'flex-1 flex items-center justify-center gap-2 pb-3 text-xs font-bold border-0 bg-transparent cursor-pointer outline-none transition-all duration-200',
+            activeTabKey === 'list'
+              ? 'text-indigo-600 dark:text-indigo-400 border-b-2 border-indigo-600 dark:border-indigo-400 -mb-px'
+              : 'text-slate-400 dark:text-zinc-500 hover:text-slate-600 dark:hover:text-zinc-300'
+          ]"
+        >
+          <svg class="w-4 h-4 shrink-0" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M8.25 6.75h12M8.25 12h12m-12 5.25h12M3.75 6.75h.007v.008H3.75V6.75Zm.375 0a.375.375 0 1 1-.75 0 .375.375 0 0 1 .75 0ZM3.75 12h.007v.008H3.75V12Zm.375 0a.375.375 0 1 1-.75 0 .375.375 0 0 1 .75 0Zm-.375 5.25h.007v.008H3.75v-.008Zm.375 0a.375.375 0 1 1-.75 0 .375.375 0 0 1 .75 0Z" />
+          </svg>
+          {{ t('page.portal.listTab') }}
+          <span :class="[
+            'text-[10px] font-bold rounded-full px-1.5 py-0.5 min-w-[20px] text-center tabular-nums',
+            activeTabKey === 'list'
+              ? 'bg-indigo-100 dark:bg-indigo-900/50 text-indigo-600 dark:text-indigo-400'
+              : 'bg-slate-100 dark:bg-zinc-800 text-slate-400 dark:text-zinc-500'
+          ]">{{ equipments.length }}</span>
+        </button>
       </div>
     </div>
 
-    <!-- ─── TABS VIEW ─── -->
-    <Card class="rounded-2xl shadow-xs border-slate-200/80 dark:border-zinc-800/80 bg-white dark:bg-zinc-900/60 backdrop-blur-md overflow-hidden">
-      <Tabs v-model:activeKey="activeTabKey" class="mobile-tabs w-full">
-        <!-- ─── TAB 1: LIVE CAMERA QR CODE SCANNER ─── -->
-        <TabPane key="qrcode" :tab="t('page.portal.qrCodeTab')">
-          <div class="flex flex-col items-center pt-2 pb-6">
-            
+    <!-- ─── CONTENT ─── -->
+    <div class="pt-4">
+
+      <!-- QR Code Scanner Tab -->
+      <div v-show="activeTabKey === 'qrcode'">
+        <div class="flex flex-col items-center pb-6 px-4">
             <!-- Hidden File Input for Native Camera / Fallback Capture -->
             <input
               ref="fileInputRef"
@@ -288,9 +325,6 @@ onUnmounted(() => {
                     <circle cx="12" cy="13" r="3"/>
                   </svg>
                 </div>
-                <p class="text-xs text-white font-bold m-0">
-                  Bấm vào đây để mở Camera
-                </p>
                 <p class="text-[11px] text-slate-400 mt-1 px-2">
                   {{ cameraError || t('page.portal.systemWillOpenCamera') }}
                 </p>
@@ -302,13 +336,11 @@ onUnmounted(() => {
               <Button 
                 type="primary" 
                 block 
-                size="large" 
                 :loading="uploading"
                 class="bg-indigo-600 hover:bg-indigo-700 border-none rounded-xl font-bold flex items-center justify-center gap-1.5"
                 @click="handleMainButtonClick"
               >
-                <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-camera"><path d="M14.5 4h-5L7 7H4a2 2 0 0 0-2 2v9a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2V9a2 2 0 0 0-2-2h-3l-2.5-3z"/><circle cx="12" cy="13" r="3"/></svg>
-                {{ uploading ? t('page.portal.sendingImageToDecode') : (isCameraStreaming ? t('page.portal.captureAndScanQr') : 'Mở Camera để quét mã') }}
+                {{ uploading ? t('page.portal.sendingImageToDecode') : (isCameraStreaming ? t('page.portal.captureAndScanQr') : t('page.portal.openCameraToScan')) }}
               </Button>
 
               <!-- Dedicated Turn Off Camera Button when streaming -->
@@ -317,29 +349,19 @@ onUnmounted(() => {
                 type="default"
                 block
                 size="middle"
-                class="rounded-xl font-bold text-xs text-red-500 border-red-200 dark:border-red-900/40 hover:bg-red-50 dark:hover:bg-red-950/20"
+                class="rounded-xl font-bold text-xs text-rose-600 dark:text-rose-400 border-rose-200 dark:border-rose-900/40 hover:bg-rose-50 dark:hover:bg-rose-950/20"
                 @click="stopCamera"
               >
-                Tắt Camera
-              </Button>
-
-              <Button 
-                type="default" 
-                block 
-                size="middle" 
-                class="rounded-xl font-medium text-xs text-slate-600 border-slate-200 dark:border-zinc-800"
-                @click="triggerFileInput"
-              >
-                Tải ảnh QR từ thiết bị
+                {{ t('page.portal.turnOffCamera') }}
               </Button>
             </div>
 
-          </div>
-        </TabPane>
+        </div>
+      </div>
 
-        <!-- ─── TAB 2: LIST VIEW ─── -->
-        <TabPane key="list" :tab="t('page.portal.listTab')">
-          <div class="space-y-4 pt-2">
+      <!-- List Tab -->
+      <div v-show="activeTabKey === 'list'">
+        <div class="space-y-4 px-4">
             <Input
               v-model:value="searchVal"
               :placeholder="t('page.portal.searchPlaceholder')"
@@ -356,23 +378,27 @@ onUnmounted(() => {
               <div
                 v-for="eq in filteredEquipments"
                 :key="eq.id"
-                class="flex items-center justify-between p-3.5 bg-slate-50 hover:bg-slate-100/80 dark:bg-zinc-950/30 dark:hover:bg-zinc-900/40 border border-slate-100 dark:border-zinc-800/40 rounded-xl cursor-pointer transition-all duration-200"
+                class="group flex items-center justify-between p-3.5 bg-white dark:bg-zinc-900 hover:bg-slate-50 dark:hover:bg-zinc-800/60 border border-slate-200/80 dark:border-zinc-800 rounded-2xl cursor-pointer hover:border-indigo-200 dark:hover:border-indigo-800/60 shadow-3xs active:scale-[0.99] transition-all duration-150"
                 @click="selectEquipment(eq.id)"
               >
                 <div class="flex-1 min-w-0 pr-3">
                   <span class="text-xs font-bold text-slate-800 dark:text-zinc-200 block truncate">{{ eq.name || '—' }}</span>
                   <span class="text-[10px] font-mono text-slate-400 dark:text-zinc-500 block mt-0.5">{{ eq.code }}</span>
                 </div>
+                <!-- Chevron -->
+                <svg class="w-3.5 h-3.5 text-slate-300 dark:text-zinc-600 shrink-0 group-hover:text-indigo-400 transition-colors" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" d="m9 18 6-6-6-6" />
+                </svg>
               </div>
             </div>
 
             <div v-else class="py-10 flex justify-center">
               <Empty :description="t('page.portal.noEquipmentFound')" />
             </div>
-          </div>
-        </TabPane>
-      </Tabs>
-    </Card>
+        </div>
+      </div>
+
+    </div>
   </div>
 </template>
 
@@ -385,15 +411,5 @@ onUnmounted(() => {
 }
 .scanline {
   animation: scan 3.5s linear infinite;
-}
-
-/* Custom styling for Ant Design tabs under mobile view */
-.mobile-tabs :deep(.ant-tabs-nav-list) {
-  width: 100%;
-}
-.mobile-tabs :deep(.ant-tabs-tab) {
-  flex: 1;
-  text-align: center;
-  justify-content: center;
 }
 </style>

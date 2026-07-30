@@ -3,20 +3,14 @@ import { ref, onMounted, watch } from 'vue';
 import { useRouter } from 'vue-router';
 import { useI18n } from '@vben/locales';
 import {
-  Card,
-  Button,
-  Tag,
   Spin,
   Empty,
   DatePicker,
-  Progress,
-  Input,
   message,
 } from 'ant-design-vue';
 import dayjs, { type Dayjs } from 'dayjs';
 import {
   listMaintenanceSchedulesApi,
-  createMaintenanceLogApi,
   type ScheduleRow,
 } from '#/api/ops/maintenance-plans';
 
@@ -36,58 +30,57 @@ export interface DailyPlanGroup {
   status: 'pass' | 'fail' | 'pending';
 }
 
-export interface JudgeScheduleItem {
-  schedule_id: string;
-  equipment_id?: string;
-  item_name: string;
-  item_description?: string;
-  result: 'pass' | 'fail';
-  notes: string;
-}
-
 const router = useRouter();
 const { t } = useI18n();
 
-const activeView = ref<'list' | 'judge'>('list');
 const loading = ref(false);
-const submitting = ref(false);
-
 const selectedDate = ref<Dayjs>(dayjs());
 const planGroups = ref<DailyPlanGroup[]>([]);
 
-// Judging View State
-const selectedPlanGroup = ref<DailyPlanGroup | null>(null);
-const judgeItems = ref<JudgeScheduleItem[]>([]);
-
 function getLatestResult(schedule: ScheduleRow): string | null {
-  if (schedule.result) return schedule.result;
   if (schedule.maintenance_logs && schedule.maintenance_logs.length > 0) {
-    return schedule.maintenance_logs[0]?.result || null;
+    const logRes = schedule.maintenance_logs[0]?.result;
+    if (logRes && logRes !== 'Pending' && logRes !== 'pending') {
+      return logRes;
+    }
+  }
+  if (schedule.result && schedule.result !== 'Pending' && schedule.result !== 'pending') {
+    return schedule.result;
   }
   return null;
 }
 
 function groupSchedulesByPlan(rows: ScheduleRow[], dateStr: string): DailyPlanGroup[] {
   const planMap = new Map<string, DailyPlanGroup>();
-  // Filter rows strictly to ensure only items matching dateStr are included for that date
+  const planItemSeenMap = new Map<string, Set<string>>();
   const dayRows = rows.filter((s) => s.date && s.date.startsWith(dateStr));
 
   for (const s of dayRows) {
     const planKey = s.maintenance_plan_id || s.plan_code || s.id || 'unknown';
+    const itemKey = s.maintenance_item_id || s.item_name || s.maintenance_item?.name || s.id || '';
+
+    if (!planItemSeenMap.has(planKey)) {
+      planItemSeenMap.set(planKey, new Set());
+    }
+    const itemSeenSet = planItemSeenMap.get(planKey)!;
+    if (itemSeenSet.has(itemKey)) {
+      continue;
+    }
+    itemSeenSet.add(itemKey);
+
     const latestRes = getLatestResult(s);
-    const isCompleted = Boolean(latestRes);
-    const isPassed = latestRes === 'pass' || latestRes === 'normal' || latestRes === 'completed';
-    const isFailed = latestRes === 'fail' || latestRes === 'abnormal';
+    const isPassed = latestRes === 'Completed' || latestRes === 'completed' || latestRes === 'pass' || latestRes === 'normal';
+    const isFailed = latestRes === 'Failed' || latestRes === 'failed' || latestRes === 'fail' || latestRes === 'abnormal';
 
     const eqCode = s.equipment_code || s.maintenance_plan?.equipment?.code || '—';
     const eqName = s.equipment_name || s.maintenance_plan?.equipment?.name || null;
-    const planCode = s.plan_code || s.maintenance_plan?.plan_code || 'KE HOACH BÁO TRÌ';
+    const planCode = s.plan_code || s.maintenance_plan?.plan_code || 'KẾ HOẠCH BẢO TRÌ';
     const mType = s.maintenance_type || s.maintenance_plan?.maintenance_type || '—';
 
     if (!planMap.has(planKey)) {
       planMap.set(planKey, {
         key: `plan-${planKey}-${dateStr}`,
-        plan_id: s.maintenance_plan_id || '',
+        plan_id: s.maintenance_plan_id || s.id || '',
         plan_code: planCode,
         date: dateStr,
         equipment_code: eqCode,
@@ -95,20 +88,20 @@ function groupSchedulesByPlan(rows: ScheduleRow[], dateStr: string): DailyPlanGr
         maintenance_type: mType,
         schedules: [s],
         total_items: 1,
-        completed_items: isCompleted ? 1 : 0,
-        status: isFailed ? 'fail' : isCompleted && isPassed ? 'pass' : 'pending',
+        completed_items: isPassed ? 1 : 0,
+        status: isFailed ? 'fail' : isPassed ? 'pass' : 'pending',
       });
     } else {
       const node = planMap.get(planKey)!;
       node.schedules.push(s);
       node.total_items += 1;
-      if (isCompleted) {
+      if (isPassed) {
         node.completed_items += 1;
       }
 
       if (isFailed || node.status === 'fail') {
         node.status = 'fail';
-      } else if (node.completed_items === node.total_items) {
+      } else if (node.completed_items === node.total_items && node.total_items > 0) {
         node.status = 'pass';
       } else {
         node.status = 'pending';
@@ -129,7 +122,15 @@ async function fetchSchedules() {
       with_logs: true,
     });
     const scheduleArray = Array.isArray(rawSchedules) ? rawSchedules : [];
+    console.log('[DEBUG] rawSchedules count:', scheduleArray.length);
+    console.log('[DEBUG] first schedule sample:', JSON.stringify(scheduleArray[0], null, 2));
     planGroups.value = groupSchedulesByPlan(scheduleArray, dateStr);
+    console.log('[DEBUG] planGroups:', planGroups.value.map(g => ({
+      plan_code: g.plan_code,
+      total: g.total_items,
+      completed: g.completed_items,
+      percent: g.total_items > 0 ? Math.round((g.completed_items / g.total_items) * 100) : 0,
+    })));
   } catch (err: unknown) {
     const apiError = (err as { response?: { data?: { message?: string } } })?.response?.data?.message;
     message.error(apiError || t('page.ops.loadSchedulesError') || 'Không thể tải danh sách bảo trì');
@@ -138,23 +139,15 @@ async function fetchSchedules() {
   }
 }
 
-function getPlanStatusTag(group: DailyPlanGroup) {
-  if (group.status === 'pass') {
-    return { color: 'success', label: t('page.ops.statusPassed') || 'Đạt' };
-  } else if (group.status === 'fail') {
-    return { color: 'error', label: t('page.ops.statusFailed') || 'Không đạt' };
-  }
-  return { color: 'warning', label: t('page.ops.statusPending') || 'Chưa xong' };
-}
-
 function getProgressPercent(group: DailyPlanGroup): number {
   if (group.total_items === 0) return 0;
   return Math.round((group.completed_items / group.total_items) * 100);
 }
 
 function getProgressColor(group: DailyPlanGroup): string {
-  if (group.status === 'pass') return '#52c41a';
   if (group.status === 'fail') return '#f5222d';
+  const percent = getProgressPercent(group);
+  if (percent >= 100) return '#52c41a';
   return '#1890ff';
 }
 
@@ -169,58 +162,13 @@ function handleDateChange(val: unknown) {
 }
 
 function handleBack() {
-  if (activeView.value === 'list') {
-    router.push('/portal');
-  } else {
-    activeView.value = 'list';
-  }
+  router.push('/portal');
 }
 
 function startJudge(group: DailyPlanGroup) {
-  selectedPlanGroup.value = group;
+  const targetId = group.plan_id || group.schedules[0]?.id || group.plan_code;
   const dateStr = selectedDate.value.format('YYYY-MM-DD');
-  const daySchedules = group.schedules.filter((s) => s.date && s.date.startsWith(dateStr));
-
-  judgeItems.value = daySchedules.map((s) => {
-    const latestRes = getLatestResult(s);
-    const existingNotes = (s.maintenance_logs?.[0] as { notes?: string } | undefined)?.notes || '';
-    return {
-      schedule_id: s.id || '',
-      equipment_id: s.equipment_id || s.maintenance_plan?.equipment_id,
-      item_name: s.maintenance_item?.name || s.item_name || s.item_name_text || 'Hạng mục bảo trì',
-      item_description: s.item_description || s.maintenance_item?.description || '',
-      result: latestRes === 'fail' || latestRes === 'abnormal' ? 'fail' : 'pass',
-      notes: existingNotes,
-    };
-  });
-  activeView.value = 'judge';
-}
-
-async function handleSaveEvaluation() {
-  if (!selectedPlanGroup.value) return;
-  submitting.value = true;
-  try {
-    const nowStr = dayjs().format('YYYY-MM-DD HH:mm:ss');
-    for (const item of judgeItems.value) {
-      if (!item.schedule_id) continue;
-      await createMaintenanceLogApi({
-        maintenance_schedule_id: item.schedule_id,
-        equipment_id: item.equipment_id,
-        datetime: nowStr,
-        result: item.result,
-        notes: item.notes.trim() || null,
-      });
-    }
-
-    message.success(t('page.ops.saveLogSuccess') || 'Đã lưu kết quả bảo trì thành công');
-    activeView.value = 'list';
-    await fetchSchedules();
-  } catch (err: unknown) {
-    const apiError = (err as { response?: { data?: { message?: string } } })?.response?.data?.message;
-    message.error(apiError || t('page.ops.saveLogError') || 'Không thể lưu kết quả bảo trì');
-  } finally {
-    submitting.value = false;
-  }
+  router.push(`/portal/maintain-plan/${targetId}?date=${dateStr}`);
 }
 
 onMounted(() => {
@@ -233,33 +181,29 @@ watch(selectedDate, () => {
 </script>
 
 <template>
-  <div class="p-4 sm:p-6 min-h-[85vh] bg-slate-50 dark:bg-zinc-950/40 pb-20">
-    <!-- ─── HEADER / ACTION BAR ─── -->
-    <div class="mb-5 flex items-center justify-between">
-      <div class="flex items-center gap-2">
-        <Button
-          type="default"
-          size="small"
-          class="flex items-center justify-center p-1.5 rounded-lg"
-          @click="handleBack"
-        >
-          <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-chevron-left"><path d="m15 18-6-6 6-6"/></svg>
-        </Button>
-        <h1 class="text-base font-bold text-slate-800 dark:text-zinc-200 m-0">
-          <template v-if="activeView === 'list'">{{ t('page.ops.maintenancePlan') || 'Kế hoạch bảo trì' }}</template>
-          <template v-else>{{ t('page.ops.evalMaintenance') || 'Đánh giá Kế hoạch Bảo trì' }}</template>
-        </h1>
-      </div>
+  <div class="min-h-[85vh] bg-slate-50 dark:bg-zinc-950/40 pb-20">
+    <!-- ─── HEADER ─── -->
+    <div class="bg-white dark:bg-zinc-900 border-b border-slate-200/70 dark:border-zinc-800 px-4 pt-4 pb-3 flex items-center gap-3 mb-4">
+      <button
+        type="button"
+        class="h-8 w-8 shrink-0 flex items-center justify-center rounded-xl bg-slate-100/80 dark:bg-zinc-800/80 hover:bg-slate-200 dark:hover:bg-zinc-700 text-slate-600 dark:text-zinc-300 transition-colors border-0 cursor-pointer outline-none"
+        @click="handleBack"
+      >
+        <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="m15 18-6-6 6-6"/></svg>
+      </button>
+      <h1 class="text-sm font-bold text-slate-800 dark:text-zinc-200 m-0 flex-1 truncate">
+        {{ t('page.ops.maintenancePlan') || 'Kế hoạch bảo trì' }}
+      </h1>
     </div>
 
     <!-- ─── LOADING SPIN ─── -->
-    <div v-if="loading && activeView === 'list'" class="flex items-center justify-center py-20">
+    <div v-if="loading" class="flex items-center justify-center py-20">
       <Spin size="large" />
     </div>
 
-    <!-- ─── VIEW 1: MAINTENANCE PLAN CARDS LIST ─── -->
-    <div v-else-if="activeView === 'list'" class="space-y-4">
-      <!-- Date Switcher input component -->
+    <!-- ─── MAINTENANCE PLAN LIST ─── -->
+    <div v-else class="space-y-4 px-4">
+      <!-- Date Switcher -->
       <div class="flex items-center justify-between gap-2 bg-white dark:bg-zinc-900 p-2 rounded-2xl border border-slate-200/80 dark:border-zinc-800 shadow-3xs">
         <button
           type="button"
@@ -268,7 +212,7 @@ watch(selectedDate, () => {
         >
           <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="m15 18-6-6 6-6"/></svg>
         </button>
-        
+
         <DatePicker
           :value="selectedDate"
           @change="handleDateChange"
@@ -287,171 +231,49 @@ watch(selectedDate, () => {
         </button>
       </div>
 
-      <!-- Maintenance Plan Cards List -->
-      <div v-if="planGroups.length > 0" class="flex flex-col gap-3.5">
-        <Card
+      <!-- Maintenance Plan Rows -->
+      <div v-if="planGroups.length > 0" class="space-y-3">
+        <div
           v-for="group in planGroups"
           :key="group.key"
-          class="rounded-2xl shadow-3xs border-slate-200/80 dark:border-zinc-800/80 bg-white dark:bg-zinc-900/60 backdrop-blur-md overflow-hidden"
-          :body-style="{ padding: '16px' }"
+          class="group flex items-center gap-3 bg-white dark:bg-zinc-900 border border-slate-100 dark:border-zinc-800 rounded-2xl px-3.5 py-3.5 cursor-pointer hover:border-indigo-200 dark:hover:border-indigo-800/60 hover:shadow-sm active:scale-[0.99] transition-all duration-150"
+          @click="startJudge(group)"
         >
-          <div class="flex items-start justify-between gap-3">
-            <div class="flex-1 min-w-0">
-              <h3 class="text-sm font-bold text-slate-800 dark:text-zinc-200 truncate m-0">
-                {{ group.plan_code }} <span v-if="group.equipment_name">— {{ group.equipment_name }}</span>
-              </h3>
-              <p class="text-[11px] text-slate-400 dark:text-zinc-500 font-mono mt-1 mb-0">
-                {{ group.equipment_code }}
-              </p>
-            </div>
-            <Tag :color="getPlanStatusTag(group).color" class="m-0 text-[9px] uppercase font-bold px-1.5 py-0.5 rounded-md shrink-0">
-              {{ getPlanStatusTag(group).label }}
-            </Tag>
+          <!-- Info -->
+          <div class="flex-1 min-w-0">
+            <p class="text-sm font-semibold text-slate-800 dark:text-zinc-100 truncate m-0 leading-tight">
+              {{ group.plan_code }}
+            </p>
+            <p class="text-[11px] text-slate-400 dark:text-zinc-500 font-mono mt-0.5 mb-0 truncate">
+              {{ group.equipment_code }}
+              <span class="text-slate-300 dark:text-zinc-600 mx-1">·</span>
+              {{ group.maintenance_type }}
+            </p>
           </div>
 
-          <div class="flex justify-between items-center text-xs text-slate-500 dark:text-zinc-400 mt-3.5">
-            <span class="font-semibold text-[11px]">
-              {{ t('page.ops.colMaintenanceType') || 'Loại bảo trì' }}: {{ group.maintenance_type || 'Bảo trì định kỳ' }}
+          <!-- Progress ring -->
+          <div class="shrink-0 w-10 h-10 relative flex items-center justify-center">
+            <svg class="w-10 h-10 -rotate-90" viewBox="0 0 36 36">
+              <circle cx="18" cy="18" r="15.5" fill="none" stroke-width="2.5" class="stroke-slate-100 dark:stroke-zinc-800" />
+              <circle cx="18" cy="18" r="15.5" fill="none" stroke-width="2.5"
+                :stroke="getProgressColor(group)"
+                :stroke-dasharray="`${getProgressPercent(group) * 0.974} 97.4`"
+                stroke-linecap="round" />
+            </svg>
+            <span class="absolute text-[9px] font-bold text-slate-600 dark:text-zinc-400">
+              {{ getProgressPercent(group) }}%
             </span>
-            <span class="font-medium text-[11px]">
-              {{ t('page.ops.checklistDrawer.checkItemsHeader') || 'Tiến độ' }}: {{ group.completed_items }}/{{ group.total_items }}
-            </span>
           </div>
 
-          <div class="mt-2.5">
-            <Progress
-              :percent="getProgressPercent(group)"
-              :show-info="false"
-              size="small"
-              class="m-0"
-              :stroke-color="getProgressColor(group)"
-            />
-          </div>
-
-          <div class="flex items-center gap-2 mt-4">
-            <Button
-              type="primary"
-              class="flex-1 bg-indigo-600 hover:bg-indigo-700 border-none text-xs h-8.5 rounded-xl font-bold"
-              @click="startJudge(group)"
-            >
-              {{ t('page.ops.colResult') || 'Đánh giá' }}
-            </Button>
-          </div>
-        </Card>
+          <!-- Chevron -->
+          <svg class="w-3.5 h-3.5 text-slate-300 dark:text-zinc-600 shrink-0 group-hover:text-indigo-400 transition-colors" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" d="m9 18 6-6-6-6" />
+          </svg>
+        </div>
       </div>
 
       <div v-else class="py-12 flex flex-col items-center justify-center bg-white dark:bg-zinc-900 border border-dashed border-slate-200 dark:border-zinc-800 rounded-2xl">
         <Empty :description="t('page.ops.emptySchedules') || 'Không có kế hoạch bảo trì nào cho ngày này.'" />
-      </div>
-    </div>
-
-    <!-- ─── VIEW 2: PLAN ITEMS JUDGING SUB-VIEW ─── -->
-    <div v-else-if="activeView === 'judge' && selectedPlanGroup" class="space-y-5">
-      <Card class="rounded-2xl border-slate-200/80 dark:border-zinc-800/80 bg-white dark:bg-zinc-900/60 p-0 overflow-hidden shadow-xs" :body-style="{ padding: '0px' }">
-        <div class="p-4 bg-indigo-50/50 dark:bg-indigo-950/20 border-b border-slate-100 dark:border-zinc-800 flex justify-between items-center">
-          <div class="min-w-0 pr-3">
-            <h3 class="text-sm font-bold text-slate-800 dark:text-zinc-200 m-0 truncate">
-              {{ selectedPlanGroup.plan_code }} <span v-if="selectedPlanGroup.equipment_name">— {{ selectedPlanGroup.equipment_name }}</span>
-            </h3>
-            <p class="text-[10px] text-slate-400 dark:text-zinc-500 font-mono mt-1 mb-0">
-              {{ selectedPlanGroup.equipment_code }} | {{ selectedPlanGroup.date }}
-            </p>
-          </div>
-          <Tag color="blue" class="m-0 font-bold text-[9px] uppercase px-2 py-0.5 rounded-md shrink-0">
-            {{ selectedPlanGroup.total_items }} HẠNG MỤC
-          </Tag>
-        </div>
-      </Card>
-
-      <!-- Child Items Loop -->
-      <div class="space-y-3">
-        <label class="text-[11px] font-bold text-slate-400 dark:text-zinc-500 uppercase tracking-widest block px-1">
-          {{ t('page.ops.dailyMaintenanceItemsHeader') || 'Hạng mục bảo trì trong ngày' }} ({{ judgeItems.length }})
-        </label>
-
-        <div v-if="judgeItems.length === 0" class="py-10 bg-white dark:bg-zinc-900 border border-slate-200 dark:border-zinc-800 rounded-2xl flex justify-center">
-          <Empty :description="t('page.ops.noItemsToJudge') || 'Không có hạng mục nào để đánh giá.'" />
-        </div>
-
-        <div v-else class="flex flex-col gap-3.5">
-          <div
-            v-for="(item, index) in judgeItems"
-            :key="item.schedule_id || index"
-            class="p-3.5 rounded-2xl border border-slate-200/80 dark:border-zinc-800/80 bg-white dark:bg-zinc-900/60 shadow-3xs space-y-3"
-          >
-            <div class="flex items-start justify-between gap-3">
-              <div class="flex-1 min-w-0">
-                <span class="text-xs font-bold text-slate-800 dark:text-zinc-200 leading-snug block">
-                  {{ item.item_name }}
-                </span>
-                <p v-if="item.item_description" class="text-[11px] text-slate-500 dark:text-zinc-400 mt-1 mb-0 line-clamp-2">
-                  {{ item.item_description }}
-                </p>
-              </div>
-
-              <Button
-                type="default"
-                size="small"
-                :class="[
-                  'flex items-center gap-1 px-2.5 py-1 font-bold transition-all rounded-lg shrink-0 border text-[10px]',
-                  item.result === 'pass'
-                    ? 'border-emerald-500 bg-emerald-50 text-emerald-700 dark:bg-emerald-950/40 dark:text-emerald-300 dark:border-emerald-600'
-                    : 'border-red-500 bg-red-50 text-red-700 dark:bg-red-950/40 dark:text-red-300 dark:border-red-600'
-                ]"
-                @click="item.result = item.result === 'pass' ? 'fail' : 'pass'"
-              >
-                <svg
-                  v-if="item.result === 'pass'"
-                  class="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400"
-                  fill="none"
-                  stroke="currentColor"
-                  stroke-width="2.5"
-                  viewBox="0 0 24 24"
-                >
-                  <path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7" />
-                </svg>
-                <svg
-                  v-else
-                  class="w-3.5 h-3.5 text-red-600 dark:text-red-400"
-                  fill="none"
-                  stroke="currentColor"
-                  stroke-width="2.5"
-                  viewBox="0 0 24 24"
-                >
-                  <path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12" />
-                </svg>
-                <span class="uppercase tracking-wider">
-                  {{ item.result === 'pass' ? t('page.ops.checklistDrawer.statusPass') : t('page.ops.checklistDrawer.statusFail') }}
-                </span>
-              </Button>
-            </div>
-
-            <!-- Optional Notes -->
-            <div>
-              <Input.Textarea
-                v-model:value="item.notes"
-                :rows="2"
-                class="rounded-xl border-slate-200/80 dark:border-zinc-800 text-[11px]"
-                :placeholder="t('page.ops.notesPlaceholder') || 'Ghi chú cho hạng mục này (nếu có)...'"
-              />
-            </div>
-          </div>
-        </div>
-      </div>
-
-      <!-- Action Footer -->
-      <div class="fixed bottom-0 left-0 right-0 bg-white dark:bg-zinc-900 border-t border-slate-200 dark:border-zinc-800 p-4 z-50 flex items-center justify-between gap-3">
-        <Button class="flex-1 h-10 font-bold rounded-xl" @click="activeView = 'list'">
-          {{ t('page.ops.btnCancel') || 'Hủy' }}
-        </Button>
-        <Button
-          type="primary"
-          class="flex-1 h-10 font-bold bg-indigo-600 hover:bg-indigo-700 border-none rounded-xl"
-          :loading="submitting"
-          @click="handleSaveEvaluation"
-        >
-          {{ t('page.ops.btnSave') || 'Lưu kết quả' }}
-        </Button>
       </div>
     </div>
   </div>
@@ -490,9 +312,5 @@ watch(selectedDate, () => {
   display: flex !important;
   align-items: center !important;
   color: #94a3b8 !important;
-}
-
-:deep(.ant-card) {
-  margin-bottom: 0 !important;
 }
 </style>

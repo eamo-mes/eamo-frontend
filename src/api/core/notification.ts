@@ -42,7 +42,7 @@ export interface UserNotificationsResponse {
 /**
  * Fetch specific user's notifications and unread count
  */
-export async function getUserNotificationsApi(userId: string, params?: Record<string, any>): Promise<UserNotificationsResponse> {
+export async function getUserNotificationsApi(userId: string, params?: Record<string, unknown>): Promise<UserNotificationsResponse> {
   const accessStore = useAccessStore();
   const token = accessStore.accessToken;
 
@@ -102,7 +102,7 @@ export async function markAllNotificationsReadApi(): Promise<{ message: string }
 /**
  * Fetch today's schedules (Checklists & Maintenance) for the authenticated user
  */
-export async function getUserTodaySchedulesApi(params?: Record<string, any>): Promise<any> {
+export async function getUserTodaySchedulesApi(params?: Record<string, unknown>): Promise<unknown> {
   const accessStore = useAccessStore();
   const token = accessStore.accessToken;
 
@@ -120,7 +120,7 @@ export async function getUserTodaySchedulesApi(params?: Record<string, any>): Pr
 /**
  * Mark a checklist schedule as completed
  */
-export async function completeChecklistScheduleApi(id: string): Promise<any> {
+export async function completeChecklistScheduleApi(id: string): Promise<unknown> {
   const accessStore = useAccessStore();
   const token = accessStore.accessToken;
 
@@ -137,7 +137,7 @@ export async function completeChecklistScheduleApi(id: string): Promise<any> {
 /**
  * Mark a maintenance schedule as completed
  */
-export async function completeMaintenanceScheduleApi(id: string): Promise<any> {
+export async function completeMaintenanceScheduleApi(id: string): Promise<unknown> {
   const accessStore = useAccessStore();
   const token = accessStore.accessToken;
 

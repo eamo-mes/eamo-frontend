@@ -441,7 +441,7 @@ onMounted(async () => {
       :confirm-loading="submitting"
       :ok-text="$t('page.equipment.modalConfirm')"
       :cancel-text="$t('page.equipment.modalCancel')"
-      width="600px"
+      width="800px"
       @ok="handleOk"
       @cancel="showModal = false"
     >

@@ -20,6 +20,7 @@ export interface ScheduleRow extends BaseScheduleRow {
     maintenance_type?: string;
     equipment?: { code?: string; name?: string };
     maintenance_category?: { name?: string };
+    users?: Array<{ id: string; name?: string }>;
   };
   maintenance_item?: {
     name?: string;
@@ -104,4 +105,18 @@ export interface JudgeDetailItem {
   checklist_id: string;
   description: string;
   result: 'pass' | 'fail';
+}
+
+export interface DailyPlanNode {
+  key: string;
+  plan_id: string;
+  plan_code: string;
+  date: string;
+  equipment_code: string;
+  equipment_name: string | null;
+  maintenance_type: string;
+  schedules: ScheduleRow[];
+  total_items: number;
+  completed_items: number;
+  result: 'Completed' | 'Pending';
 }
