@@ -38,9 +38,14 @@ const selectedDate = ref<Dayjs>(dayjs());
 const planGroups = ref<DailyPlanGroup[]>([]);
 
 function getLatestResult(schedule: ScheduleRow): string | null {
-  if (schedule.result) return schedule.result;
   if (schedule.maintenance_logs && schedule.maintenance_logs.length > 0) {
-    return schedule.maintenance_logs[0]?.result || null;
+    const logRes = schedule.maintenance_logs[0]?.result;
+    if (logRes && logRes !== 'Pending' && logRes !== 'pending') {
+      return logRes;
+    }
+  }
+  if (schedule.result && schedule.result !== 'Pending' && schedule.result !== 'pending') {
+    return schedule.result;
   }
   return null;
 }
@@ -64,9 +69,8 @@ function groupSchedulesByPlan(rows: ScheduleRow[], dateStr: string): DailyPlanGr
     itemSeenSet.add(itemKey);
 
     const latestRes = getLatestResult(s);
-    const isCompleted = Boolean(latestRes);
-    const isPassed = latestRes === 'pass' || latestRes === 'normal' || latestRes === 'completed';
-    const isFailed = latestRes === 'fail' || latestRes === 'abnormal';
+    const isPassed = latestRes === 'Completed' || latestRes === 'completed' || latestRes === 'pass' || latestRes === 'normal';
+    const isFailed = latestRes === 'Failed' || latestRes === 'failed' || latestRes === 'fail' || latestRes === 'abnormal';
 
     const eqCode = s.equipment_code || s.maintenance_plan?.equipment?.code || '—';
     const eqName = s.equipment_name || s.maintenance_plan?.equipment?.name || null;
@@ -84,20 +88,20 @@ function groupSchedulesByPlan(rows: ScheduleRow[], dateStr: string): DailyPlanGr
         maintenance_type: mType,
         schedules: [s],
         total_items: 1,
-        completed_items: isCompleted ? 1 : 0,
-        status: isFailed ? 'fail' : isCompleted && isPassed ? 'pass' : 'pending',
+        completed_items: isPassed ? 1 : 0,
+        status: isFailed ? 'fail' : isPassed ? 'pass' : 'pending',
       });
     } else {
       const node = planMap.get(planKey)!;
       node.schedules.push(s);
       node.total_items += 1;
-      if (isCompleted) {
+      if (isPassed) {
         node.completed_items += 1;
       }
 
       if (isFailed || node.status === 'fail') {
         node.status = 'fail';
-      } else if (node.completed_items === node.total_items) {
+      } else if (node.completed_items === node.total_items && node.total_items > 0) {
         node.status = 'pass';
       } else {
         node.status = 'pending';
@@ -118,7 +122,15 @@ async function fetchSchedules() {
       with_logs: true,
     });
     const scheduleArray = Array.isArray(rawSchedules) ? rawSchedules : [];
+    console.log('[DEBUG] rawSchedules count:', scheduleArray.length);
+    console.log('[DEBUG] first schedule sample:', JSON.stringify(scheduleArray[0], null, 2));
     planGroups.value = groupSchedulesByPlan(scheduleArray, dateStr);
+    console.log('[DEBUG] planGroups:', planGroups.value.map(g => ({
+      plan_code: g.plan_code,
+      total: g.total_items,
+      completed: g.completed_items,
+      percent: g.total_items > 0 ? Math.round((g.completed_items / g.total_items) * 100) : 0,
+    })));
   } catch (err: unknown) {
     const apiError = (err as { response?: { data?: { message?: string } } })?.response?.data?.message;
     message.error(apiError || t('page.ops.loadSchedulesError') || 'Không thể tải danh sách bảo trì');
@@ -133,8 +145,9 @@ function getProgressPercent(group: DailyPlanGroup): number {
 }
 
 function getProgressColor(group: DailyPlanGroup): string {
-  if (group.status === 'pass') return '#52c41a';
   if (group.status === 'fail') return '#f5222d';
+  const percent = getProgressPercent(group);
+  if (percent >= 100) return '#52c41a';
   return '#1890ff';
 }
 

@@ -18,7 +18,7 @@ import { API_BASE_URL } from '#/api/config';
 import { isSoftDeleted, softDeletedRowClass, sortBySoftDeleted } from '#/utils/soft-delete';
 import ExpandableContainer from '#/components/ExpandableContainer.vue';
 import EquipmentChecklistSessionsModal from './components/EquipmentChecklistSessionsModal.vue';
-import EquipmentQrModal from './components/EquipmentQrModal.vue';
+import EquipmentUnifiedModal from './components/EquipmentUnifiedModal.vue';
 
 interface CategoryOption {
   id: string;
@@ -75,16 +75,24 @@ const activeSearch = ref('');
 
 
 
+const unifiedModalOpen = ref(false);
+const selectedEquipmentId = ref<string | null>(null);
+const unifiedModalTab = ref('info');
+
 const checklistModalOpen = ref(false);
-const checklistModalEquipmentId = ref<string | null>(null);
-const checklistModalEquipmentName = ref<string | null>(null);
+const checklistEquipmentId = ref<string | null>(null);
+const checklistEquipmentName = ref<string | null>(null);
 
-const qrModalOpen = ref(false);
-const qrModalEquipment = ref<EquipmentItem | null>(null);
+function openUnifiedModal(record?: EquipmentItem, tab = 'info') {
+  selectedEquipmentId.value = record?.id || null;
+  unifiedModalTab.value = tab;
+  unifiedModalOpen.value = true;
+}
 
-function openQrModal(record: EquipmentItem) {
-  qrModalEquipment.value = record;
-  qrModalOpen.value = true;
+function openChecklistModal(record: EquipmentItem) {
+  checklistEquipmentId.value = record.id;
+  checklistEquipmentName.value = record.name || record.code;
+  checklistModalOpen.value = true;
 }
 
 // Summary Widgets State
@@ -277,14 +285,6 @@ function openEditModal(record: EquipmentItem) {
   router.push({ name: 'EquipmentDetail', query: { id: record.id } });
 }
 
-
-
-function openChecklistModal(record: EquipmentItem) {
-  checklistModalEquipmentId.value = record.id;
-  checklistModalEquipmentName.value = record.name || record.code;
-  checklistModalOpen.value = true;
-}
-
 async function handleDelete(id: string) {
   try {
     await axios.delete(`${API_BASE_URL}/v1/equipment/${id}`, {
@@ -400,16 +400,8 @@ onMounted(() => {
                  </ExpandableContainer>
                </div>
               </template>
-             <template v-else-if="column.key === 'actions'">
+            <template v-else-if="column.key === 'actions'">
               <div class="flex items-center justify-end gap-2 whitespace-nowrap">
-                <Button
-                  size="small"
-                  :disabled="isSoftDeleted(record as EquipmentItem)"
-                  class="rounded hover:border-primary hover:text-primary flex items-center gap-1"
-                  @click="openQrModal(record as EquipmentItem)"
-                >
-                  {{ $t('page.equipment.btnQrCode') }}
-                </Button>
                 <Button
                   size="small"
                   :disabled="isSoftDeleted(record as EquipmentItem)"
@@ -417,6 +409,15 @@ onMounted(() => {
                   @click="openChecklistModal(record as EquipmentItem)"
                 >
                   {{ $t('page.equipment.btnChecklist') }}
+                </Button>
+                <Button
+                  size="small"
+                  type="default"
+                  :disabled="isSoftDeleted(record as EquipmentItem)"
+                  class="rounded bg-white hover:border-primary hover:text-primary border-gray-200 text-gray-700 shadow-2xs font-medium"
+                  @click="openUnifiedModal(record as EquipmentItem, 'info')"
+                >
+                  {{ $t('page.equipment.btnDetail') }}
                 </Button>
                 <Button
                   size="small"
@@ -451,14 +452,16 @@ onMounted(() => {
     <!-- Checklist Sessions Modal -->
     <EquipmentChecklistSessionsModal
       v-model:open="checklistModalOpen"
-      :equipment-id="checklistModalEquipmentId"
-      :equipment-name="checklistModalEquipmentName"
+      :equipment-id="checklistEquipmentId"
+      :equipment-name="checklistEquipmentName"
     />
 
-    <!-- Equipment QR Modal -->
-    <EquipmentQrModal
-      v-model:open="qrModalOpen"
-      :equipment="qrModalEquipment"
+    <!-- Equipment Unified Modal (Info, QR Code) -->
+    <EquipmentUnifiedModal
+      v-model:open="unifiedModalOpen"
+      :equipment-id="selectedEquipmentId"
+      :initial-tab-key="unifiedModalTab"
+      @saved="loadEquipments"
     />
   </div>
 </template>

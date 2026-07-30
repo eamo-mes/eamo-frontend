@@ -112,9 +112,14 @@ async function fetchMaintenance() {
 
 // Helper: Group maintenance schedules
 function getLatestResult(schedule: ScheduleRow): string | null {
-  if (schedule.result) return schedule.result;
   if (schedule.maintenance_logs && schedule.maintenance_logs.length > 0) {
-    return schedule.maintenance_logs[0]?.result || null;
+    const logRes = schedule.maintenance_logs[0]?.result;
+    if (logRes && logRes !== 'Pending' && logRes !== 'pending') {
+      return logRes;
+    }
+  }
+  if (schedule.result && schedule.result !== 'Pending' && schedule.result !== 'pending') {
+    return schedule.result;
   }
   return null;
 }
@@ -138,9 +143,9 @@ function groupSchedulesByPlan(rows: ScheduleRow[], dateStr: string): Maintenance
     itemSeenSet.add(itemKey);
 
     const latestRes = getLatestResult(s);
-    const isCompleted = Boolean(latestRes);
-    const isPassed = latestRes === 'pass' || latestRes === 'normal' || latestRes === 'completed';
-    const isFailed = latestRes === 'fail' || latestRes === 'abnormal';
+    const isPassed = latestRes === 'Completed' || latestRes === 'completed' || latestRes === 'pass' || latestRes === 'normal';
+    const isFailed = latestRes === 'Failed' || latestRes === 'failed' || latestRes === 'fail' || latestRes === 'abnormal';
+    const isCompleted = isPassed || isFailed;
 
     const eqCode = s.equipment_code || s.maintenance_plan?.equipment?.code || '—';
     const eqName = s.equipment_name || s.maintenance_plan?.equipment?.name || null;
@@ -159,21 +164,21 @@ function groupSchedulesByPlan(rows: ScheduleRow[], dateStr: string): Maintenance
         maintenance_type: mType,
         schedules: [s],
         total_items: 1,
-        completed_items: isCompleted ? 1 : 0,
-        status: isFailed ? 'fail' : isCompleted && isPassed ? 'pass' : 'pending',
+        completed_items: isPassed ? 1 : 0,
+        status: isFailed ? 'fail' : isPassed ? 'pass' : 'pending',
         users,
       });
     } else {
       const node = planMap.get(planKey)!;
       node.schedules.push(s);
       node.total_items += 1;
-      if (isCompleted) {
+      if (isPassed) {
         node.completed_items += 1;
       }
 
       if (isFailed || node.status === 'fail') {
         node.status = 'fail';
-      } else if (node.completed_items === node.total_items) {
+      } else if (node.completed_items === node.total_items && node.total_items > 0) {
         node.status = 'pass';
       } else {
         node.status = 'pending';
@@ -185,38 +190,40 @@ function groupSchedulesByPlan(rows: ScheduleRow[], dateStr: string): Maintenance
 }
 
 // ─── Checklist Status & Progress Logic (Identical to /portal/checklist) ───
-function getLatestCompletedLog(detail: ChecklistDetailItem): ChecklistLog | undefined {
-  return detail.logs
-    ?.filter((log) => log.status === 'completed')
+function getLatestCompletedLog(detail: ChecklistDetailItem & { schedules?: Array<{ logs?: ChecklistLog[] }> }): ChecklistLog | undefined {
+  let logs: ChecklistLog[] = detail.logs || [];
+  if (logs.length === 0 && detail.schedules && detail.schedules.length > 0) {
+    logs = detail.schedules.flatMap((s) => s.logs || []);
+  }
+  return logs
+    .filter((log) => log.status === 'completed')
     .sort((left, right) => (left.checked_at ?? '').localeCompare(right.checked_at ?? ''))
     .at(-1);
 }
 
 function getSessionStatus(session: ChecklistSession): 'pass' | 'fail' | 'pending' {
   if (!session.details || session.details.length === 0) return 'pending';
-  const completedLogs = session.details.map(getLatestCompletedLog);
-  const allCompleted = completedLogs.every((log) => log !== undefined);
-  if (!allCompleted) return 'pending';
-  const allPassed = completedLogs.every((log) => log?.result === 'pass');
-  return allPassed ? 'pass' : 'fail';
+  const hasFail = session.details.some((d) => getLatestCompletedLog(d)?.result === 'fail');
+  if (hasFail) return 'fail';
+  const allPassed = session.details.every((d) => getLatestCompletedLog(d)?.result === 'pass');
+  return allPassed ? 'pass' : 'pending';
 }
 
-
-
-function getCompletedCount(session: ChecklistSession): number {
+function getPassCount(session: ChecklistSession): number {
   if (!session.details) return 0;
-  return session.details.filter((d) => getLatestCompletedLog(d) !== undefined).length;
+  return session.details.filter((d) => getLatestCompletedLog(d)?.result === 'pass').length;
 }
 
 function getProgressPercent(session: ChecklistSession): number {
   if (!session.details || session.details.length === 0) return 0;
-  return Math.round((getCompletedCount(session) / session.details.length) * 100);
+  return Math.round((getPassCount(session) / session.details.length) * 100);
 }
 
 function getProgressColor(session: ChecklistSession): string {
   const status = getSessionStatus(session);
-  if (status === 'pass') return '#52c41a';
   if (status === 'fail') return '#f5222d';
+  const percent = getProgressPercent(session);
+  if (percent >= 100) return '#52c41a';
   return '#1890ff';
 }
 
@@ -226,8 +233,9 @@ function getProgressPercentForPlan(group: MaintenancePlanGroup): number {
 }
 
 function getProgressColorForPlan(group: MaintenancePlanGroup): string {
-  if (group.status === 'pass') return '#52c41a';
   if (group.status === 'fail') return '#f5222d';
+  const percent = getProgressPercentForPlan(group);
+  if (percent >= 100) return '#52c41a';
   return '#1890ff';
 }
 

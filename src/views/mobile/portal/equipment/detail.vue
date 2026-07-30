@@ -14,6 +14,7 @@ import {
 import axios from 'axios';
 import { useAccessStore } from '@vben/stores';
 import { API_BASE_URL } from '#/api/config';
+import EquipmentHierarchyFlow from '#/views/equipment/list/components/EquipmentHierarchyFlow.vue';
 
 defineOptions({ name: 'MobilePortalEquipmentDetail' });
 
@@ -95,6 +96,36 @@ interface DailyChecklistResponse {
 const loading = ref(true);
 const fetchError = ref('');
 const errorStatus = ref<number | null>(null);
+
+const activeTabKey = ref<'info' | 'hierarchy'>('info');
+
+// Touch gesture swipe handling between Tab 1 (info) and Tab 2 (hierarchy)
+const touchStartX = ref(0);
+const touchStartY = ref(0);
+
+function handleTouchStart(e: TouchEvent) {
+  const touch = e.touches[0];
+  if (touch) {
+    touchStartX.value = touch.clientX;
+    touchStartY.value = touch.clientY;
+  }
+}
+
+function handleTouchEnd(e: TouchEvent) {
+  const endTouch = e.changedTouches[0];
+  if (!endTouch) return;
+  const deltaX = endTouch.clientX - touchStartX.value;
+  const deltaY = endTouch.clientY - touchStartY.value;
+
+  // Horizontal swipe threshold 40px
+  if (Math.abs(deltaX) > 40 && Math.abs(deltaX) > Math.abs(deltaY) * 1.3) {
+    if (deltaX < 0 && activeTabKey.value === 'info') {
+      activeTabKey.value = 'hierarchy';
+    } else if (deltaX > 0 && activeTabKey.value === 'hierarchy') {
+      activeTabKey.value = 'info';
+    }
+  }
+}
 
 const activeEquipment = ref<EquipmentItem | null>(null);
 const dailyLoading = ref(false);
@@ -273,19 +304,54 @@ onMounted(() => {
 </script>
 
 <template>
-  <div class="min-h-[85vh] bg-slate-50 dark:bg-zinc-950/40 pb-6">
+  <div
+    class="min-h-[85vh] bg-slate-50 dark:bg-zinc-950/40 pb-6"
+    @touchstart="handleTouchStart"
+    @touchend="handleTouchEnd"
+  >
     <!-- ─── HEADER ─── -->
-    <div class="bg-white dark:bg-zinc-900 border-b border-slate-200/70 dark:border-zinc-800 px-4 pt-4 pb-3 flex items-center gap-3 mb-4">
-      <button
-        type="button"
-        class="h-8 w-8 shrink-0 flex items-center justify-center rounded-xl bg-slate-100/80 dark:bg-zinc-800/80 hover:bg-slate-200 dark:hover:bg-zinc-700 text-slate-600 dark:text-zinc-300 transition-colors border-0 cursor-pointer outline-none"
-        @click="handleBack"
-      >
-        <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="m15 18-6-6 6-6"/></svg>
-      </button>
-      <h1 class="text-sm font-bold text-slate-800 dark:text-zinc-200 m-0 flex-1 truncate">
-        {{ t('page.portal.equipmentDetailTitle') }}
-      </h1>
+    <div class="bg-white dark:bg-zinc-900 border-b border-slate-200/70 dark:border-zinc-800 px-4 pt-4 pb-0">
+      <div class="flex items-center gap-3 mb-3">
+        <button
+          type="button"
+          class="h-8 w-8 shrink-0 flex items-center justify-center rounded-xl bg-slate-100/80 dark:bg-zinc-800/80 hover:bg-slate-200 dark:hover:bg-zinc-700 text-slate-600 dark:text-zinc-300 transition-colors border-0 cursor-pointer outline-none"
+          @click="handleBack"
+        >
+          <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="m15 18-6-6 6-6"/></svg>
+        </button>
+        <h1 class="text-sm font-bold text-slate-800 dark:text-zinc-200 m-0 flex-1 truncate">
+          {{ t('page.portal.equipmentDetailTitle') }}
+        </h1>
+      </div>
+
+      <!-- Underline tab bar -->
+      <div class="flex">
+        <button
+          type="button"
+          @click="activeTabKey = 'info'"
+          :class="[
+            'flex-1 flex items-center justify-center gap-2 pb-3 text-xs font-bold border-0 bg-transparent cursor-pointer outline-none transition-all duration-200',
+            activeTabKey === 'info'
+              ? 'text-indigo-600 dark:text-indigo-400 border-b-2 border-indigo-600 dark:border-indigo-400 -mb-px'
+              : 'text-slate-400 dark:text-zinc-500 hover:text-slate-600 dark:hover:text-zinc-300'
+          ]"
+        >
+          {{ t('page.portal.generalInfoTitle') }}
+        </button>
+
+        <button
+          type="button"
+          @click="activeTabKey = 'hierarchy'"
+          :class="[
+            'flex-1 flex items-center justify-center gap-2 pb-3 text-xs font-bold border-0 bg-transparent cursor-pointer outline-none transition-all duration-200',
+            activeTabKey === 'hierarchy'
+              ? 'text-indigo-600 dark:text-indigo-400 border-b-2 border-indigo-600 dark:border-indigo-400 -mb-px'
+              : 'text-slate-400 dark:text-zinc-500 hover:text-slate-600 dark:hover:text-zinc-300'
+          ]"
+        >
+          {{ t('page.equipment.tabHierarchy') }}
+        </button>
+      </div>
     </div>
 
     <!-- ─── LOADING STATE ─── -->
@@ -309,168 +375,182 @@ onMounted(() => {
     </div>
 
     <!-- ─── DETAILS VIEW ─── -->
-    <div v-else-if="activeEquipment" class="flex flex-col gap-5 mb-6 px-4">
-      <!-- Card 1: General Info Card -->
-      <Card class="rounded-2xl shadow-xs border-slate-200/80 dark:border-zinc-800/80 bg-white dark:bg-zinc-900/60 backdrop-blur-md p-0 overflow-hidden">
-        <!-- Image Header (If any images available) -->
-        <div v-if="activeEquipment?.equipment_images && activeEquipment.equipment_images.length > 0" class="w-full h-44 bg-slate-100 dark:bg-zinc-950 relative overflow-hidden">
-          <img
-            :src="getImageUrl(activeEquipment?.equipment_images?.[0]?.path)"
-            alt="equipment image"
-            class="w-full h-full object-cover"
-          />
-          <div class="absolute inset-0 bg-gradient-to-t from-black/60 to-transparent"></div>
-          <div class="absolute bottom-3 left-4 right-4">
-            <span class="text-white text-base font-bold block leading-tight">{{ activeEquipment?.name }}</span>
-            <span class="text-slate-300 font-mono text-xs block mt-1">{{ activeEquipment?.code }}</span>
-          </div>
-        </div>
+    <div v-else-if="activeEquipment" class="mb-6">
 
-        <!-- Normal Text Header (If no images) -->
-        <div v-else class="p-4 border-b border-slate-100 dark:border-zinc-800 bg-slate-50/50 dark:bg-zinc-900/30">
-          <span class="text-lg font-bold text-slate-800 dark:text-zinc-200 block">{{ activeEquipment?.name }}</span>
-          <span class="text-xs font-mono text-slate-400 dark:text-zinc-500 block mt-0.5">{{ activeEquipment?.code }}</span>
-        </div>
-
-        <!-- Information details list -->
-        <div class="p-4 space-y-4">
-          <div class="grid grid-cols-2 gap-3 text-xs">
-            <div>
-              <span class="text-slate-400 dark:text-zinc-500 block uppercase tracking-wider text-[9px] font-bold">{{ t('page.equipment.colCategory') }}</span>
-              <span class="text-slate-700 dark:text-zinc-300 font-semibold mt-0.5 block">
-                {{ activeEquipment?.equipment_category?.name || '—' }}
-              </span>
-            </div>
-            <div>
-              <span class="text-slate-400 dark:text-zinc-500 block uppercase tracking-wider text-[9px] font-bold">{{ t('page.portal.statusLabel') }}</span>
-              <Tag :color="activeEquipment?.is_active ? 'success' : 'default'" class="text-[9px] px-1.5 py-0.5 mt-0.5 rounded-md font-bold uppercase inline-block">
-                {{ activeEquipment?.is_active ? t('page.equipment.statusActive') : t('page.equipment.statusInactive') }}
-              </Tag>
+      <!-- Tab 1: Detailed Cards View -->
+      <div v-show="activeTabKey === 'info'" class="flex flex-col gap-5 px-4">
+        <!-- Card 1: General Info Card -->
+        <Card class="rounded-2xl shadow-xs border-slate-200/80 dark:border-zinc-800/80 bg-white dark:bg-zinc-900/60 backdrop-blur-md p-0 overflow-hidden">
+          <!-- Image Header (If any images available) -->
+          <div v-if="activeEquipment?.equipment_images && activeEquipment.equipment_images.length > 0" class="w-full h-44 bg-slate-100 dark:bg-zinc-950 relative overflow-hidden">
+            <img
+              :src="getImageUrl(activeEquipment?.equipment_images?.[0]?.path)"
+              alt="equipment image"
+              class="w-full h-full object-cover"
+            />
+            <div class="absolute inset-0 bg-gradient-to-t from-black/60 to-transparent"></div>
+            <div class="absolute bottom-3 left-4 right-4">
+              <span class="text-white text-base font-bold block leading-tight">{{ activeEquipment?.name }}</span>
+              <span class="text-slate-300 font-mono text-xs block mt-1">{{ activeEquipment?.code }}</span>
             </div>
           </div>
 
-          <!-- Parameters Section -->
-          <div v-if="activeEquipment?.equipment_parameters && activeEquipment.equipment_parameters.length > 0">
-            <span class="text-slate-400 dark:text-zinc-500 block uppercase tracking-wider text-[9px] font-bold mb-1.5">{{ t('page.equipment.parametersTitle') }}</span>
-            <div class="flex flex-wrap gap-1">
-              <Tag
-                v-for="param in activeEquipment?.equipment_parameters"
-                :key="param.id"
-                color="blue"
-                class="text-[10px] px-1.5 py-0.5 rounded-md"
-              >
-                {{ param.code }}<span v-if="param.unit"> ({{ param.unit.name }})</span>
-              </Tag>
-            </div>
+          <!-- Normal Text Header (If no images) -->
+          <div v-else class="p-4 border-b border-slate-100 dark:border-zinc-800 bg-slate-50/50 dark:bg-zinc-900/30">
+            <span class="text-lg font-bold text-slate-800 dark:text-zinc-200 block">{{ activeEquipment?.name }}</span>
+            <span class="text-xs font-mono text-slate-400 dark:text-zinc-500 block mt-0.5">{{ activeEquipment?.code }}</span>
           </div>
 
-          <!-- Errors Section -->
-          <div v-if="activeEquipment?.equipment_errors && activeEquipment.equipment_errors.length > 0">
-            <span class="text-slate-400 dark:text-zinc-500 block uppercase tracking-wider text-[9px] font-bold mb-1.5">{{ t('page.equipment.colErrors') }}</span>
-            <div class="flex flex-wrap gap-1">
-              <Tag
-                v-for="err in activeEquipment?.equipment_errors"
-                :key="err.id"
-                color="red"
-                class="text-[10px] px-1.5 py-0.5 rounded-md"
-              >
-                {{ err.name }}
-              </Tag>
-            </div>
-          </div>
-        </div>
-      </Card>
-
-      <!-- Card 2: Operating & Maintenance Status Card -->
-      <Card class="rounded-2xl shadow-xs border-slate-200/80 dark:border-zinc-800/80 bg-white dark:bg-zinc-900/60 backdrop-blur-md p-4 overflow-hidden">
-        <h3 class="text-sm font-bold text-slate-800 dark:text-zinc-200 mb-3 flex items-center gap-1.5">
-          {{ t('page.portal.operatingMaintenanceTitle') }}
-        </h3>
-        
-        <div class="space-y-4">
-          <!-- Maintenance Interval Info -->
-          <div class="flex justify-between items-center text-xs border-b border-slate-50 dark:border-zinc-800/40 pb-2.5">
-            <span class="text-slate-500 dark:text-zinc-400 font-medium">{{ t('page.portal.maintenanceInterval') }}</span>
-            <span class="text-slate-800 dark:text-zinc-200 font-bold">
-              {{ activeEquipment?.maintenance_interval_hours ? `${activeEquipment?.maintenance_interval_hours} hrs` : '—' }}
-            </span>
-          </div>
-
-          <!-- Operating Hours Info -->
-          <div class="flex justify-between items-center text-xs border-b border-slate-50 dark:border-zinc-800/40 pb-2.5">
-            <span class="text-slate-500 dark:text-zinc-400 font-medium">{{ t('page.portal.operatingHours') }}</span>
-            <span class="text-slate-800 dark:text-zinc-200 font-bold">
-              {{ operatingHours !== null ? `${operatingHours} hrs` : '—' }}
-            </span>
-          </div>
-
-          <!-- Time until next maintenance -->
-          <div class="space-y-2">
-            <div class="flex justify-between items-center text-xs">
-              <span class="text-slate-500 dark:text-zinc-400 font-medium">{{ t('page.portal.nextMaintenanceRemaining') }}</span>
-              <span :class="[remainingHours !== null && remainingHours <= 0 ? 'text-red-500 font-extrabold' : 'text-slate-800 dark:text-zinc-200 font-bold']">
-                {{ remainingHours !== null ? `${remainingHours} hrs` : '—' }}
-              </span>
-            </div>
-            
-            <div v-if="remainingHours !== null" class="w-full">
-              <Progress
-                :percent="maintenancePercent"
-                :status="maintenanceStatus"
-                :stroke-color="strokeColor"
-                class="m-0"
-              />
-              <div v-if="remainingHours <= 0" class="text-[10px] text-red-500 font-semibold mt-1.5 flex items-center gap-1">
-                <span>⚠️</span>
-                <span>{{ t('page.portal.immediateMaintenanceRequired') }}</span>
-              </div>
-            </div>
-          </div>
-        </div>
-      </Card>
-
-      <!-- ─── TODAY'S CHECKLIST SECTION ─── -->
-      <div class="border border-slate-200/80 dark:border-zinc-800/80 rounded-2xl p-4 bg-white dark:bg-zinc-900/60 backdrop-blur-md shadow-xs">
-        <h3 class="text-sm font-bold text-slate-800 dark:text-zinc-200 mb-3 flex items-center gap-1.5">
-          {{ t('page.portal.todayChecklistTitle') }}
-        </h3>
-        
-        <div v-if="dailyLoading" class="flex justify-center py-6">
-          <Spin />
-        </div>
-        
-        <div v-else-if="dailyChecklistData && dailyChecklistData.details && dailyChecklistData.details.length > 0" class="max-h-[360px] overflow-y-auto divide-y divide-slate-100 dark:divide-zinc-800 pr-2 scrollbar-thin">
-          <div v-for="item in dailyChecklistData.details" :key="item.id" class="flex items-center justify-between gap-3 py-3 first:pt-0 last:pb-0">
-            <div class="flex-1 min-w-0">
-              <p class="text-xs font-semibold text-slate-700 dark:text-zinc-300 break-words mb-1">{{ item.description }}</p>
-              <div class="flex flex-wrap gap-1.5 items-center">
-                <span class="text-[10px] text-slate-400 dark:text-zinc-500">
-                  {{ t('page.portal.executor') }}:
+          <!-- Information details list -->
+          <div class="p-4 space-y-4">
+            <div class="grid grid-cols-2 gap-3 text-xs">
+              <div>
+                <span class="text-slate-400 dark:text-zinc-500 block uppercase tracking-wider text-[9px] font-bold">{{ t('page.equipment.colCategory') }}</span>
+                <span class="text-slate-700 dark:text-zinc-300 font-semibold mt-0.5 block">
+                  {{ activeEquipment?.equipment_category?.name || '—' }}
                 </span>
-                <Tag v-for="user in getDailyUsers(item)" :key="user.id" class="text-[9px] px-1 bg-indigo-50/50 dark:bg-indigo-950/20 text-indigo-600 dark:text-indigo-400 border-indigo-100 dark:border-indigo-900/30 m-0">
-                  {{ user.name }}
+              </div>
+              <div>
+                <span class="text-slate-400 dark:text-zinc-500 block uppercase tracking-wider text-[9px] font-bold">{{ t('page.portal.statusLabel') }}</span>
+                <Tag :color="activeEquipment?.is_active ? 'success' : 'default'" class="text-[9px] px-1.5 py-0.5 mt-0.5 rounded-md font-bold uppercase inline-block">
+                  {{ activeEquipment?.is_active ? t('page.equipment.statusActive') : t('page.equipment.statusInactive') }}
                 </Tag>
-                <span v-if="getDailyUsers(item).length === 0" class="text-[10px] text-slate-400 m-0">—</span>
-                <span class="text-[10px] text-slate-300 dark:text-zinc-700 mx-1">|</span>
-                <span class="text-[9px] text-slate-400 dark:text-zinc-500">
-                  {{ getDailyLatestCheckedAt(item) || '—' }}
-                </span>
               </div>
             </div>
-            <div class="flex items-center gap-2 shrink-0">
-              <Tag :color="getStatusColor(getDailyStatusText(item))" class="text-[9px] uppercase font-bold px-1.5 py-0.5 rounded-md m-0">
-                {{ getDailyStatusText(item) }}
-              </Tag>
-              <Button type="primary" size="small" class="bg-indigo-600 hover:bg-indigo-700 border-none text-[11px] h-7 px-2.5 rounded-lg flex items-center justify-center font-bold" @click="navigateToDetail(dailyChecklistData!.id, dailyChecklistData!.equipment_id, dailyChecklistData!.session_date)">
-                Check
-              </Button>
+
+            <!-- Parameters Section -->
+            <div v-if="activeEquipment?.equipment_parameters && activeEquipment.equipment_parameters.length > 0">
+              <span class="text-slate-400 dark:text-zinc-500 block uppercase tracking-wider text-[9px] font-bold mb-1.5">{{ t('page.equipment.parametersTitle') }}</span>
+              <div class="flex flex-wrap gap-1">
+                <Tag
+                  v-for="param in activeEquipment?.equipment_parameters"
+                  :key="param.id"
+                  color="blue"
+                  class="text-[10px] px-1.5 py-0.5 rounded-md"
+                >
+                  {{ param.code }}<span v-if="param.unit"> ({{ param.unit.name }})</span>
+                </Tag>
+              </div>
+            </div>
+
+            <!-- Errors Section -->
+            <div v-if="activeEquipment?.equipment_errors && activeEquipment.equipment_errors.length > 0">
+              <span class="text-slate-400 dark:text-zinc-500 block uppercase tracking-wider text-[9px] font-bold mb-1.5">{{ t('page.equipment.colErrors') }}</span>
+              <div class="flex flex-wrap gap-1">
+                <Tag
+                  v-for="err in activeEquipment?.equipment_errors"
+                  :key="err.id"
+                  color="red"
+                  class="text-[10px] px-1.5 py-0.5 rounded-md"
+                >
+                  {{ err.name }}
+                </Tag>
+              </div>
             </div>
           </div>
+        </Card>
+
+        <!-- Card 2: Operating & Maintenance Status Card -->
+        <Card class="rounded-2xl shadow-xs border-slate-200/80 dark:border-zinc-800/80 bg-white dark:bg-zinc-900/60 backdrop-blur-md p-4 overflow-hidden">
+          <h3 class="text-sm font-bold text-slate-800 dark:text-zinc-200 mb-3 flex items-center gap-1.5">
+            {{ t('page.portal.operatingMaintenanceTitle') }}
+          </h3>
+          
+          <div class="space-y-4">
+            <!-- Maintenance Interval Info -->
+            <div class="flex justify-between items-center text-xs border-b border-slate-50 dark:border-zinc-800/40 pb-2.5">
+              <span class="text-slate-500 dark:text-zinc-400 font-medium">{{ t('page.portal.maintenanceInterval') }}</span>
+              <span class="text-slate-800 dark:text-zinc-200 font-bold">
+                {{ activeEquipment?.maintenance_interval_hours ? `${activeEquipment?.maintenance_interval_hours} hrs` : '—' }}
+              </span>
+            </div>
+
+            <!-- Operating Hours Info -->
+            <div class="flex justify-between items-center text-xs border-b border-slate-50 dark:border-zinc-800/40 pb-2.5">
+              <span class="text-slate-500 dark:text-zinc-400 font-medium">{{ t('page.portal.operatingHours') }}</span>
+              <span class="text-slate-800 dark:text-zinc-200 font-bold">
+                {{ operatingHours !== null ? `${operatingHours} hrs` : '—' }}
+              </span>
+            </div>
+
+            <!-- Time until next maintenance -->
+            <div class="space-y-2">
+              <div class="flex justify-between items-center text-xs">
+                <span class="text-slate-500 dark:text-zinc-400 font-medium">{{ t('page.portal.nextMaintenanceRemaining') }}</span>
+                <span :class="[remainingHours !== null && remainingHours <= 0 ? 'text-red-500 font-extrabold' : 'text-slate-800 dark:text-zinc-200 font-bold']">
+                  {{ remainingHours !== null ? `${remainingHours} hrs` : '—' }}
+                </span>
+              </div>
+              
+              <div v-if="remainingHours !== null" class="w-full">
+                <Progress
+                  :percent="maintenancePercent"
+                  :status="maintenanceStatus"
+                  :stroke-color="strokeColor"
+                  class="m-0"
+                />
+                <div v-if="remainingHours <= 0" class="text-[10px] text-red-500 font-semibold mt-1.5 flex items-center gap-1">
+                  <span>⚠️</span>
+                  <span>{{ t('page.portal.immediateMaintenanceRequired') }}</span>
+                </div>
+              </div>
+            </div>
+          </div>
+        </Card>
+
+        <!-- ─── TODAY'S CHECKLIST SECTION ─── -->
+        <div class="border border-slate-200/80 dark:border-zinc-800/80 rounded-2xl p-4 bg-white dark:bg-zinc-900/60 backdrop-blur-md shadow-xs">
+          <h3 class="text-sm font-bold text-slate-800 dark:text-zinc-200 mb-3 flex items-center gap-1.5">
+            {{ t('page.portal.todayChecklistTitle') }}
+          </h3>
+          
+          <div v-if="dailyLoading" class="flex justify-center py-6">
+            <Spin />
+          </div>
+          
+          <div v-else-if="dailyChecklistData && dailyChecklistData.details && dailyChecklistData.details.length > 0" class="max-h-[360px] overflow-y-auto divide-y divide-slate-100 dark:divide-zinc-800 pr-2 scrollbar-thin">
+            <div v-for="item in dailyChecklistData.details" :key="item.id" class="flex items-center justify-between gap-3 py-3 first:pt-0 last:pb-0">
+              <div class="flex-1 min-w-0">
+                <p class="text-xs font-semibold text-slate-700 dark:text-zinc-300 break-words mb-1">{{ item.description }}</p>
+                <div class="flex flex-wrap gap-1.5 items-center">
+                  <span class="text-[10px] text-slate-400 dark:text-zinc-500">
+                    {{ t('page.portal.executor') }}:
+                  </span>
+                  <Tag v-for="user in getDailyUsers(item)" :key="user.id" class="text-[9px] px-1 bg-indigo-50/50 dark:bg-indigo-950/20 text-indigo-600 dark:text-indigo-400 border-indigo-100 dark:border-indigo-900/30 m-0">
+                    {{ user.name }}
+                  </Tag>
+                  <span v-if="getDailyUsers(item).length === 0" class="text-[10px] text-slate-400 m-0">—</span>
+                  <span class="text-[10px] text-slate-300 dark:text-zinc-700 mx-1">|</span>
+                  <span class="text-[9px] text-slate-400 dark:text-zinc-500">
+                    {{ getDailyLatestCheckedAt(item) || '—' }}
+                  </span>
+                </div>
+              </div>
+              <div class="flex items-center gap-2 shrink-0">
+                <Tag :color="getStatusColor(getDailyStatusText(item))" class="text-[9px] uppercase font-bold px-1.5 py-0.5 rounded-md m-0">
+                  {{ getDailyStatusText(item) }}
+                </Tag>
+                <Button type="primary" size="small" class="bg-indigo-600 hover:bg-indigo-700 border-none text-[11px] h-7 px-2.5 rounded-lg flex items-center justify-center font-bold" @click="navigateToDetail(dailyChecklistData!.id, dailyChecklistData!.equipment_id, dailyChecklistData!.session_date)">
+                  Check
+                </Button>
+              </div>
+            </div>
+          </div>
+          
+          <div v-else class="py-8 flex flex-col items-center justify-center text-center">
+            <Empty :description="t('page.portal.noTodayChecklist')" />
+          </div>
         </div>
-        
-        <div v-else class="py-8 flex flex-col items-center justify-center text-center">
-          <Empty :description="t('page.portal.noTodayChecklist')" />
-        </div>
+      </div>
+
+      <!-- Tab 2: Full-width Edge-to-Edge Hierarchy Diagram View (Zero border, 100% width) -->
+      <div v-show="activeTabKey === 'hierarchy'" class="w-full h-[calc(100vh-120px)] min-h-[500px] bg-white dark:bg-zinc-950 overflow-hidden">
+        <EquipmentHierarchyFlow
+          v-if="activeEquipment?.id"
+          :current-equipment-id="activeEquipment.id"
+          height="100%"
+          :read-only="true"
+        />
       </div>
     </div>
   </div>

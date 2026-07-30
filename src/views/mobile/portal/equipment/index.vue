@@ -340,7 +340,7 @@ onUnmounted(() => {
                 class="bg-indigo-600 hover:bg-indigo-700 border-none rounded-xl font-bold flex items-center justify-center gap-1.5"
                 @click="handleMainButtonClick"
               >
-                {{ uploading ? t('page.portal.sendingImageToDecode') : (isCameraStreaming ? t('page.portal.captureAndScanQr') : 'Mở Camera để quét mã') }}
+                {{ uploading ? t('page.portal.sendingImageToDecode') : (isCameraStreaming ? t('page.portal.captureAndScanQr') : t('page.portal.openCameraToScan')) }}
               </Button>
 
               <!-- Dedicated Turn Off Camera Button when streaming -->
@@ -352,7 +352,7 @@ onUnmounted(() => {
                 class="rounded-xl font-bold text-xs text-rose-600 dark:text-rose-400 border-rose-200 dark:border-rose-900/40 hover:bg-rose-50 dark:hover:bg-rose-950/20"
                 @click="stopCamera"
               >
-                {{ t('page.portal.turnOffCamera') || 'Tắt Camera' }}
+                {{ t('page.portal.turnOffCamera') }}
               </Button>
             </div>
 

@@ -68,9 +68,13 @@ function normalizeDate(value: string | null | undefined): string | undefined {
   return parsed.isValid() ? parsed.format('YYYY-MM-DD') : undefined;
 }
 
-function getLatestCompletedLog(detail: ChecklistDetailItem): ChecklistLog | undefined {
-  return detail.logs
-    ?.filter((log) => log.status === 'completed')
+function getLatestCompletedLog(detail: ChecklistDetailItem & { schedules?: Array<{ logs?: ChecklistLog[] }> }): ChecklistLog | undefined {
+  let logs: ChecklistLog[] = detail.logs || [];
+  if (logs.length === 0 && detail.schedules && detail.schedules.length > 0) {
+    logs = detail.schedules.flatMap((s) => s.logs || []);
+  }
+  return logs
+    .filter((log) => log.status === 'completed')
     .sort((left, right) => (left.checked_at ?? '').localeCompare(right.checked_at ?? ''))
     .at(-1);
 }

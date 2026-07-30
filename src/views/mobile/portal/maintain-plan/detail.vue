@@ -11,22 +11,25 @@ import {
   message,
 } from 'ant-design-vue';
 import dayjs from 'dayjs';
+import { requestClient } from '#/api/request';
 import {
   listMaintenanceSchedulesApi,
   createMaintenanceLogApi,
   getMaintenancePlanDetailApi,
   type ScheduleRow,
   type MaintenancePlanRecord,
+  type MaintenanceLog,
 } from '#/api/ops/maintenance-plans';
 
 defineOptions({ name: 'MobilePortalMaintainPlanDetail' });
 
 interface JudgeScheduleItem {
   schedule_id: string;
+  log_id?: string;
   equipment_id?: string;
   item_name: string;
   item_description?: string;
-  result: 'pass' | 'fail';
+  result: 'Completed' | 'Pending';
   notes: string;
 }
 
@@ -48,12 +51,22 @@ const submitting = ref(false);
 const planHeader = ref<PlanHeaderInfo | null>(null);
 const judgeItems = ref<JudgeScheduleItem[]>([]);
 
-function getLatestResult(schedule: ScheduleRow): string | null {
-  if (schedule.result) return schedule.result;
-  if (schedule.maintenance_logs && schedule.maintenance_logs.length > 0) {
-    return schedule.maintenance_logs[0]?.result || null;
-  }
-  return null;
+function isUuid(val?: string | null): boolean {
+  if (!val) return false;
+  return /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(val);
+}
+
+function getItemName(schedule: ScheduleRow): string {
+  if (schedule.maintenance_item?.name) return schedule.maintenance_item.name;
+  if (schedule.item_name && !isUuid(schedule.item_name)) return schedule.item_name;
+  if (schedule.item_name_text && !isUuid(schedule.item_name_text)) return schedule.item_name_text;
+  return t('page.ops.unidentified') || 'Chưa xác định';
+}
+
+function getItemDescription(schedule: ScheduleRow): string {
+  if (schedule.item_description) return schedule.item_description;
+  if (schedule.maintenance_item?.description) return schedule.maintenance_item.description;
+  return '';
 }
 
 async function loadPlanDetail() {
@@ -128,18 +141,42 @@ async function loadPlanDetail() {
       maintenance_type: firstSchedule?.maintenance_type || firstSchedule?.maintenance_plan?.maintenance_type || rawPlan?.maintenance_type || '—',
     };
 
-    judgeItems.value = targetSchedules.map((s) => {
-      const latestRes = getLatestResult(s);
-      const existingNotes = (s.maintenance_logs?.[0] as { notes?: string } | undefined)?.notes || '';
-      return {
+    const items: JudgeScheduleItem[] = [];
+    for (const s of targetSchedules) {
+      let logId: string | undefined;
+      let isPass = false;
+      let notes = '';
+
+      if (s.id) {
+        try {
+          const res = await requestClient.get<MaintenanceLog[]>('/v1/maintenance-logs', {
+            params: { maintenance_schedule_id: s.id },
+          });
+          const logs = Array.isArray(res) ? res : [];
+          const firstLog = logs[0];
+          if (firstLog) {
+            logId = firstLog.id;
+            isPass = firstLog.result === 'Completed' || firstLog.result === 'pass' || firstLog.result === 'completed';
+            notes = firstLog.notes || '';
+          } else {
+            isPass = s.result === 'Completed' || s.result === 'pass' || s.result === 'completed';
+          }
+        } catch {
+          isPass = s.result === 'Completed' || s.result === 'pass' || s.result === 'completed';
+        }
+      }
+
+      items.push({
         schedule_id: s.id || '',
+        log_id: logId,
         equipment_id: s.equipment_id || s.maintenance_plan?.equipment_id,
-        item_name: s.maintenance_item?.name || s.item_name || s.item_name_text || 'Hạng mục bảo trì',
-        item_description: s.item_description || s.maintenance_item?.description || '',
-        result: latestRes === 'fail' || latestRes === 'abnormal' ? 'fail' : 'pass',
-        notes: existingNotes,
-      };
-    });
+        item_name: getItemName(s),
+        item_description: getItemDescription(s),
+        result: isPass ? 'Completed' : 'Pending',
+        notes,
+      });
+    }
+    judgeItems.value = items;
   } catch (err: unknown) {
     const apiError = (err as { response?: { data?: { message?: string } } })?.response?.data?.message;
     message.error(apiError || t('page.ops.loadSchedulesError') || 'Không thể tải chi tiết kế hoạch bảo trì');
@@ -156,16 +193,26 @@ async function handleSaveEvaluation() {
   if (judgeItems.value.length === 0) return;
   submitting.value = true;
   try {
-    const nowStr = dayjs().format('YYYY-MM-DD HH:mm:ss');
     for (const item of judgeItems.value) {
       if (!item.schedule_id) continue;
-      await createMaintenanceLogApi({
-        maintenance_schedule_id: item.schedule_id,
-        equipment_id: item.equipment_id,
-        datetime: nowStr,
-        result: item.result,
-        notes: item.notes.trim() || null,
-      });
+
+      const logResult = item.result === 'Completed' ? 'Completed' : 'Failed';
+      const logNote = item.notes ? item.notes.trim() : null;
+
+      if (item.log_id) {
+        await requestClient.put<MaintenanceLog>(`/v1/maintenance-logs/${item.log_id}`, {
+          result: logResult,
+          note: logNote,
+        });
+      } else {
+        const newLog = await createMaintenanceLogApi({
+          maintenance_schedule_id: item.schedule_id,
+          equipment_id: item.equipment_id,
+          result: logResult,
+          note: logNote,
+        });
+        item.log_id = newLog.id;
+      }
     }
 
     message.success(t('page.ops.saveLogSuccess') || 'Đã lưu kết quả bảo trì thành công');
@@ -211,10 +258,10 @@ onMounted(() => {
         <div class="p-4 bg-indigo-50/50 dark:bg-indigo-950/20 border-b border-slate-100 dark:border-zinc-800 flex justify-between items-center">
           <div class="min-w-0 pr-3">
             <h3 class="text-sm font-bold text-slate-800 dark:text-zinc-200 m-0 truncate">
-              {{ planHeader.plan_code }}
+              {{ planHeader.equipment_name ? `${planHeader.equipment_name} (${planHeader.equipment_code})` : planHeader.plan_code }}
             </h3>
             <p class="text-[11px] text-slate-400 dark:text-zinc-500 font-mono mt-1 mb-0">
-              {{ planHeader.equipment_code }} | {{ planHeader.date }}
+              Mã KH: {{ planHeader.plan_code }} <span class="text-slate-300 dark:text-zinc-600 mx-1">·</span> Ngày: {{ planHeader.date }}
             </p>
           </div>
         </div>
@@ -251,14 +298,14 @@ onMounted(() => {
                 size="small"
                 :class="[
                   'flex items-center gap-1 px-2.5 py-1 font-bold transition-all rounded-lg shrink-0 border text-[10px]',
-                  item.result === 'pass'
+                  item.result === 'Completed'
                     ? 'border-emerald-500 bg-emerald-50 text-emerald-700 dark:bg-emerald-950/40 dark:text-emerald-300 dark:border-emerald-600'
                     : 'border-red-500 bg-red-50 text-red-700 dark:bg-red-950/40 dark:text-red-300 dark:border-red-600'
                 ]"
-                @click="item.result = item.result === 'pass' ? 'fail' : 'pass'"
+                @click="item.result = item.result === 'Completed' ? 'Pending' : 'Completed'"
               >
                 <svg
-                  v-if="item.result === 'pass'"
+                  v-if="item.result === 'Completed'"
                   class="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400"
                   fill="none"
                   stroke="currentColor"
@@ -278,7 +325,7 @@ onMounted(() => {
                   <path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12" />
                 </svg>
                 <span class="uppercase tracking-wider">
-                  {{ item.result === 'pass' ? t('page.ops.checklistDrawer.statusPass') : t('page.ops.checklistDrawer.statusFail') }}
+                  {{ item.result === 'Completed' ? (t('page.ops.resultPass') || 'Đạt') : (t('page.ops.resultFail') || 'Chưa đạt') }}
                 </span>
               </Button>
             </div>

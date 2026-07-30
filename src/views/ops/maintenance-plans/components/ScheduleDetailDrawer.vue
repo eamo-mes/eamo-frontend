@@ -38,7 +38,6 @@ import { $t } from '#/locales';
 import { requestClient } from '#/api/request';
 import {
   createMaintenanceLogApi,
-  deleteMaintenanceLogApi,
   type EquipmentOption,
   type MaintenanceCategoryOption,
   type MaintenanceItemOption,
@@ -242,28 +241,21 @@ async function handleSaveDrawer(): Promise<void> {
       const evalState = itemEvaluations.value[key];
 
       if (evalState && s.id) {
-        if (evalState.result === 'Pending') {
-          if (evalState.log_id) {
-            try {
-              await deleteMaintenanceLogApi(evalState.log_id);
-            } catch {
-              // ignore
-            }
-          }
-        } else if (evalState.result === 'Completed') {
-          if (evalState.log_id) {
-            await requestClient.put<MaintenanceLog>(`/v1/maintenance-logs/${evalState.log_id}`, {
-              result: 'Completed',
-              notes: evalState.notes || null,
-            });
-          } else {
-            const newLog = await createMaintenanceLogApi({
-              maintenance_schedule_id: s.id,
-              result: 'Completed',
-              notes: evalState.notes || null,
-            });
-            evalState.log_id = newLog.id;
-          }
+        const logResult = evalState.result === 'Completed' ? 'Completed' : 'Failed';
+        const logNote = evalState.notes ? evalState.notes.trim() : null;
+
+        if (evalState.log_id) {
+          await requestClient.put<MaintenanceLog>(`/v1/maintenance-logs/${evalState.log_id}`, {
+            result: logResult,
+            note: logNote,
+          });
+        } else {
+          const newLog = await createMaintenanceLogApi({
+            maintenance_schedule_id: s.id,
+            result: logResult,
+            note: logNote,
+          });
+          evalState.log_id = newLog.id;
         }
       }
 

@@ -57,27 +57,27 @@ function getLatestCompletedLog(detail: ChecklistDetailItem): ChecklistLog | unde
 
 function getSessionStatus(session: ChecklistSession): 'pass' | 'fail' | 'pending' {
   if (!session.details || session.details.length === 0) return 'pending';
-  const completedLogs = session.details.map(getLatestCompletedLog);
-  const allCompleted = completedLogs.every((log) => log !== undefined);
-  if (!allCompleted) return 'pending';
-  const allPassed = completedLogs.every((log) => log?.result === 'pass');
-  return allPassed ? 'pass' : 'fail';
+  const hasFail = session.details.some((d) => getLatestCompletedLog(d)?.result === 'fail');
+  if (hasFail) return 'fail';
+  const allPassed = session.details.every((d) => getLatestCompletedLog(d)?.result === 'pass');
+  return allPassed ? 'pass' : 'pending';
 }
 
-function getCompletedCount(session: ChecklistSession): number {
+function getPassCount(session: ChecklistSession): number {
   if (!session.details) return 0;
-  return session.details.filter((d) => getLatestCompletedLog(d) !== undefined).length;
+  return session.details.filter((d) => getLatestCompletedLog(d)?.result === 'pass').length;
 }
 
 function getProgressPercent(session: ChecklistSession): number {
   if (!session.details || session.details.length === 0) return 0;
-  return Math.round((getCompletedCount(session) / session.details.length) * 100);
+  return Math.round((getPassCount(session) / session.details.length) * 100);
 }
 
 function getProgressColor(session: ChecklistSession): string {
   const status = getSessionStatus(session);
-  if (status === 'pass') return '#52c41a';
   if (status === 'fail') return '#f5222d';
+  const percent = getProgressPercent(session);
+  if (percent >= 100) return '#52c41a';
   return '#1890ff';
 }
 

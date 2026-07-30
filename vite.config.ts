@@ -4,6 +4,15 @@ export default defineConfig(async () => {
   return {
     application: {},
     vite: {
+      optimizeDeps: {
+        include: [
+          '@vue-flow/core',
+          '@vue-flow/controls',
+          '@vue-flow/background',
+          '@vue-flow/minimap',
+          'dagre',
+        ],
+      },
       server: {
         proxy: {
           '/api': {

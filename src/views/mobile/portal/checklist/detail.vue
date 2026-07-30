@@ -14,6 +14,7 @@ import { requestClient } from '#/api/request';
 import {
   getChecklistSessionDetailApi,
   judgeChecklistSessionApi,
+  updateChecklistSessionApi,
 } from '#/api/ops/checklist';
 import type {
   ChecklistSession,
@@ -40,9 +41,13 @@ const submitting = ref(false);
 const session = ref<ChecklistSession | null>(null);
 const judgeDetails = ref<JudgeDetailItem[]>([]);
 
-function getLatestCompletedLog(detail: ChecklistDetailItem): ChecklistLog | undefined {
-  return detail.logs
-    ?.filter((log) => log.status === 'completed')
+function getLatestCompletedLog(detail: ChecklistDetailItem & { schedules?: Array<{ logs?: ChecklistLog[] }> }): ChecklistLog | undefined {
+  let logs: ChecklistLog[] = detail.logs || [];
+  if (logs.length === 0 && detail.schedules && detail.schedules.length > 0) {
+    logs = detail.schedules.flatMap((s) => s.logs || []);
+  }
+  return logs
+    .filter((log) => log.status === 'completed')
     .sort((left, right) => (left.checked_at ?? '').localeCompare(right.checked_at ?? ''))
     .at(-1);
 }
@@ -109,7 +114,40 @@ function handleBack() {
 async function handleJudgeSubmit() {
   if (!session.value?.id) return;
   submitting.value = true;
+
   try {
+    const selectedUserIds = session.value.users && session.value.users.length > 0
+      ? session.value.users.map((u) => u.id)
+      : [];
+
+    const executionDate = session.value.session_date
+      ? dayjs(session.value.session_date).format('YYYY-MM-DD')
+      : dayjs().format('YYYY-MM-DD');
+
+    const scheduleIds = session.value.details
+      ?.map((detail) => detail.schedule_id)
+      .filter((id): id is string => Boolean(id));
+
+    try {
+      await updateChecklistSessionApi(session.value.id, {
+        user_ids: selectedUserIds,
+        schedules:
+          scheduleIds && scheduleIds.length > 0
+            ? scheduleIds.map((id) => ({
+                id,
+                date: executionDate,
+                user_ids: selectedUserIds,
+              }))
+            : undefined,
+      });
+    } catch {
+      // non-critical update ignore
+    }
+
+    const timestamp = session.value.session_date
+      ? dayjs(session.value.session_date).format('YYYY-MM-DD HH:mm:ss')
+      : dayjs().format('YYYY-MM-DD HH:mm:ss');
+
     await judgeChecklistSessionApi({
       session_id: session.value.id,
       results: judgeDetails.value.map((item) => ({
@@ -117,6 +155,8 @@ async function handleJudgeSubmit() {
         result: item.result,
         description: item.description,
       })),
+      user_ids: selectedUserIds,
+      timestamp,
     });
 
     message.success(t('page.ops.judgeSuccess') || 'Đã lưu kết quả đánh giá thành công');

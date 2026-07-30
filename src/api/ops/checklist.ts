@@ -23,6 +23,7 @@ export interface UpdateChecklistSessionPayload {
   cycle_type?: string;
   cycle_interval?: number;
   user_ids?: string[];
+  schedules?: Array<{ id: string; date?: string; user_ids?: string[] }>;
 }
 
 export interface UpdateChecklistDetailsPayload {
