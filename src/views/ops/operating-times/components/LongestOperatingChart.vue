@@ -4,6 +4,7 @@ import type { EchartsUIType } from '@vben/plugins/echarts';
 import { nextTick, ref, watch } from 'vue';
 
 import { $t } from '#/locales';
+import { usePreferences } from '@vben/preferences';
 import { EchartsUI, useEcharts } from '@vben/plugins/echarts';
 import { Empty, Spin } from 'ant-design-vue';
 
@@ -18,6 +19,7 @@ const props = defineProps<{
   loading?: boolean;
 }>();
 
+const { isDark } = usePreferences();
 const chartRef = ref<EchartsUIType>();
 const { renderEcharts } = useEcharts(chartRef);
 
@@ -30,6 +32,9 @@ async function renderChart() {
   if (!chartRef.value) {
     return;
   }
+
+  const axisTextColor = isDark.value ? '#f1f5f9' : '#334155';
+  const textColor = isDark.value ? '#cbd5e1' : '#4b5563';
 
   renderEcharts({
     grid: {
@@ -65,7 +70,7 @@ async function renderChart() {
     ],
     textStyle: {
       fontFamily: 'system-ui, -apple-system, sans-serif',
-      color: '#4b5563',
+      color: textColor,
     },
     tooltip: {
       axisPointer: { type: 'shadow' },
@@ -89,13 +94,14 @@ async function renderChart() {
     },
     xAxis: {
       axisLabel: {
+        color: axisTextColor,
         fontSize: 10,
         formatter: (value: number) => `${Math.abs(value)} hrs`,
       },
       type: 'value',
     },
     yAxis: {
-      axisLabel: { fontSize: 10 },
+      axisLabel: { color: axisTextColor, fontSize: 10 },
       axisLine: { onZero: false },
       data: props.data.map((item) => item.name),
       type: 'category',
@@ -104,7 +110,7 @@ async function renderChart() {
 }
 
 watch(
-  [() => props.data, () => props.loading],
+  [() => props.data, () => props.loading, () => isDark.value],
   () => {
     renderChart();
   },

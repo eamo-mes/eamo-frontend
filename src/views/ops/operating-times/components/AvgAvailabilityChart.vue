@@ -4,6 +4,7 @@ import type { EchartsUIType } from '@vben/plugins/echarts';
 import { nextTick, ref, watch } from 'vue';
 
 import { $t } from '#/locales';
+import { usePreferences } from '@vben/preferences';
 import { EchartsUI, useEcharts } from '@vben/plugins/echarts';
 import { Empty, Spin } from 'ant-design-vue';
 
@@ -12,6 +13,7 @@ const props = defineProps<{
   loading?: boolean;
 }>();
 
+const { isDark } = usePreferences();
 const chartRef = ref<EchartsUIType>();
 const { renderEcharts } = useEcharts(chartRef);
 
@@ -26,9 +28,12 @@ async function renderChart() {
   }
 
   const remainingValue = Number((100 - props.avgValue).toFixed(2));
+  const labelColor = isDark.value ? '#f8fafc' : '#1e293b';
+  const textColor = isDark.value ? '#cbd5e1' : '#4b5563';
+  const pieBorderColor = isDark.value ? '#0f172a' : '#ffffff';
 
   renderEcharts({
-    color: ['#1890ff', '#cbd5e1'],
+    color: ['#1890ff', isDark.value ? '#334155' : '#cbd5e1'],
     series: [
       {
         avoidLabelOverlap: false,
@@ -37,12 +42,12 @@ async function renderChart() {
           { name: $t('page.ops.chartUnavailable'), value: remainingValue },
         ],
         itemStyle: {
-          borderColor: '#fff',
+          borderColor: pieBorderColor,
           borderRadius: 8,
           borderWidth: 2,
         },
         label: {
-          color: '#1e293b',
+          color: labelColor,
           fontSize: 22,
           fontWeight: 'bold',
           formatter: `${props.avgValue}%`,
@@ -59,7 +64,7 @@ async function renderChart() {
     ],
     textStyle: {
       fontFamily: 'system-ui, -apple-system, sans-serif',
-      color: '#4b5563',
+      color: textColor,
     },
     tooltip: {
       formatter: '{b}: {c}%',
@@ -69,7 +74,7 @@ async function renderChart() {
 }
 
 watch(
-  [() => props.avgValue, () => props.loading],
+  [() => props.avgValue, () => props.loading, () => isDark.value],
   () => {
     renderChart();
   },
