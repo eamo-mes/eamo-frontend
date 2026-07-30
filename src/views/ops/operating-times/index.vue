@@ -303,14 +303,14 @@ const columns = computed(() => [
       <div class="ml-auto flex-shrink-0 flex items-center gap-2">
         <Button
           type="default"
-          class="border-[#5c3e35] text-[#5c3e35] hover:text-[#4b332b] hover:border-[#4b332b] rounded-md font-medium h-full"
+          class="border-[#5c3e35] text-[#5c3e35] dark:text-zinc-100 dark:border-zinc-700 dark:hover:text-white dark:hover:border-zinc-500 rounded-md font-medium h-full"
           @click="showImportModal = true"
         >
           {{ $t('page.ops.btnImport') }}
         </Button>
         <Button
           type="primary"
-          class="bg-[#5c3e35] hover:bg-[#4b332b] border-[#5c3e35] rounded-md font-medium text-white h-full"
+          class="bg-[#5c3e35] hover:bg-[#4b332b] dark:bg-indigo-600 dark:hover:bg-indigo-500 dark:border-indigo-600 rounded-md font-medium text-white h-full"
           @click="openAddModal"
         >
           {{ $t('page.ops.btnAddRecord') }}

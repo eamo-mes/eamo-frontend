@@ -82,17 +82,17 @@ async function loadAllSchedules(startDate?: string, endDate?: string): Promise<v
       maintenance_plan_id: s.maintenance_plan_id,
       date: s.date,
       user_ids: (s.users ?? []).map((u) => u.id),
-      result: s.maintenance_logs?.[0]?.result || null,
+      result: s.result || s.maintenance_logs?.[0]?.result || null,
       _key: Math.random().toString(36).slice(2) + Date.now().toString(36),
-      plan_code: s.maintenance_plan?.plan_code || '—',
-      equipment_id: s.maintenance_plan?.equipment_id || '',
-      maintenance_type: s.maintenance_plan?.maintenance_type || '—',
-      equipment_name: s.maintenance_plan?.equipment
+      plan_code: s.plan_code || s.maintenance_plan?.plan_code || '—',
+      equipment_id: s.equipment_id || s.maintenance_plan?.equipment_id || '',
+      maintenance_type: s.maintenance_type || s.maintenance_plan?.maintenance_type || '—',
+      equipment_name: s.equipment_name || (s.maintenance_plan?.equipment
         ? `${s.maintenance_plan.equipment.code}${s.maintenance_plan.equipment.name ? ` — ${s.maintenance_plan.equipment.name}` : ''}`
-        : '—',
-      category_name: s.maintenance_plan?.maintenance_category?.name || '—',
-      item_name: s.maintenance_item?.name || '—',
-      item_description: s.maintenance_item?.description || '',
+        : '—'),
+      category_name: s.category_name || s.maintenance_plan?.maintenance_category?.name || '—',
+      item_name: s.item_name || s.maintenance_item?.name || '—',
+      item_description: s.item_description || s.maintenance_item?.description || '',
     }));
   } catch {
     // silently fail

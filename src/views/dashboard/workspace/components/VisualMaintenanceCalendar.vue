@@ -13,6 +13,25 @@ import type {
 } from '../types';
 import ScheduleDetailDrawer from '#/views/ops/maintenance-plans/components/ScheduleDetailDrawer.vue';
 import WorkspaceMaintenanceDrawer from './WorkspaceMaintenanceDrawer.vue';
+
+interface UserSelectOption {
+  label: string;
+  value: string;
+}
+
+export interface DailyPlanNode {
+  key: string;
+  plan_id: string;
+  plan_code: string;
+  date: string;
+  equipment_code: string;
+  equipment_name: string | null;
+  maintenance_type: string;
+  schedules: ScheduleRow[];
+  total_items: number;
+  completed_items: number;
+  result: 'Completed' | 'Pending';
+}
 import DayPlanNodesModal from './DayPlanNodesModal.vue';
 
 const props = withDefaults(
@@ -131,7 +150,7 @@ async function fetchSchedules(): Promise<void> {
 
     const raw = await listMaintenanceSchedulesApi(params);
     const scheduleArray = Array.isArray(raw) ? raw : [];
-    
+
     fetchedSchedules.value = scheduleArray.map((s) => ({
       ...s,
       _key: s._key || `sch-${s.id}-${Math.random().toString(36).slice(2)}`,

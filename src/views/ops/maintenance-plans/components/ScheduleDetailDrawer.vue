@@ -307,7 +307,7 @@ function goToPlan(): void {
     <Spin :spinning="loadingLog">
         <div v-if="activeSchedule" class="space-y-6 px-1 pb-4">
         <!-- Header Banner Card (Matching ChecklistJudgeDrawer layout) -->
-        <div v-if="equipmentBannerInfo" class="p-3 bg-muted/40 rounded-lg border border-border flex justify-between items-center" style="background-color: white !important;">
+        <div v-if="equipmentBannerInfo" class="p-3 bg-card dark:bg-zinc-900 rounded-lg border border-border flex justify-between items-center shadow-xs">
           <div>
             <div class="font-semibold text-sm text-foreground">
               {{ equipmentBannerInfo.title }}
