@@ -68,6 +68,34 @@ const drawerVisible = ref(false);
 const searchModalVisible = ref(false);
 const searchQuery = ref('');
 const isRefreshing = ref(false);
+const floatMenuOpen = ref(false);
+
+const floatMenuItems = computed(() => [
+  {
+    title: t('page.portal.equipment') || 'Thiết bị',
+    path: '/portal/equipment',
+    icon: 'lucide:wrench',
+    color: 'bg-blue-600 text-white hover:bg-blue-700 shadow-blue-500/25',
+  },
+  {
+    title: t('page.portal.notifications') || 'Dashboard',
+    path: '/portal/dashboard',
+    icon: 'lucide:bell',
+    color: 'bg-amber-600 text-white hover:bg-amber-700 shadow-amber-500/25',
+  },
+  {
+    title: t('page.portal.checklist') || 'Checklist',
+    path: '/portal/checklist',
+    icon: 'lucide:clipboard-check',
+    color: 'bg-emerald-600 text-white hover:bg-emerald-700 shadow-emerald-500/25',
+  },
+  {
+    title: t('page.portal.mPlans') || 'Kế hoạch bảo trì',
+    path: '/portal/maintain-plan',
+    icon: 'lucide:calendar-clock',
+    color: 'bg-indigo-600 text-white hover:bg-indigo-700 shadow-indigo-500/25',
+  },
+]);
 
 // Expanded menu groups state
 const expandedKeys = ref<Record<string, boolean>>({});
@@ -145,14 +173,119 @@ watch(
   { immediate: true }
 );
 
+// Floating Draggable Position & Gesture State
+const floatPos = ref({ x: 0, y: 0 });
+const isInitializedPos = ref(false);
+const isDraggingFloat = ref(false);
+const windowWidth = ref(typeof window !== 'undefined' ? window.innerWidth : 375);
+const windowHeight = ref(typeof window !== 'undefined' ? window.innerHeight : 667);
+
+let dragStart = { x: 0, y: 0 };
+let initialFloatPos = { x: 0, y: 0 };
+let hasMovedDistance = false;
+
+function initFloatPos() {
+  if (typeof window !== 'undefined') {
+    windowWidth.value = window.innerWidth;
+    windowHeight.value = window.innerHeight;
+    if (!isInitializedPos.value) {
+      const btnSize = 52;
+      floatPos.value = {
+        x: window.innerWidth - btnSize - 20,
+        y: window.innerHeight - btnSize - 28,
+      };
+      isInitializedPos.value = true;
+    }
+  }
+}
+
+function handleResize() {
+  if (typeof window === 'undefined') return;
+  windowWidth.value = window.innerWidth;
+  windowHeight.value = window.innerHeight;
+  const btnSize = 52;
+  const maxX = window.innerWidth - btnSize - 12;
+  const maxY = window.innerHeight - btnSize - 12;
+  floatPos.value.x = Math.max(12, Math.min(maxX, floatPos.value.x));
+  floatPos.value.y = Math.max(12, Math.min(maxY, floatPos.value.y));
+}
+
+function startDrag(e: MouseEvent | TouchEvent) {
+  const clientX = 'touches' in e ? e.touches[0].clientX : e.clientX;
+  const clientY = 'touches' in e ? e.touches[0].clientY : e.clientY;
+
+  dragStart = { x: clientX, y: clientY };
+  initialFloatPos = { ...floatPos.value };
+  isDraggingFloat.value = false;
+  hasMovedDistance = false;
+
+  if ('touches' in e) {
+    window.addEventListener('touchmove', onDrag, { passive: false });
+    window.addEventListener('touchend', stopDrag);
+  } else {
+    window.addEventListener('mousemove', onDrag);
+    window.addEventListener('mouseup', stopDrag);
+  }
+}
+
+function onDrag(e: MouseEvent | TouchEvent) {
+  const clientX = 'touches' in e ? e.touches[0].clientX : e.clientX;
+  const clientY = 'touches' in e ? e.touches[0].clientY : e.clientY;
+
+  const dx = clientX - dragStart.x;
+  const dy = clientY - dragStart.y;
+
+  if (Math.abs(dx) > 4 || Math.abs(dy) > 4) {
+    isDraggingFloat.value = true;
+    hasMovedDistance = true;
+    if (e.cancelable) e.preventDefault();
+  }
+
+  if (isDraggingFloat.value) {
+    const btnSize = 52;
+    const maxX = window.innerWidth - btnSize - 12;
+    const maxY = window.innerHeight - btnSize - 12;
+
+    floatPos.value = {
+      x: Math.max(12, Math.min(maxX, initialFloatPos.x + dx)),
+      y: Math.max(12, Math.min(maxY, initialFloatPos.y + dy)),
+    };
+  }
+}
+
+function stopDrag() {
+  window.removeEventListener('mousemove', onDrag);
+  window.removeEventListener('mouseup', stopDrag);
+  window.removeEventListener('touchmove', onDrag);
+  window.removeEventListener('touchend', stopDrag);
+  setTimeout(() => {
+    isDraggingFloat.value = false;
+  }, 50);
+}
+
+function handleFloatBtnClick() {
+  if (hasMovedDistance) {
+    hasMovedDistance = false;
+    return;
+  }
+  floatMenuOpen.value = !floatMenuOpen.value;
+}
+
 onUnmounted(() => {
   if (pollInterval) {
     clearInterval(pollInterval);
     pollInterval = null;
   }
+  if (typeof window !== 'undefined') {
+    window.removeEventListener('resize', handleResize);
+  }
 });
 
 onMounted(() => {
+  initFloatPos();
+  if (typeof window !== 'undefined') {
+    window.addEventListener('resize', handleResize);
+  }
   if (!userStore.userInfo?.realName && !userStore.userInfo?.username) {
     authStore.fetchUserInfo().catch(() => {});
   }
@@ -189,6 +322,7 @@ function toggleTheme() {
 function handleNavigate(path: string) {
   drawerVisible.value = false;
   searchModalVisible.value = false;
+  floatMenuOpen.value = false;
   router.push(path);
 }
 
@@ -351,14 +485,10 @@ function handleNotificationClick(item: NotificationItem) {
           </div>
         </div>
 
+        <div class="my-2 border-t border-slate-800/80"></div>
+
         <!-- Mobile Sidebar Navigation Items -->
         <div class="flex-1 flex flex-col gap-1 overflow-y-auto pr-1">
-
-          <!-- Section Label: Mobile Portal -->
-          <div class="px-1 mb-1 text-[10px] font-bold uppercase tracking-widest text-slate-500">
-            {{ t('page.portal.mobileTitle') || 'Mobile Portal' }}
-          </div>
-
           <!-- 1. Home / Portal Landing -->
           <button
             @click="handleNavigate('/portal')"
@@ -410,11 +540,6 @@ function handleNotificationClick(item: NotificationItem) {
           </button>
 
           <div class="my-2 border-t border-slate-800/80"></div>
-
-          <!-- Section Label: Web Admin -->
-          <div class="px-1 mb-1 text-[10px] font-bold uppercase tracking-widest text-slate-500">
-            {{ t('page.portal.menuTitle') || 'Web Admin' }}
-          </div>
 
           <!-- Dynamic Web Admin Menus -->
           <div v-for="menu in webAdminMenus" :key="menu.path" class="flex flex-col gap-0.5">
@@ -542,6 +667,103 @@ function handleNotificationClick(item: NotificationItem) {
         </div>
       </div>
     </Modal>
+
+    <!-- Floating Quick Navigation Speed Dial (||| Icon) -->
+    <Transition
+      enter-active-class="transition-opacity duration-200"
+      enter-from-class="opacity-0"
+      enter-to-class="opacity-100"
+      leave-active-class="transition-opacity duration-150"
+      leave-from-class="opacity-100"
+      leave-to-class="opacity-0"
+    >
+      <div 
+        v-if="floatMenuOpen" 
+        class="fixed inset-0 z-40 bg-slate-900/40 backdrop-blur-xs"
+        @click="floatMenuOpen = false"
+      />
+    </Transition>
+
+    <div 
+      class="fixed z-50 select-none touch-none"
+      :style="{ left: `${floatPos.x}px`, top: `${floatPos.y}px` }"
+    >
+      <!-- Expanded Sub-Buttons relative to current position -->
+      <TransitionGroup
+        tag="div"
+        :class="[
+          'absolute flex flex-col gap-2.5 transition-all duration-200',
+          floatPos.y > (windowHeight / 2) ? 'bottom-full mb-3' : 'top-full mt-3',
+          floatPos.x > (windowWidth / 2) ? 'right-0 items-end' : 'left-0 items-start'
+        ]"
+        enter-active-class="transition duration-200 ease-out"
+        enter-from-class="opacity-0 translate-y-3 scale-95"
+        enter-to-class="opacity-100 translate-y-0 scale-100"
+        leave-active-class="transition duration-150 ease-in"
+        leave-from-class="opacity-100 translate-y-0 scale-100"
+        leave-to-class="opacity-0 translate-y-3 scale-95"
+      >
+        <template v-if="floatMenuOpen">
+          <div
+            v-for="item in floatMenuItems"
+            :key="item.path"
+            @click="handleNavigate(item.path)"
+            :class="[
+              'flex items-center gap-2.5 cursor-pointer group',
+              floatPos.x > (windowWidth / 2) ? 'flex-row' : 'flex-row-reverse'
+            ]"
+          >
+            <!-- Label Pill -->
+            <span 
+              class="px-3 py-1 rounded-xl text-xs font-semibold shadow-md bg-white dark:bg-zinc-800 text-slate-800 dark:text-zinc-200 border border-slate-200/80 dark:border-zinc-700/80 whitespace-nowrap transition-transform duration-150 group-active:scale-95"
+            >
+              {{ item.title }}
+            </span>
+
+            <!-- Circular Icon Button -->
+            <button
+              type="button"
+              :class="[
+                route.path.startsWith(item.path) 
+                  ? 'ring-2 ring-indigo-500 ring-offset-2 dark:ring-offset-zinc-950 scale-105' 
+                  : 'hover:scale-105',
+                item.color
+              ]"
+              class="size-11 rounded-full flex items-center justify-center shadow-lg transition-all duration-150 cursor-pointer border-0 outline-none active:scale-95"
+            >
+              <IconifyIcon :icon="item.icon" class="size-5" />
+            </button>
+          </div>
+        </template>
+      </TransitionGroup>
+
+      <!-- Main Floating Trigger Button (||| Iconify Icon & Draggable) -->
+      <button
+        type="button"
+        @mousedown="startDrag"
+        @touchstart="startDrag"
+        @click="handleFloatBtnClick"
+        :class="[
+          floatMenuOpen 
+            ? 'bg-slate-800 text-slate-100 dark:bg-zinc-200 dark:text-zinc-900 shadow-xl' 
+            : 'bg-indigo-600 hover:bg-indigo-700 text-white shadow-indigo-500/35 shadow-lg hover:scale-105',
+          isDraggingFloat ? 'scale-110 cursor-grabbing' : 'cursor-grab'
+        ]"
+        class="size-13 rounded-full flex items-center justify-center transition-transform duration-150 border-0 outline-none active:scale-95"
+        aria-label="Quick Navigation Menu"
+      >
+        <IconifyIcon 
+          v-if="floatMenuOpen" 
+          icon="lucide:x" 
+          class="size-6 transition-transform duration-300"
+        />
+        <IconifyIcon 
+          v-else 
+          icon="lucide:grip-vertical" 
+          class="size-6 transition-transform duration-300"
+        />
+      </button>
+    </div>
 
   </div>
 </template>

@@ -106,7 +106,7 @@ function handleLogout() {
             class="mx-1 flex cursor-pointer items-center rounded-md px-2.5 py-2 leading-6 text-xs font-medium text-rose-600 dark:text-rose-400 hover:bg-rose-50 dark:hover:bg-rose-950/40 transition-colors border-0 text-left"
           >
             <IconifyIcon icon="lucide:log-out" class="mr-2 size-4 text-rose-500" />
-            <span class="flex-1 truncate">Đăng xuất</span>
+            <span class="flex-1 truncate">{{ $t('page.auth.logout') || 'Đăng xuất' }}</span>
           </button>
         </div>
 

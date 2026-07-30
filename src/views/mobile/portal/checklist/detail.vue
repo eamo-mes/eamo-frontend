@@ -163,7 +163,6 @@ onMounted(() => {
           <div class="min-w-0 pr-3">
             <h3 class="text-sm font-bold text-slate-800 dark:text-zinc-200 m-0 truncate">
               {{ session.name || session.equipment?.name || t('page.ops.checklistDrawer.sessionText') }}
-              <span v-if="session.name && session.equipment?.name" class="font-normal text-slate-400 dark:text-zinc-500">— {{ session.equipment.name }}</span>
             </h3>
             <p class="text-[11px] text-slate-400 dark:text-zinc-500 font-mono mt-1 mb-0">
               <span v-if="session.equipment?.code" class="font-bold text-slate-600 dark:text-zinc-400">{{ session.equipment.code }}</span>

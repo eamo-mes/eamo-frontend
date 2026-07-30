@@ -95,6 +95,8 @@ const total = ref(0);
 // ─── Tab 3 State ──────────────────────────────────────────────────────────────
 const dailyLoading = ref(false);
 const dailyChecklistData = ref<DailyChecklistResponse | null>(null);
+const dailyCurrentPage = ref(1);
+const dailyPageSize = ref(15);
 
 const columns = [
   {
@@ -191,6 +193,7 @@ async function loadSessions(page = currentPage.value, size = pageSize.value) {
 async function loadDailyChecklist() {
   if (!props.equipmentId) return;
   dailyLoading.value = true;
+  dailyCurrentPage.value = 1;
   try {
     const params: Record<string, string | boolean> = {
       equipment_id: props.equipmentId,
@@ -214,6 +217,15 @@ function handleTableChange(pagination: { current?: number; pageSize?: number }) 
   const current = pagination.current || 1;
   const size = pagination.pageSize || 15;
   loadSessions(current, size);
+}
+
+function handleDailyTableChange(pagination: { current?: number; pageSize?: number }) {
+  if (pagination.current) {
+    dailyCurrentPage.value = pagination.current;
+  }
+  if (pagination.pageSize) {
+    dailyPageSize.value = pagination.pageSize;
+  }
 }
 
 function handleCancel() {
@@ -269,7 +281,7 @@ function getDailyLatestLog(detail: DailyChecklistDetail): DailyChecklistLog | un
     .at(-1);
 }
 
-function getDailyStatusText(detail: DailyChecklistDetail): string {
+function getDailyStatusText(detail: DailyChecklistDetail): 'Failed' | 'Passed' | 'Pending' {
   const log = getDailyLatestLog(detail);
   if (!log) return 'Pending';
   return log.result === 'pass' ? 'Passed' : 'Failed';
@@ -389,48 +401,50 @@ watch(
       <!-- TAB 3: Today's Checklist -->
       <TabPane key="todayChecklist" :tab="$t('page.equipment.tabTodayChecklist')">
         <div class="space-y-4 pt-4">
-          <div v-if="dailyLoading" class="flex justify-center py-8">
-            <Table :loading="true" :columns="[]" :data-source="[]" />
-          </div>
-          <div v-else-if="dailyChecklistData">
-            <Table
-              :columns="dailyColumns"
-              :data-source="dailyChecklistData.details"
-              row-key="id"
-              :pagination="false"
-            >
-              <template #bodyCell="{ column, record }">
-                <template v-if="column.key === 'executor'">
-                  <ExpandableContainer :items="getDailyUsers(record as DailyChecklistDetail)">
-                    <Tag v-for="user in getDailyUsers(record as DailyChecklistDetail)" :key="user.id" color="blue">
-                      {{ user.name }}
-                    </Tag>
-                  </ExpandableContainer>
-                </template>
-
-                <template v-else-if="column.key === 'status'">
-                  <Tag :color="getStatusColor(getDailyStatusText(record as DailyChecklistDetail) as any)">
-                    {{ getDailyStatusText(record as DailyChecklistDetail) }}
+          <Table
+            :loading="dailyLoading"
+            :columns="dailyColumns"
+            :data-source="dailyChecklistData?.details || []"
+            row-key="id"
+            :pagination="{
+              current: dailyCurrentPage,
+              pageSize: dailyPageSize,
+              showSizeChanger: true,
+              pageSizeOptions: ['5', '10', '15', '30', '50', '100'],
+              showTotal: (tot: number) => $t('page.company.users.showTotal', { total: tot }),
+            }"
+            @change="handleDailyTableChange"
+          >
+            <template #bodyCell="{ column, record }">
+              <template v-if="column.key === 'executor'">
+                <ExpandableContainer :items="getDailyUsers(record as DailyChecklistDetail)">
+                  <Tag v-for="user in getDailyUsers(record as DailyChecklistDetail)" :key="user.id" color="blue">
+                    {{ user.name }}
                   </Tag>
-                </template>
-
-                <template v-else-if="column.key === 'checked_at'">
-                  <span>{{ getDailyLatestCheckedAt(record as DailyChecklistDetail) }}</span>
-                </template>
-
-                <template v-else-if="column.key === 'actions'">
-                  <Button
-                    type="primary"
-                    size="small"
-                    @click="navigateToDetail(dailyChecklistData!.id, dailyChecklistData!.equipment_id || '', dailyChecklistData!.session_date || '')"
-                  >
-                    {{ $t('page.equipment.btnChecklist') || 'Checklist' }}
-                  </Button>
-                </template>
+                </ExpandableContainer>
               </template>
-            </Table>
-          </div>
-          <div v-else class="text-center text-gray-400 py-8">—</div>
+
+              <template v-else-if="column.key === 'status'">
+                <Tag :color="getStatusColor(getDailyStatusText(record as DailyChecklistDetail))">
+                  {{ getDailyStatusText(record as DailyChecklistDetail) }}
+                </Tag>
+              </template>
+
+              <template v-else-if="column.key === 'checked_at'">
+                <span>{{ getDailyLatestCheckedAt(record as DailyChecklistDetail) }}</span>
+              </template>
+
+              <template v-else-if="column.key === 'actions'">
+                <Button
+                  type="primary"
+                  size="small"
+                  @click="navigateToDetail(dailyChecklistData!.id, dailyChecklistData!.equipment_id || '', dailyChecklistData!.session_date || '')"
+                >
+                  {{ $t('page.equipment.btnChecklist') || 'Checklist' }}
+                </Button>
+              </template>
+            </template>
+          </Table>
         </div>
       </TabPane>
     </Tabs>

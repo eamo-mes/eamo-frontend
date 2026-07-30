@@ -1,7 +1,6 @@
 <script lang="ts" setup>
 import { ref, computed, onMounted } from 'vue';
 import { useRouter } from 'vue-router';
-import { Eye, EyeOff } from '@vben/icons';
 import { $t } from '#/locales';
 import {
   Button,
@@ -17,7 +16,6 @@ import axios from 'axios';
 import { useAccessStore } from '@vben/stores';
 import { API_BASE_URL } from '#/api/config';
 import { isSoftDeleted, softDeletedRowClass, sortBySoftDeleted } from '#/utils/soft-delete';
-import EquipmentSummaryWidgets from './components/EquipmentSummaryWidgets.vue';
 import ExpandableContainer from '#/components/ExpandableContainer.vue';
 import EquipmentChecklistSessionsModal from './components/EquipmentChecklistSessionsModal.vue';
 import EquipmentQrModal from './components/EquipmentQrModal.vue';
@@ -110,13 +108,6 @@ interface DashboardSummary {
 
 const summaryData = ref<DashboardSummary | null>(null);
 const summaryLoading = ref(false);
-const showWidgets = ref(true);
-const _icons = { Eye, EyeOff };
-
-function toggleWidgets() {
-  showWidgets.value = !showWidgets.value;
-  localStorage.setItem('equipment_list_show_widgets', String(showWidgets.value));
-}
 
 async function loadDashboardSummary() {
   summaryLoading.value = true;
@@ -140,9 +131,7 @@ async function loadDashboardSummary() {
 
 
 
-function goToErrorsPage() {
-  router.push({ name: 'EquipmentErrors' });
-}
+
 
 function getAuthHeaders() {
   const accessStore = useAccessStore();
@@ -265,12 +254,6 @@ const columns = computed(() => [
     sorter: (a: EquipmentItem, b: EquipmentItem) => (a.maintenance_interval_hours || 0) - (b.maintenance_interval_hours || 0),
   },
   {
-    title: $t('page.equipment.colErrors'),
-    dataIndex: 'equipment_errors',
-    key: 'equipment_errors',
-    width: 320,
-  },
-  {
     title: $t('page.equipment.parametersTitle'),
     dataIndex: 'equipment_parameters',
     key: 'equipment_parameters',
@@ -319,10 +302,6 @@ onMounted(() => {
   loadEquipments();
   loadCategories();
   loadDashboardSummary();
-  const saved = localStorage.getItem('equipment_list_show_widgets');
-  if (saved !== null) {
-    showWidgets.value = saved !== 'false';
-  }
 });
 </script>
 
@@ -407,22 +386,7 @@ onMounted(() => {
             <template v-else-if="column.key === 'maintenance_interval_hours'">
               <span>{{ record.maintenance_interval_hours !== null && record.maintenance_interval_hours !== undefined ? `${record.maintenance_interval_hours} hrs` : '—' }}</span>
             </template>
-            <template v-else-if="column.key === 'equipment_errors'">
-               <div class="flex flex-col gap-1 max-w-[260px]">
-                 <ExpandableContainer :items="record.equipment_errors">
-                   <Tag
-                     v-for="err in record.equipment_errors"
-                     :key="err.id"
-                     color="red"
-                     class="cursor-pointer transition-all duration-200 hover:bg-[#ff4d4f] hover:text-white hover:border-[#ff4d4f] hover:-translate-y-0.5 hover:shadow-sm max-w-full truncate"
-                     @click="goToErrorsPage"
-                   >
-                     {{ err.name }}
-                   </Tag>
-                 </ExpandableContainer>
-               </div>
-             </template>
-             <template v-else-if="column.key === 'equipment_parameters'">
+            <template v-else-if="column.key === 'equipment_parameters'">
                <div class="flex flex-col gap-1 max-w-[260px]">
                  <ExpandableContainer :items="record.equipment_parameters">
                    <Tag
@@ -450,17 +414,17 @@ onMounted(() => {
                   size="small"
                   :disabled="isSoftDeleted(record as EquipmentItem)"
                   class="rounded hover:border-primary hover:text-primary"
-                  @click="openEditModal(record as EquipmentItem)"
+                  @click="openChecklistModal(record as EquipmentItem)"
                 >
-                  {{ $t('page.company.btnEdit') }}
+                  {{ $t('page.equipment.btnChecklist') }}
                 </Button>
                 <Button
                   size="small"
                   :disabled="isSoftDeleted(record as EquipmentItem)"
                   class="rounded hover:border-primary hover:text-primary"
-                  @click="openChecklistModal(record as EquipmentItem)"
+                  @click="openEditModal(record as EquipmentItem)"
                 >
-                  Checklist
+                  {{ $t('page.company.btnEdit') }}
                 </Button>
                 <Popconfirm
                   :title="$t('page.company.deleteConfirm')"

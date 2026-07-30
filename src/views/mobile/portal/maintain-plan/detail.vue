@@ -211,7 +211,7 @@ onMounted(() => {
         <div class="p-4 bg-indigo-50/50 dark:bg-indigo-950/20 border-b border-slate-100 dark:border-zinc-800 flex justify-between items-center">
           <div class="min-w-0 pr-3">
             <h3 class="text-sm font-bold text-slate-800 dark:text-zinc-200 m-0 truncate">
-              {{ planHeader.plan_code }} <span v-if="planHeader.equipment_name">— {{ planHeader.equipment_name }}</span>
+              {{ planHeader.plan_code }}
             </h3>
             <p class="text-[11px] text-slate-400 dark:text-zinc-500 font-mono mt-1 mb-0">
               {{ planHeader.equipment_code }} | {{ planHeader.date }}

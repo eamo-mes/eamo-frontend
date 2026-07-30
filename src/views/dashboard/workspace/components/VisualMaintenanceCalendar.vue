@@ -8,28 +8,12 @@ import type {
   EquipmentOption,
   MaintenanceCategoryOption,
   MaintenanceItemOption,
+  UserSelectOption,
+  DailyPlanNode,
 } from '../types';
 import ScheduleDetailDrawer from '#/views/ops/maintenance-plans/components/ScheduleDetailDrawer.vue';
 import WorkspaceMaintenanceDrawer from './WorkspaceMaintenanceDrawer.vue';
-
-interface UserSelectOption {
-  label: string;
-  value: string;
-}
-
-export interface DailyPlanNode {
-  key: string;
-  plan_id: string;
-  plan_code: string;
-  date: string;
-  equipment_code: string;
-  equipment_name: string | null;
-  maintenance_type: string;
-  schedules: ScheduleRow[];
-  total_items: number;
-  completed_items: number;
-  result: 'Completed' | 'Pending';
-}
+import DayPlanNodesModal from './DayPlanNodesModal.vue';
 
 const props = withDefaults(
   defineProps<{
@@ -418,50 +402,13 @@ function onSelect(date: Dayjs | string): void {
       </Calendar>
     </Spin>
 
-    <!-- Modal listing all plan nodes for selected date in row format -->
-    <Modal
+    <!-- Modal listing all plan nodes for selected date in table format -->
+    <DayPlanNodesModal
       v-model:open="dayNodesModalOpen"
-      :title="$t('page.ops.dayNodesModalTitle', { date: selectedNodesDate ? selectedNodesDate.format('DD/MM/YYYY') : '' })"
-      width="800px"
-      :footer="null"
-      destroy-on-close
-    >
-      <div v-if="selectedNodes.length > 0" class="max-h-[500px] overflow-y-auto divide-y divide-border pr-2 scrollbar-thin">
-        <div
-          v-for="node in selectedNodes"
-          :key="node.key"
-          class="flex items-center justify-between gap-3 py-3 px-2 rounded-lg hover:bg-muted/50 transition-colors"
-        >
-          <div class="flex items-center gap-3 min-w-0">
-            <div class="w-2.5 h-2.5 rounded-full shrink-0" :class="node.result === 'Completed' ? 'bg-emerald-500' : 'bg-indigo-500'"></div>
-            <div class="min-w-0">
-              <div class="font-semibold text-sm text-foreground flex items-center gap-2">
-                <span>{{ node.plan_code }}</span>
-                <span class="text-xs font-normal text-muted-foreground">({{ node.completed_items }}/{{ node.total_items }})</span>
-              </div>
-              <div class="text-xs text-muted-foreground truncate mt-0.5">
-                <span class="font-medium text-foreground">{{ node.equipment_code }}</span>
-                <span class="ml-2 text-muted-foreground/80">({{ node.maintenance_type }})</span>
-              </div>
-            </div>
-          </div>
-          <div class="flex items-center gap-3 shrink-0">
-            <Tag :color="node.result === 'Completed' ? 'success' : 'processing'">
-              {{ node.result }}
-            </Tag>
-            <Button
-              type="primary"
-              size="small"
-              ghost
-              @click="node.schedules[0] && (showScheduleDetail(node.schedules[0]), dayNodesModalOpen = false)"
-            >
-              {{ $t('page.ops.viewDetail') }}
-            </Button>
-          </div>
-        </div>
-      </div>
-      <Empty v-else :description="$t('page.ops.noNodesForDate')" class="py-8" />
-    </Modal>
+      :date="selectedNodesDate"
+      :nodes="selectedNodes"
+      @select-schedule="showScheduleDetail"
+    />
 
     <!-- Schedule Detail Drawer -->
     <ScheduleDetailDrawer

@@ -195,16 +195,6 @@ watch(filterStatus, () => {
           {{ t('page.portal.notifications') || 'Thông báo' }}
         </h1>
       </div>
-
-      <Button
-        type="primary"
-        size="small"
-        class="bg-indigo-600 hover:bg-indigo-700 border-none text-[11px] font-bold h-8 rounded-xl px-3 shrink-0"
-        :loading="submitting"
-        @click="handleMarkAllRead"
-      >
-        {{ t('page.notification.btnMarkAllRead') || 'Đọc tất cả' }}
-      </Button>
     </div>
 
     <div class="px-4 space-y-4">

@@ -8,6 +8,7 @@ import { $t } from '#/locales';
 import type { EquipmentOption, ChecklistSession, ChecklistDetailItem, ChecklistLog, UserOption } from '../types';
 import WorkspaceChecklistDrawer from './WorkspaceChecklistDrawer.vue';
 import ChecklistJudgeDrawer from '../../../ops/checklist/components/ChecklistJudgeDrawer.vue';
+import DayChecklistSessionsModal from './DayChecklistSessionsModal.vue';
 
 const dateDetailVisible = ref(false);
 const selectedDate = ref<Dayjs | null>(null);
@@ -349,49 +350,13 @@ onMounted(() => {
       </Calendar>
     </Spin>
 
-    <!-- Modal listing all checklist sessions for selected date in row format -->
-    <Modal
+    <!-- Modal listing all checklist sessions for selected date in table format -->
+    <DayChecklistSessionsModal
       v-model:open="daySessionsModalOpen"
-      :title="$t('page.ops.checklistModalTitle', { date: selectedSessionsDate ? selectedSessionsDate.format('DD/MM/YYYY') : '' })"
-      width="800px"
-      :footer="null"
-      destroy-on-close
-    >
-      <div v-if="selectedSessionsList.length > 0" class="max-h-[500px] overflow-y-auto divide-y divide-border pr-2 scrollbar-thin">
-        <div
-          v-for="session in selectedSessionsList"
-          :key="session.id"
-          class="flex items-center justify-between gap-3 py-3 px-2 rounded-lg hover:bg-muted/50 transition-colors"
-        >
-          <div class="flex items-center gap-3 min-w-0">
-            <div class="w-2.5 h-2.5 rounded-full shrink-0" :class="getSessionStatus(session) === 'success' ? 'bg-emerald-500' : 'bg-indigo-500'"></div>
-            <div class="min-w-0">
-              <div class="font-semibold text-sm text-foreground flex items-center gap-2">
-                <span>{{ session.name || session.equipment?.name || $t('page.ops.checklistDrawer.sessionText') }}</span>
-              </div>
-              <div class="text-xs text-muted-foreground truncate mt-0.5">
-                <span class="font-medium text-foreground">{{ session.equipment?.code || '—' }}</span>
-                <span v-if="session.equipment?.name"> — {{ session.equipment.name }}</span>
-              </div>
-            </div>
-          </div>
-          <div class="flex items-center gap-3 shrink-0">
-            <Tag :color="getSessionStatus(session) === 'success' ? 'success' : 'processing'">
-              {{ getSessionStatus(session) === 'success' ? 'Pass' : 'Pending' }}
-            </Tag>
-            <Button
-              type="primary"
-              size="small"
-              ghost
-              @click="openJudgeModal(session); daySessionsModalOpen = false;"
-            >
-              {{ $t('page.ops.judgeSession') }}
-            </Button>
-          </div>
-        </div>
-      </div>
-      <Empty v-else :description="$t('page.ops.noNodesForDate')" class="py-8" />
-    </Modal>
+      :date="selectedSessionsDate"
+      :sessions="selectedSessionsList"
+      @select-session="openJudgeModal"
+    />
 
     <!-- Workspace Checklist Drawer (Manage eamo_checklist_sessions & eamo_checklist_details) -->
     <WorkspaceChecklistDrawer

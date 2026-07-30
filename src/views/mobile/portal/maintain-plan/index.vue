@@ -230,7 +230,6 @@ watch(selectedDate, () => {
           <div class="flex-1 min-w-0">
             <p class="text-sm font-semibold text-slate-800 dark:text-zinc-100 truncate m-0 leading-tight">
               {{ group.plan_code }}
-              <span v-if="group.equipment_name" class="font-normal text-slate-400 dark:text-zinc-500">— {{ group.equipment_name }}</span>
             </p>
             <p class="text-[11px] text-slate-400 dark:text-zinc-500 font-mono mt-0.5 mb-0 truncate">
               {{ group.equipment_code }}

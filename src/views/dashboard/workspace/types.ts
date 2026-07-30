@@ -106,3 +106,17 @@ export interface JudgeDetailItem {
   description: string;
   result: 'pass' | 'fail';
 }
+
+export interface DailyPlanNode {
+  key: string;
+  plan_id: string;
+  plan_code: string;
+  date: string;
+  equipment_code: string;
+  equipment_name: string | null;
+  maintenance_type: string;
+  schedules: ScheduleRow[];
+  total_items: number;
+  completed_items: number;
+  result: 'Completed' | 'Pending';
+}
