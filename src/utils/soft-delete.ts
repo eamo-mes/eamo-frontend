@@ -7,7 +7,7 @@ export function isSoftDeleted(record: SoftDeletedRecord): boolean {
 }
 
 export function softDeletedRowClass(record: SoftDeletedRecord): string {
-  return isSoftDeleted(record) ? 'bg-gray-50 opacity-60 grayscale' : '';
+  return isSoftDeleted(record) ? 'opacity-50' : '';
 }
 
 /**

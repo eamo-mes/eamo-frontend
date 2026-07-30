@@ -1,5 +1,5 @@
 <script lang="ts" setup>
-import { ref, onMounted, computed } from 'vue';
+import { ref, onMounted, computed } from "vue";
 import {
   Table,
   Button,
@@ -8,15 +8,19 @@ import {
   Spin,
   Tag,
   Input,
-} from 'ant-design-vue';
-import axios from 'axios';
-import dayjs from 'dayjs';
-import { API_BASE_URL } from '#/api/config';
-import { useAccessStore } from '@vben/stores';
-import { $t } from '#/locales';
-import { isSoftDeleted, softDeletedRowClass, sortBySoftDeleted } from '#/utils/soft-delete';
-import EquipmentErrorCategoryModal from './components/EquipmentErrorCategoryModal.vue';
-import ErrorLogFormModal from './components/ErrorLogFormModal.vue';
+} from "ant-design-vue";
+import axios from "axios";
+import dayjs from "dayjs";
+import { API_BASE_URL } from "#/api/config";
+import { useAccessStore } from "@vben/stores";
+import { $t } from "#/locales";
+import {
+  isSoftDeleted,
+  softDeletedRowClass,
+  sortBySoftDeleted,
+} from "#/utils/soft-delete";
+import EquipmentErrorCategoryModal from "./components/EquipmentErrorCategoryModal.vue";
+import ErrorLogFormModal from "./components/ErrorLogFormModal.vue";
 
 interface UserOption {
   id: string;
@@ -59,10 +63,13 @@ const syncingId = ref<string | null>(null);
 const items = ref<ErrorLogItem[]>([]);
 
 function getRowClassName(record: ErrorLogItem): string {
-  return [
-    softDeletedRowClass(record),
-    record.is_synced ? 'opacity-40 pointer-events-none bg-gray-50/20 dark:bg-zinc-900/10' : '',
-  ].filter(Boolean).join(' ');
+  if (isSoftDeleted(record)) {
+    return "opacity-50";
+  }
+  if (record.is_synced) {
+    return "opacity-40 pointer-events-none";
+  }
+  return "";
 }
 
 const equipments = ref<EquipmentOption[]>([]);
@@ -75,15 +82,15 @@ const showErrorLogModal = ref(false);
 const isEditing = ref(false);
 const selectedRecord = ref<ErrorLogItem | null>(null);
 
-const searchVal = ref('');
-const activeSearch = ref('');
+const searchVal = ref("");
+const activeSearch = ref("");
 
 function getAuthHeaders() {
   const accessStore = useAccessStore();
   return {
     Authorization: `Bearer ${accessStore.accessToken}`,
-    Accept: 'application/json',
-    'Content-Type': 'application/json',
+    Accept: "application/json",
+    "Content-Type": "application/json",
   };
 }
 
@@ -103,7 +110,7 @@ async function loadInitialData() {
   try {
     const equipRes = await axios.get(`${API_BASE_URL}/v1/equipment`, {
       headers: getAuthHeaders(),
-      params: { paginate: 'false' },
+      params: { paginate: "false" },
     });
     // API trả về mảng trực tiếp khi paginate=false, hoặc { data: [...] } nếu paginated
     const rawEquip = equipRes.data;
@@ -135,25 +142,28 @@ async function loadInitialData() {
     const errorsListArray = Array.isArray(errorsData) ? errorsData : [];
     allMasterErrors.value = errorsListArray
       .map((item: { id?: string; name?: string }) => ({
-        id: item.id || '',
-        name: item.name || '',
+        id: item.id || "",
+        name: item.name || "",
       }))
       .filter((item) => item.id.length > 0);
   } catch (error: unknown) {
-    console.error('Failed to load metadata', error);
+    console.error("Failed to load metadata", error);
   }
 }
 
 async function loadItems() {
   loading.value = true;
   try {
-    const res = await axios.get(`${API_BASE_URL}/v1/equipment/error-monitoring/equipment-error-logs`, {
-      headers: getAuthHeaders(),
-      params: { with_trashed: true },
-    });
+    const res = await axios.get(
+      `${API_BASE_URL}/v1/equipment/error-monitoring/equipment-error-logs`,
+      {
+        headers: getAuthHeaders(),
+        params: { with_trashed: true },
+      },
+    );
     items.value = res.data?.data ?? res.data ?? [];
   } catch (error) {
-    message.error('Failed to load error logs');
+    message.error("Failed to load error logs");
     console.error(error);
   } finally {
     loading.value = false;
@@ -170,17 +180,21 @@ function getErrorName(record: ErrorLogItem) {
     return record.equipment_error.name;
   }
   const equip = equipments.value.find((e) => e.id === record.equipment_id);
-  const err = equip?.equipment_errors?.find((e) => e.id === record.equipment_error_id);
+  const err = equip?.equipment_errors?.find(
+    (e) => e.id === record.equipment_error_id,
+  );
   if (err?.name) return err.name;
-  const masterErr = allMasterErrors.value.find((e) => e.id === record.equipment_error_id);
+  const masterErr = allMasterErrors.value.find(
+    (e) => e.id === record.equipment_error_id,
+  );
   return masterErr ? masterErr.name : record.equipment_error_id;
 }
 
 function getHandlersText(record: ErrorLogItem) {
   if (record.handlers && record.handlers.length > 0) {
-    return record.handlers.map((h) => h.name).join(', ');
+    return record.handlers.map((h) => h.name).join(", ");
   }
-  return '-';
+  return "-";
 }
 
 onMounted(() => {
@@ -193,8 +207,8 @@ function handleSearch() {
 }
 
 function handleReset() {
-  searchVal.value = '';
-  activeSearch.value = '';
+  searchVal.value = "";
+  activeSearch.value = "";
 }
 
 const filteredItems = computed(() => {
@@ -205,7 +219,9 @@ const filteredItems = computed(() => {
       const equipName = getEquipmentName(item.equipment_id).toLowerCase();
       const errName = getErrorName(item).toLowerCase();
       const handlerName = getHandlersText(item).toLowerCase();
-      return equipName.includes(q) || errName.includes(q) || handlerName.includes(q);
+      return (
+        equipName.includes(q) || errName.includes(q) || handlerName.includes(q)
+      );
     });
   }
   return sortBySoftDeleted(
@@ -217,10 +233,14 @@ const filteredItems = computed(() => {
       }
       const aTime = a.occurred_at
         ? new Date(a.occurred_at).getTime()
-        : (a.created_at ? new Date(a.created_at).getTime() : 0);
+        : a.created_at
+          ? new Date(a.created_at).getTime()
+          : 0;
       const bTime = b.occurred_at
         ? new Date(b.occurred_at).getTime()
-        : (b.created_at ? new Date(b.created_at).getTime() : 0);
+        : b.created_at
+          ? new Date(b.created_at).getTime()
+          : 0;
       return bTime - aTime;
     }),
   );
@@ -244,13 +264,16 @@ function openEditModal(record: ErrorLogItem) {
 
 async function handleDelete(id: string) {
   try {
-    await axios.delete(`${API_BASE_URL}/v1/equipment/error-monitoring/equipment-error-logs/${id}`, {
-      headers: getAuthHeaders(),
-    });
-    message.success($t('page.ops.successDelete'));
+    await axios.delete(
+      `${API_BASE_URL}/v1/equipment/error-monitoring/equipment-error-logs/${id}`,
+      {
+        headers: getAuthHeaders(),
+      },
+    );
+    message.success($t("page.ops.successDelete"));
     loadItems();
   } catch (error) {
-    message.error($t('page.ops.deleteFailed'));
+    message.error($t("page.ops.deleteFailed"));
     console.error(error);
   }
 }
@@ -263,12 +286,14 @@ async function syncOneResolved(id: string) {
       {},
       { headers: getAuthHeaders() },
     );
-    message.success($t('page.ops.syncSuccess'));
+    message.success($t("page.ops.syncSuccess"));
     await loadInitialData();
     await loadItems();
   } catch (error: unknown) {
     const axiosErr = error as { response?: { data?: { message?: string } } };
-    message.error(axiosErr?.response?.data?.message || $t('page.ops.syncFailed'));
+    message.error(
+      axiosErr?.response?.data?.message || $t("page.ops.syncFailed"),
+    );
   } finally {
     syncingId.value = null;
   }
@@ -282,12 +307,14 @@ async function syncAllResolved() {
       {},
       { headers: getAuthHeaders() },
     );
-    message.success(res.data?.message || $t('page.ops.syncSuccess'));
+    message.success(res.data?.message || $t("page.ops.syncSuccess"));
     await loadInitialData();
     await loadItems();
   } catch (error: unknown) {
     const axiosErr = error as { response?: { data?: { message?: string } } };
-    message.error(axiosErr?.response?.data?.message || $t('page.ops.syncFailed'));
+    message.error(
+      axiosErr?.response?.data?.message || $t("page.ops.syncFailed"),
+    );
   } finally {
     syncingAll.value = false;
   }
@@ -295,45 +322,45 @@ async function syncAllResolved() {
 
 const columns = computed(() => [
   {
-    title: $t('page.ops.colEquipment'),
-    dataIndex: 'equipment_id',
-    key: 'equipment_id',
+    title: $t("page.ops.colEquipment"),
+    dataIndex: "equipment_id",
+    key: "equipment_id",
   },
   {
-    title: 'Error',
-    dataIndex: 'equipment_error_id',
-    key: 'equipment_error_id',
+    title: "Error",
+    dataIndex: "equipment_error_id",
+    key: "equipment_error_id",
   },
   {
-    title: 'Status',
-    key: 'status',
-    align: 'center' as const,
+    title: "Status",
+    key: "status",
+    align: "center" as const,
   },
   {
-    title: 'Occurred At',
-    dataIndex: 'occurred_at',
-    key: 'occurred_at',
+    title: "Occurred At",
+    dataIndex: "occurred_at",
+    key: "occurred_at",
   },
   {
-    title: 'Restarted At',
-    dataIndex: 'restarted_at',
-    key: 'restarted_at',
+    title: "Restarted At",
+    dataIndex: "restarted_at",
+    key: "restarted_at",
   },
   {
-    title: 'Handled At',
-    dataIndex: 'handled_at',
-    key: 'handled_at',
+    title: "Handled At",
+    dataIndex: "handled_at",
+    key: "handled_at",
   },
   {
-    title: 'Handler',
-    key: 'handlers',
+    title: "Handler",
+    key: "handlers",
   },
   {
-    title: $t('page.ops.colActions'),
-    key: 'actions',
-    align: 'center' as const,
+    title: $t("page.ops.colActions"),
+    key: "actions",
+    align: "center" as const,
     width: 260,
-    fixed: 'right' as const,
+    fixed: "right" as const,
   },
 ]);
 </script>
@@ -341,7 +368,9 @@ const columns = computed(() => [
 <template>
   <div class="p-6 space-y-4">
     <!-- Action Bar -->
-    <div class="action-bar bg-card border border-border rounded-xl p-4 shadow-sm flex flex-nowrap items-center gap-3 overflow-x-auto w-full">
+    <div
+      class="action-bar bg-card border border-border rounded-xl p-4 shadow-sm flex flex-nowrap items-center gap-3 overflow-x-auto w-full"
+    >
       <Input
         v-model:value="searchVal"
         :placeholder="$t('page.equipment.placeholderName')"
@@ -350,10 +379,10 @@ const columns = computed(() => [
         @press-enter="handleSearch"
       />
       <Button type="default" @click="handleSearch">
-        {{ $t('page.company.btnFilter') }}
+        {{ $t("page.company.btnFilter") }}
       </Button>
       <Button type="default" @click="handleReset">
-        {{ $t('page.company.btnReset') }}
+        {{ $t("page.company.btnReset") }}
       </Button>
       <div class="ml-auto flex gap-2">
         <Popconfirm
@@ -366,7 +395,7 @@ const columns = computed(() => [
             :loading="syncingAll"
             class="rounded-md font-medium border-blue-500 text-blue-600 hover:bg-blue-50"
           >
-            {{ $t('page.ops.syncResolvedAll') }}
+            {{ $t("page.ops.syncResolvedAll") }}
           </Button>
         </Popconfirm>
         <Button
@@ -374,20 +403,22 @@ const columns = computed(() => [
           class="rounded-md font-medium border-emerald-600 text-emerald-600 hover:bg-emerald-50"
           @click="openCreateErrorModal"
         >
-          {{ $t('page.ops.btnCreateEquipmentError') }}
+          {{ $t("page.ops.btnCreateEquipmentError") }}
         </Button>
         <Button
           type="primary"
           class="bg-[#5c3e35] hover:bg-[#4b332b] border-[#5c3e35] rounded-md font-medium text-white h-full"
           @click="openAddModal"
         >
-          {{ $t('page.ops.addErrorLog') }}
+          {{ $t("page.ops.addErrorLog") }}
         </Button>
       </div>
     </div>
 
     <!-- Table -->
-    <div class="bg-card border border-border rounded-xl shadow-sm overflow-hidden">
+    <div
+      class="bg-card border border-border rounded-xl shadow-sm overflow-hidden"
+    >
       <Spin :spinning="loading">
         <Table
           :columns="columns"
@@ -411,18 +442,32 @@ const columns = computed(() => [
             </template>
             <template v-else-if="column.key === 'status'">
               <Tag v-if="record.handled_at" color="green">Resolved</Tag>
-              <Tag v-else-if="record.restarted_at" color="orange">Restarted</Tag>
+              <Tag v-else-if="record.restarted_at" color="orange"
+                >Restarted</Tag
+              >
               <Tag v-else-if="record.occurred_at" color="red">Active Error</Tag>
               <Tag v-else color="blue">Definition</Tag>
             </template>
             <template v-else-if="column.key === 'occurred_at'">
-              <span>{{ record.occurred_at ? dayjs(record.occurred_at).format('YYYY-MM-DD HH:mm:ss') : '-' }}</span>
+              <span>{{
+                record.occurred_at
+                  ? dayjs(record.occurred_at).format("YYYY-MM-DD HH:mm:ss")
+                  : "-"
+              }}</span>
             </template>
             <template v-else-if="column.key === 'restarted_at'">
-              <span>{{ record.restarted_at ? dayjs(record.restarted_at).format('YYYY-MM-DD HH:mm:ss') : '-' }}</span>
+              <span>{{
+                record.restarted_at
+                  ? dayjs(record.restarted_at).format("YYYY-MM-DD HH:mm:ss")
+                  : "-"
+              }}</span>
             </template>
             <template v-else-if="column.key === 'handled_at'">
-              <span>{{ record.handled_at ? dayjs(record.handled_at).format('YYYY-MM-DD HH:mm:ss') : '-' }}</span>
+              <span>{{
+                record.handled_at
+                  ? dayjs(record.handled_at).format("YYYY-MM-DD HH:mm:ss")
+                  : "-"
+              }}</span>
             </template>
             <template v-else-if="column.key === 'handlers'">
               <span>{{ getHandlersText(record as ErrorLogItem) }}</span>
@@ -435,7 +480,7 @@ const columns = computed(() => [
                   class="rounded hover:border-primary hover:text-primary"
                   @click="openEditModal(record as ErrorLogItem)"
                 >
-                  {{ $t('page.ops.editErrorLog') }}
+                  {{ $t("page.ops.editErrorLog") }}
                 </Button>
                 <Popconfirm
                   v-if="record.handled_at && !record.is_synced"
@@ -450,7 +495,7 @@ const columns = computed(() => [
                     :loading="syncingId === record.id"
                     class="rounded border-blue-400 text-blue-600 hover:bg-blue-50"
                   >
-                    {{ $t('page.ops.syncResolvedOne') }}
+                    {{ $t("page.ops.syncResolvedOne") }}
                   </Button>
                 </Popconfirm>
                 <Popconfirm
@@ -465,7 +510,7 @@ const columns = computed(() => [
                     :disabled="isSoftDeleted(record as ErrorLogItem)"
                     class="rounded bg-red-50/50 hover:bg-red-500 hover:text-white border-red-200"
                   >
-                    {{ $t('page.company.btnDelete') }}
+                    {{ $t("page.company.btnDelete") }}
                   </Button>
                 </Popconfirm>
               </div>
@@ -481,7 +526,12 @@ const columns = computed(() => [
       :equipments="equipments"
       :all-master-errors="allMasterErrors"
       :users="users"
-      @success="async () => { await loadInitialData(); await loadItems(); }"
+      @success="
+        async () => {
+          await loadInitialData();
+          await loadItems();
+        }
+      "
     />
 
     <ErrorLogFormModal
