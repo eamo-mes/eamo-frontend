@@ -393,6 +393,9 @@
     "updateFailed": "Cập nhật thất bại"
   },
   "ops": {
+    "scheduleMode": "Chế độ lịch trình",
+    "modeRepeating": "Theo chu kỳ (Lặp lại)",
+    "modeSingle": "Thêm lẻ (1 buổi duy nhất)",
     "moreNodesCount": "+{count} xem thêm",
     "dayNodesModalTitle": "Danh sách kế hoạch bảo trì — {date}",
     "checklistModalTitle": "Danh sách phiên kiểm tra — {date}",

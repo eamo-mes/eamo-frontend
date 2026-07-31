@@ -59,6 +59,7 @@ const users = ref<UserOption[]>([]);
 const formState = ref({
   id: '',
   name: '',
+  schedule_mode: 'repeating' as 'repeating' | 'single',
   equipment_id: undefined as string | undefined,
   user_ids: [] as string[],
   session_date: '',
@@ -118,9 +119,11 @@ async function loadChecklistDetail(id: string) {
     });
     const record = res.data?.data ?? res.data;
     if (record) {
+      const isSingle = record.schedule_mode === 'single' || (record.cycle_type === 'daily' && record.cycle_interval === 1 && !record.occurrences);
       formState.value = {
         id: record.id,
         name: record.name || '',
+        schedule_mode: isSingle ? 'single' : (record.schedule_mode || 'repeating'),
         equipment_id: record.equipment_id || undefined,
         user_ids: record.users?.map((u: { id: string }) => u.id) || [],
         session_date: normalizeDateTime(record.session_date),
@@ -173,7 +176,7 @@ const rules = computed(() => ({
   name: [{ required: true, message: $t('page.ops.validationName') }],
   equipment_id: [{ required: true, message: $t('page.ops.validationEquipment') }],
   session_date: [{ required: true, message: $t('page.ops.validationDate') }],
-  cycle_interval: [{ required: true, type: 'number' as const, min: 1, message: 'Vui lòng nhập khoảng chu kỳ lặp hợp lệ' }],
+  cycle_interval: [{ required: formState.value.schedule_mode === 'repeating', type: 'number' as const, min: 1, message: 'Vui lòng nhập khoảng chu kỳ lặp hợp lệ' }],
 }));
 
 async function handleSubmit() {
@@ -181,14 +184,19 @@ async function handleSubmit() {
     await formRef.value.validateFields();
     submitting.value = true;
 
+    const isSingleMode = formState.value.schedule_mode === 'single';
+    const effectiveCycleType = isSingleMode ? 'daily' : formState.value.cycle_type;
+    const effectiveCycleInterval = isSingleMode ? 1 : formState.value.cycle_interval;
+
     if (isEditing.value && editId.value) {
       // 1. Update checklist session properties
       const sessionPayload = {
         name: formState.value.name,
         equipment_id: formState.value.equipment_id,
         session_date: formState.value.session_date,
-        cycle_type: formState.value.cycle_type,
-        cycle_interval: formState.value.cycle_interval,
+        cycle_type: effectiveCycleType,
+        cycle_interval: effectiveCycleInterval,
+        schedule_mode: formState.value.schedule_mode,
         user_ids: formState.value.user_ids,
       };
       await axios.put(`${API_BASE_URL}/v1/checklist-sessions/${editId.value}`, sessionPayload, {
@@ -213,8 +221,9 @@ async function handleSubmit() {
         name: formState.value.name,
         equipment_id: formState.value.equipment_id,
         session_date: formState.value.session_date,
-        cycle_type: formState.value.cycle_type,
-        cycle_interval: formState.value.cycle_interval,
+        cycle_type: effectiveCycleType,
+        cycle_interval: effectiveCycleInterval,
+        schedule_mode: formState.value.schedule_mode,
         user_ids: formState.value.user_ids,
         details: formState.value.checklist_details.map(item => ({
           checklist_id: item.checklist_id,
@@ -355,6 +364,13 @@ onMounted(() => {
                   </Select>
                 </FormItem>
 
+                <FormItem :label="$t('page.ops.scheduleMode')" name="schedule_mode" class="col-span-1">
+                  <Select v-model:value="formState.schedule_mode">
+                    <Select.Option value="repeating">{{ $t('page.ops.modeRepeating') }}</Select.Option>
+                    <Select.Option value="single">{{ $t('page.ops.modeSingle') }}</Select.Option>
+                  </Select>
+                </FormItem>
+
                 <FormItem :label="$t('page.ops.colDate')" name="session_date" class="col-span-1">
                   <DatePicker
                     v-model:value="formState.session_date"
@@ -365,7 +381,7 @@ onMounted(() => {
                   />
                 </FormItem>
 
-                <FormItem :label="$t('page.ops.colCycleType')" name="cycle_type" class="col-span-1">
+                <FormItem v-if="formState.schedule_mode === 'repeating'" :label="$t('page.ops.colCycleType')" name="cycle_type" class="col-span-1">
                   <Select v-model:value="formState.cycle_type" :placeholder="$t('page.ops.placeholderCycleType')">
                     <Select.Option value="daily">{{ $t('page.ops.cycleDaily') }}</Select.Option>
                     <Select.Option value="weekly">{{ $t('page.ops.cycleWeekly') }}</Select.Option>
@@ -374,7 +390,7 @@ onMounted(() => {
                   </Select>
                 </FormItem>
 
-                <FormItem :label="$t('page.ops.colCycleInterval')" name="cycle_interval" class="col-span-1">
+                <FormItem v-if="formState.schedule_mode === 'repeating'" :label="$t('page.ops.colCycleInterval')" name="cycle_interval" class="col-span-1">
                   <InputNumber
                     v-model:value="formState.cycle_interval"
                     :min="1"
