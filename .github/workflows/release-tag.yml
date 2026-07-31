@@ -42,7 +42,7 @@ jobs:
           echo "version=${version}" >> "${GITHUB_OUTPUT}"
           echo "major=${major}" >> "${GITHUB_OUTPUT}"
 
-      - uses: release-drafter/release-drafter@v7
+      - uses: release-drafter/release-drafter@v7.6.0
         with:
           version: ${{ steps.version.outputs.version }}
           publish: true
