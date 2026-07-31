@@ -394,6 +394,7 @@ onMounted(() => {
                   <InputNumber
                     v-model:value="formState.cycle_interval"
                     :min="1"
+                    :max="365"
                     class="w-full !w-full"
                     style="width: 100%"
                     :placeholder="$t('page.ops.placeholderCycleInterval')"
