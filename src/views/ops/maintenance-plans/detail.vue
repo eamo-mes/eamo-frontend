@@ -668,7 +668,7 @@ onMounted(async () => {
               </FormItem>
 
               <!-- Chu kỳ -->
-              <FormItem v-if="formState.schedule_mode === 'repeating'" :label="$t('page.ops.colCycleType')" name="cycle_type">
+              <FormItem :label="$t('page.ops.colCycleType')" name="cycle_type">
                 <Select
                   v-model:value="formState.cycle_type"
                   :options="cycleTypeOptions"
@@ -681,10 +681,10 @@ onMounted(async () => {
 
               <!-- Khoảng chu kỳ -->
               <FormItem
-                v-if="formState.schedule_mode === 'repeating' && formState.cycle_type"
+                v-if="formState.cycle_type"
                 :label="$t('page.ops.colCycleInterval')"
                 name="cycle_interval"
-                :rules="[{ required: formState.schedule_mode === 'repeating', message: $t('page.ops.placeholderCycleInterval') }]"
+                :rules="[{ required: true, message: $t('page.ops.placeholderCycleInterval') }]"
               >
                 <InputNumber
                   v-model:value="formState.cycle_interval"
@@ -697,10 +697,10 @@ onMounted(async () => {
 
               <!-- Số lần lặp -->
               <FormItem
-                v-if="formState.schedule_mode === 'repeating' && formState.cycle_type"
+                v-if="formState.cycle_type"
                 :label="$t('page.ops.colOccurrences')"
                 name="occurrences"
-                :rules="[{ required: formState.schedule_mode === 'repeating', message: $t('page.ops.validationOccurrences') }]"
+                :rules="[{ required: true, message: $t('page.ops.validationOccurrences') }]"
               >
                 <InputNumber
                   v-model:value="formState.occurrences"

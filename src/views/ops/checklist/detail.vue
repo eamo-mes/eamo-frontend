@@ -381,7 +381,7 @@ onMounted(() => {
                   />
                 </FormItem>
 
-                <FormItem v-if="formState.schedule_mode === 'repeating'" :label="$t('page.ops.colCycleType')" name="cycle_type" class="col-span-1">
+                <FormItem :label="$t('page.ops.colCycleType')" name="cycle_type" class="col-span-1">
                   <Select v-model:value="formState.cycle_type" :placeholder="$t('page.ops.placeholderCycleType')">
                     <Select.Option value="daily">{{ $t('page.ops.cycleDaily') }}</Select.Option>
                     <Select.Option value="weekly">{{ $t('page.ops.cycleWeekly') }}</Select.Option>
@@ -390,7 +390,7 @@ onMounted(() => {
                   </Select>
                 </FormItem>
 
-                <FormItem v-if="formState.schedule_mode === 'repeating'" :label="$t('page.ops.colCycleInterval')" name="cycle_interval" class="col-span-1">
+                <FormItem :label="$t('page.ops.colCycleInterval')" name="cycle_interval" class="col-span-1">
                   <InputNumber
                     v-model:value="formState.cycle_interval"
                     :min="1"
