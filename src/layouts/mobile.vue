@@ -757,11 +757,6 @@ function handleNotificationClick(item: NotificationItem) {
           icon="lucide:x" 
           class="size-6 transition-transform duration-300"
         />
-        <IconifyIcon 
-          v-else 
-          icon="lucide:grip-vertical" 
-          class="size-6 transition-transform duration-300"
-        />
       </button>
     </div>
 
