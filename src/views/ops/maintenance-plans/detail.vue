@@ -61,6 +61,7 @@ const formRef = ref();
 
 const formState = ref({
   plan_code: '',
+  schedule_mode: 'repeating' as 'repeating' | 'single',
   equipment_id: undefined as string | undefined,
   maintenance_category_id: undefined as string | undefined,
   maintenance_type: undefined as string | undefined,
@@ -216,8 +217,10 @@ function generateKey(): string {
 }
 
 function setFormStateFromRecord(record: MaintenancePlanRecord): void {
+  const isSingle = record.schedule_mode === 'single' || (record.occurrences === 1 && record.cycle_type === 'daily' && record.cycle_interval === 1);
   formState.value = {
     plan_code: record.plan_code ?? '',
+    schedule_mode: isSingle ? 'single' : (record.schedule_mode || 'repeating'),
     equipment_id: record.equipment_id ?? undefined,
     maintenance_category_id: record.maintenance_category_id ?? undefined,
     maintenance_type: record.maintenance_type ?? undefined,
@@ -345,17 +348,23 @@ async function handleSubmit(): Promise<void> {
       }
     }
 
+    const isSingleMode = formState.value.schedule_mode === 'single';
+    const effectiveCycleType = isSingleMode ? 'daily' : (formState.value.cycle_type ?? null);
+    const effectiveCycleInterval = isSingleMode ? 1 : (formState.value.cycle_interval ?? null);
+    const effectiveOccurrences = isSingleMode ? 1 : (formState.value.occurrences ?? null);
+
     const payload = {
       plan_code: formState.value.plan_code || null,
+      schedule_mode: formState.value.schedule_mode,
       equipment_id: formState.value.equipment_id,
       maintenance_category_id: formState.value.maintenance_category_id,
       maintenance_type: formState.value.maintenance_type,
       date: formState.value.date,
       start_time: formState.value.start_time || null,
       end_time: formState.value.end_time || null,
-      cycle_type: formState.value.cycle_type ?? null,
-      cycle_interval: formState.value.cycle_interval ?? null,
-      occurrences: formState.value.occurrences ?? null,
+      cycle_type: effectiveCycleType,
+      cycle_interval: effectiveCycleInterval,
+      occurrences: effectiveOccurrences,
       notes: formState.value.notes || null,
       schedules: saveSchedules,
     };
@@ -639,6 +648,14 @@ onMounted(async () => {
                 />
               </FormItem>
 
+              <!-- Chế độ lịch trình -->
+              <FormItem :label="$t('page.ops.scheduleMode')" name="schedule_mode">
+                <Select v-model:value="formState.schedule_mode" class="w-full">
+                  <Select.Option value="repeating">{{ $t('page.ops.modeRepeating') }}</Select.Option>
+                  <Select.Option value="single">{{ $t('page.ops.modeSingle') }}</Select.Option>
+                </Select>
+              </FormItem>
+
               <!-- Ngày kế hoạch -->
               <FormItem :label="$t('page.ops.startDate')" name="date">
                 <DatePicker
@@ -651,7 +668,7 @@ onMounted(async () => {
               </FormItem>
 
               <!-- Chu kỳ -->
-              <FormItem :label="$t('page.ops.colCycleType')" name="cycle_type">
+              <FormItem v-if="formState.schedule_mode === 'repeating'" :label="$t('page.ops.colCycleType')" name="cycle_type">
                 <Select
                   v-model:value="formState.cycle_type"
                   :options="cycleTypeOptions"
@@ -664,10 +681,10 @@ onMounted(async () => {
 
               <!-- Khoảng chu kỳ -->
               <FormItem
-                v-if="formState.cycle_type"
+                v-if="formState.schedule_mode === 'repeating' && formState.cycle_type"
                 :label="$t('page.ops.colCycleInterval')"
                 name="cycle_interval"
-                :rules="[{ required: true, message: $t('page.ops.placeholderCycleInterval') }]"
+                :rules="[{ required: formState.schedule_mode === 'repeating', message: $t('page.ops.placeholderCycleInterval') }]"
               >
                 <InputNumber
                   v-model:value="formState.cycle_interval"
@@ -680,10 +697,10 @@ onMounted(async () => {
 
               <!-- Số lần lặp -->
               <FormItem
-                v-if="formState.cycle_type"
+                v-if="formState.schedule_mode === 'repeating' && formState.cycle_type"
                 :label="$t('page.ops.colOccurrences')"
                 name="occurrences"
-                :rules="[{ required: true, message: $t('page.ops.validationOccurrences') }]"
+                :rules="[{ required: formState.schedule_mode === 'repeating', message: $t('page.ops.validationOccurrences') }]"
               >
                 <InputNumber
                   v-model:value="formState.occurrences"

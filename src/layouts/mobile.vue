@@ -1,28 +1,22 @@
 <script lang="ts" setup>
-import type { NotificationItem } from '@vben/layouts';
-import { computed, ref, watch, onMounted, onUnmounted } from 'vue';
-import { useRouter, useRoute } from 'vue-router';
-import { 
-  Drawer, 
-  Modal, 
-  Input, 
-  message,
-  Avatar
-} from 'ant-design-vue';
-import { useUserStore, useAccessStore } from '@vben/stores';
-import { usePreferences, updatePreferences } from '@vben/preferences';
-import { Notification } from '@vben/layouts';
-import MobileUserDropdown from '#/views/mobile/components/MobileUserDropdown.vue';
-import { VbenIconButton } from '@vben/common-ui';
-import { IconifyIcon } from '@vben/icons';
-import { $t } from '#/locales';
-import { useI18n, loadLocaleMessages } from '@vben/locales';
-import { useAuthStore } from '#/store';
+import type { NotificationItem } from "@vben/layouts";
+import { computed, ref, watch, onMounted, onUnmounted } from "vue";
+import { useRouter, useRoute } from "vue-router";
+import { Drawer, Modal, Input, message, Avatar } from "ant-design-vue";
+import { useUserStore, useAccessStore } from "@vben/stores";
+import { usePreferences, updatePreferences } from "@vben/preferences";
+import { Notification } from "@vben/layouts";
+import MobileUserDropdown from "#/views/mobile/components/MobileUserDropdown.vue";
+import { VbenIconButton } from "@vben/common-ui";
+import { IconifyIcon } from "@vben/icons";
+import { $t } from "#/locales";
+import { useI18n, loadLocaleMessages } from "@vben/locales";
+import { useAuthStore } from "#/store";
 import {
   getUserNotificationsApi,
   markNotificationReadApi,
   markAllNotificationsReadApi,
-} from '#/api/core/notification';
+} from "#/api/core/notification";
 
 const router = useRouter();
 const route = useRoute();
@@ -32,14 +26,19 @@ const authStore = useAuthStore();
 const { isDark } = usePreferences();
 const { locale, t } = useI18n();
 
-async function changeLang(lang: 'zh-CN' | 'en-US') {
+async function changeLang(lang: "zh-CN" | "en-US") {
   if (locale.value === lang) return;
-  const hide = message.loading({ content: lang === 'zh-CN' ? 'Đang chuyển ngôn ngữ...' : 'Switching language...', key: 'lang', duration: 0 });
+  const hide = message.loading({
+    content:
+      lang === "zh-CN" ? "Đang chuyển ngôn ngữ..." : "Switching language...",
+    key: "lang",
+    duration: 0,
+  });
   try {
     updatePreferences({ app: { locale: lang } });
     await loadLocaleMessages(lang);
   } catch (e) {
-    console.error('Failed to change language:', e);
+    console.error("Failed to change language:", e);
   } finally {
     hide();
   }
@@ -47,15 +46,15 @@ async function changeLang(lang: 'zh-CN' | 'en-US') {
 
 // Helper functions for Vben Menu Record properties compatibility
 function getMenuTitle(item: any): string {
-  if (!item) return '';
-  const title = item.title ?? item.meta?.title ?? item.name ?? '';
-  return typeof title === 'function' ? title() : String(title);
+  if (!item) return "";
+  const title = item.title ?? item.meta?.title ?? item.name ?? "";
+  return typeof title === "function" ? title() : String(title);
 }
 
-function getMenuIcon(item: any, fallback = 'lucide:file-text'): string {
+function getMenuIcon(item: any, fallback = "lucide:file-text"): string {
   if (!item) return fallback;
   const icon = item.icon ?? item.meta?.icon;
-  return typeof icon === 'string' ? icon : fallback;
+  return typeof icon === "string" ? icon : fallback;
 }
 
 function isHideInMenu(item: any): boolean {
@@ -66,34 +65,35 @@ function isHideInMenu(item: any): boolean {
 // State controls
 const drawerVisible = ref(false);
 const searchModalVisible = ref(false);
-const searchQuery = ref('');
+const searchQuery = ref("");
 const isRefreshing = ref(false);
 const floatMenuOpen = ref(false);
 
 const floatMenuItems = computed(() => [
   {
-    title: t('page.portal.equipment') || 'Thiết bị',
-    path: '/portal/equipment',
-    icon: 'lucide:wrench',
-    color: 'bg-blue-600 text-white hover:bg-blue-700 shadow-blue-500/25',
+    title: t("page.portal.equipment") || "Thiết bị",
+    path: "/portal/equipment",
+    icon: "lucide:wrench",
+    color: "bg-blue-600 text-white hover:bg-blue-700 shadow-blue-500/25",
   },
   {
-    title: t('page.portal.notifications') || 'Dashboard',
-    path: '/portal/dashboard',
-    icon: 'lucide:bell',
-    color: 'bg-amber-600 text-white hover:bg-amber-700 shadow-amber-500/25',
+    title: t("page.portal.notifications") || "Dashboard",
+    path: "/portal/dashboard",
+    icon: "lucide:bell",
+    color: "bg-amber-600 text-white hover:bg-amber-700 shadow-amber-500/25",
   },
   {
-    title: t('page.portal.checklist') || 'Checklist',
-    path: '/portal/checklist',
-    icon: 'lucide:clipboard-check',
-    color: 'bg-emerald-600 text-white hover:bg-emerald-700 shadow-emerald-500/25',
+    title: t("page.portal.checklist") || "Checklist",
+    path: "/portal/checklist",
+    icon: "lucide:clipboard-check",
+    color:
+      "bg-emerald-600 text-white hover:bg-emerald-700 shadow-emerald-500/25",
   },
   {
-    title: t('page.portal.mPlans') || 'Kế hoạch bảo trì',
-    path: '/portal/maintain-plan',
-    icon: 'lucide:calendar-clock',
-    color: 'bg-indigo-600 text-white hover:bg-indigo-700 shadow-indigo-500/25',
+    title: t("page.portal.mPlans") || "Kế hoạch bảo trì",
+    path: "/portal/maintain-plan",
+    icon: "lucide:calendar-clock",
+    color: "bg-indigo-600 text-white hover:bg-indigo-700 shadow-indigo-500/25",
   },
 ]);
 
@@ -107,14 +107,17 @@ function toggleExpand(key: string) {
 // Dynamic menus loaded from Web Admin accessStore
 const webAdminMenus = computed(() => {
   const menus: any[] = accessStore.accessMenus || [];
-  return menus.filter(item => !isHideInMenu(item));
+  return menus.filter((item) => !isHideInMenu(item));
 });
 
 // Auto expand active menu parent when drawer opens
 watch(drawerVisible, (val) => {
   if (val) {
-    webAdminMenus.value.forEach(item => {
-      if (item.children && item.children.some((child: any) => route.path.startsWith(child.path))) {
+    webAdminMenus.value.forEach((item) => {
+      if (
+        item.children &&
+        item.children.some((child: any) => route.path.startsWith(child.path))
+      ) {
         expandedKeys.value[item.path] = true;
       }
     });
@@ -127,16 +130,18 @@ const unreadCount = ref(0);
 let pollInterval: any = null;
 
 function mapNotification(item: any): NotificationItem {
-  const avatar = '/avatar.png';
-  const dateStr = item.created_at ? new Date(item.created_at).toLocaleString() : '';
+  const avatar = "/avatar.png";
+  const dateStr = item.created_at
+    ? new Date(item.created_at).toLocaleString()
+    : "";
 
   return {
     id: item.id,
     avatar,
     date: dateStr,
     isRead: item.read_at !== null,
-    message: item.data?.message ?? '',
-    title: item.data?.entity_label ?? 'Notification',
+    message: item.data?.message ?? "",
+    title: item.data?.entity_label ?? "Notification",
   };
 }
 
@@ -149,7 +154,7 @@ async function fetchNotifications() {
     notifications.value = (res.notifications?.data ?? []).map(mapNotification);
     unreadCount.value = res.unread_count ?? 0;
   } catch (error) {
-    console.error('Failed to fetch notifications:', error);
+    console.error("Failed to fetch notifications:", error);
   }
 }
 
@@ -170,22 +175,26 @@ watch(
       }
     }
   },
-  { immediate: true }
+  { immediate: true },
 );
 
 // Floating Draggable Position & Gesture State
 const floatPos = ref({ x: 0, y: 0 });
 const isInitializedPos = ref(false);
 const isDraggingFloat = ref(false);
-const windowWidth = ref(typeof window !== 'undefined' ? window.innerWidth : 375);
-const windowHeight = ref(typeof window !== 'undefined' ? window.innerHeight : 667);
+const windowWidth = ref(
+  typeof window !== "undefined" ? window.innerWidth : 375,
+);
+const windowHeight = ref(
+  typeof window !== "undefined" ? window.innerHeight : 667,
+);
 
 let dragStart = { x: 0, y: 0 };
 let initialFloatPos = { x: 0, y: 0 };
 let hasMovedDistance = false;
 
 function initFloatPos() {
-  if (typeof window !== 'undefined') {
+  if (typeof window !== "undefined") {
     windowWidth.value = window.innerWidth;
     windowHeight.value = window.innerHeight;
     if (!isInitializedPos.value) {
@@ -200,7 +209,7 @@ function initFloatPos() {
 }
 
 function handleResize() {
-  if (typeof window === 'undefined') return;
+  if (typeof window === "undefined") return;
   windowWidth.value = window.innerWidth;
   windowHeight.value = window.innerHeight;
   const btnSize = 52;
@@ -211,26 +220,26 @@ function handleResize() {
 }
 
 function startDrag(e: MouseEvent | TouchEvent) {
-  const clientX = 'touches' in e ? e.touches[0].clientX : e.clientX;
-  const clientY = 'touches' in e ? e.touches[0].clientY : e.clientY;
+  const clientX = "touches" in e ? e.touches[0].clientX : e.clientX;
+  const clientY = "touches" in e ? e.touches[0].clientY : e.clientY;
 
   dragStart = { x: clientX, y: clientY };
   initialFloatPos = { ...floatPos.value };
   isDraggingFloat.value = false;
   hasMovedDistance = false;
 
-  if ('touches' in e) {
-    window.addEventListener('touchmove', onDrag, { passive: false });
-    window.addEventListener('touchend', stopDrag);
+  if ("touches" in e) {
+    window.addEventListener("touchmove", onDrag, { passive: false });
+    window.addEventListener("touchend", stopDrag);
   } else {
-    window.addEventListener('mousemove', onDrag);
-    window.addEventListener('mouseup', stopDrag);
+    window.addEventListener("mousemove", onDrag);
+    window.addEventListener("mouseup", stopDrag);
   }
 }
 
 function onDrag(e: MouseEvent | TouchEvent) {
-  const clientX = 'touches' in e ? e.touches[0].clientX : e.clientX;
-  const clientY = 'touches' in e ? e.touches[0].clientY : e.clientY;
+  const clientX = "touches" in e ? e.touches[0].clientX : e.clientX;
+  const clientY = "touches" in e ? e.touches[0].clientY : e.clientY;
 
   const dx = clientX - dragStart.x;
   const dy = clientY - dragStart.y;
@@ -254,10 +263,10 @@ function onDrag(e: MouseEvent | TouchEvent) {
 }
 
 function stopDrag() {
-  window.removeEventListener('mousemove', onDrag);
-  window.removeEventListener('mouseup', stopDrag);
-  window.removeEventListener('touchmove', onDrag);
-  window.removeEventListener('touchend', stopDrag);
+  window.removeEventListener("mousemove", onDrag);
+  window.removeEventListener("mouseup", stopDrag);
+  window.removeEventListener("touchmove", onDrag);
+  window.removeEventListener("touchend", stopDrag);
   setTimeout(() => {
     isDraggingFloat.value = false;
   }, 50);
@@ -276,15 +285,15 @@ onUnmounted(() => {
     clearInterval(pollInterval);
     pollInterval = null;
   }
-  if (typeof window !== 'undefined') {
-    window.removeEventListener('resize', handleResize);
+  if (typeof window !== "undefined") {
+    window.removeEventListener("resize", handleResize);
   }
 });
 
 onMounted(() => {
   initFloatPos();
-  if (typeof window !== 'undefined') {
-    window.addEventListener('resize', handleResize);
+  if (typeof window !== "undefined") {
+    window.addEventListener("resize", handleResize);
   }
   if (!userStore.userInfo?.realName && !userStore.userInfo?.username) {
     authStore.fetchUserInfo().catch(() => {});
@@ -294,7 +303,7 @@ onMounted(() => {
 const showDot = computed(() => unreadCount.value > 0);
 
 const avatar = computed(() => {
-  return '/avatar.png';
+  return "/avatar.png";
 });
 
 // User Actions
@@ -304,7 +313,11 @@ async function handleLogout() {
 
 function handleReload() {
   isRefreshing.value = true;
-  message.loading({ content: t('page.portal.reloading') || 'Đang tải lại...', key: 'reload', duration: 0.5 });
+  message.loading({
+    content: t("page.portal.reloading") || "Đang tải lại...",
+    key: "reload",
+    duration: 0.5,
+  });
   setTimeout(() => {
     isRefreshing.value = false;
     window.location.reload();
@@ -314,7 +327,7 @@ function handleReload() {
 function toggleTheme() {
   updatePreferences({
     theme: {
-      mode: isDark.value ? 'light' : 'dark',
+      mode: isDark.value ? "light" : "dark",
     },
   });
 }
@@ -328,10 +341,20 @@ function handleNavigate(path: string) {
 
 // Search System Pages dynamically built from webAdminMenus
 const searchItems = computed(() => {
-  const list: { title: string; path: string; icon?: string; category: string }[] = [
-    { title: t('page.portal.homeTitle') || 'Trang chủ Mobile Portal', path: '/portal', icon: 'lucide:smartphone', category: 'Mobile' }
+  const list: {
+    title: string;
+    path: string;
+    icon?: string;
+    category: string;
+  }[] = [
+    {
+      title: t("page.portal.homeTitle") || "Trang chủ Mobile Portal",
+      path: "/portal",
+      icon: "lucide:smartphone",
+      category: "Mobile",
+    },
   ];
-  webAdminMenus.value.forEach(menu => {
+  webAdminMenus.value.forEach((menu) => {
     const parentTitle = getMenuTitle(menu);
     if (menu.children && menu.children.length > 0) {
       menu.children.forEach((child: any) => {
@@ -341,7 +364,7 @@ const searchItems = computed(() => {
             title: childTitle,
             path: child.path,
             icon: getMenuIcon(child),
-            category: parentTitle
+            category: parentTitle,
           });
         }
       });
@@ -350,7 +373,7 @@ const searchItems = computed(() => {
         title: parentTitle,
         path: menu.path,
         icon: getMenuIcon(menu),
-        category: 'Hệ thống'
+        category: "Hệ thống",
       });
     }
   });
@@ -360,9 +383,10 @@ const searchItems = computed(() => {
 const filteredSearchItems = computed(() => {
   if (!searchQuery.value.trim()) return searchItems.value;
   const q = searchQuery.value.toLowerCase();
-  return searchItems.value.filter(item => 
-    item.title.toLowerCase().includes(q) || 
-    item.category.toLowerCase().includes(q)
+  return searchItems.value.filter(
+    (item) =>
+      item.title.toLowerCase().includes(q) ||
+      item.category.toLowerCase().includes(q),
   );
 });
 
@@ -379,7 +403,7 @@ async function markRead(id: number | string) {
       item.isRead = true;
       unreadCount.value = Math.max(0, unreadCount.value - 1);
     } catch (e) {
-      console.error('Failed to mark notification as read:', e);
+      console.error("Failed to mark notification as read:", e);
     }
   }
 }
@@ -394,7 +418,7 @@ async function handleMakeAll() {
     notifications.value.forEach((item) => (item.isRead = true));
     unreadCount.value = 0;
   } catch (e) {
-    console.error('Failed to mark all as read:', e);
+    console.error("Failed to mark all as read:", e);
   }
 }
 
@@ -406,26 +430,24 @@ function handleNotificationClick(item: NotificationItem) {
 </script>
 
 <template>
-  <div class="mobile-layout min-h-screen flex flex-col bg-slate-50 dark:bg-zinc-950 transition-colors duration-300">
-    
+  <div
+    class="mobile-layout min-h-screen flex flex-col bg-slate-50 dark:bg-zinc-950 transition-colors duration-300"
+  >
     <!-- Top Mobile Header Navigation -->
-    <header class="sticky top-0 z-40 h-14 bg-white/80 dark:bg-zinc-900/80 backdrop-blur-md border-b border-slate-200/80 dark:border-zinc-800/80 px-3 flex items-center justify-between shadow-2xs">
-      
+    <header
+      class="sticky top-0 z-40 h-14 bg-white/80 dark:bg-zinc-900/80 backdrop-blur-md border-b border-slate-200/80 dark:border-zinc-800/80 px-3 flex items-center justify-between shadow-2xs"
+    >
       <!-- Left: Back Button & Open Sidebar Drawer Button -->
       <div class="flex items-center gap-1">
-        <VbenIconButton 
-          class="text-foreground"
-          @click="drawerVisible = true"
-        >
+        <VbenIconButton class="text-foreground" @click="drawerVisible = true">
           <IconifyIcon icon="lucide:menu" class="size-4" />
         </VbenIconButton>
       </div>
 
       <!-- Right Action Icons -->
       <div class="flex items-center gap-1 sm:gap-2">
-        
         <!-- Search Button -->
-        <VbenIconButton 
+        <VbenIconButton
           class="text-foreground"
           @click="searchModalVisible = true"
         >
@@ -445,7 +467,7 @@ function handleNotificationClick(item: NotificationItem) {
         />
 
         <!-- Reload / Refresh Page Button -->
-        <VbenIconButton 
+        <VbenIconButton
           class="text-foreground"
           :class="{ 'animate-spin': isRefreshing }"
           @click="handleReload"
@@ -454,11 +476,7 @@ function handleNotificationClick(item: NotificationItem) {
         </VbenIconButton>
 
         <!-- MobileUserDropdown -->
-        <MobileUserDropdown
-          :avatar="avatar"
-          @logout="handleLogout"
-        />
-
+        <MobileUserDropdown :avatar="avatar" @logout="handleLogout" />
       </div>
     </header>
 
@@ -468,20 +486,29 @@ function handleNotificationClick(item: NotificationItem) {
     </main>
 
     <!-- Slide-out Sidebar Drawer Menu -->
-    <Drawer 
-      v-model:open="drawerVisible" 
-      placement="left" 
+    <Drawer
+      v-model:open="drawerVisible"
+      placement="left"
       width="295px"
       :closable="false"
       class="mobile-sidebar-drawer"
     >
-      <div class="flex flex-col h-full bg-slate-900 text-slate-100 p-4 -m-6 min-h-screen">
-        
+      <div
+        class="flex flex-col h-full bg-slate-900 text-slate-100 p-4 -m-6 min-h-screen"
+      >
         <!-- User Info Header -->
-        <div class="flex items-center gap-3 p-3 bg-slate-800/80 rounded-2xl border border-slate-700/50 mb-4">
-          <Avatar src="/avatar.png" :size="42" class="border border-indigo-400/40" />
+        <div
+          class="flex items-center gap-3 p-3 bg-slate-800/80 rounded-2xl border border-slate-700/50 mb-4"
+        >
+          <Avatar
+            src="/avatar.png"
+            :size="42"
+            class="border border-indigo-400/40"
+          />
           <div class="flex flex-col min-w-0">
-            <span class="font-bold text-sm text-slate-100 truncate">{{ userStore.userInfo?.realName || userStore.userInfo?.username }}</span>
+            <span class="font-bold text-sm text-slate-100 truncate">{{
+              userStore.userInfo?.realName || userStore.userInfo?.username
+            }}</span>
           </div>
         </div>
 
@@ -492,58 +519,95 @@ function handleNotificationClick(item: NotificationItem) {
           <!-- 1. Home / Portal Landing -->
           <button
             @click="handleNavigate('/portal')"
-            :class="[route.path === '/portal' ? 'bg-indigo-600 text-white font-bold shadow-xs' : 'text-slate-300 hover:bg-slate-800/80']"
+            :class="[
+              route.path === '/portal'
+                ? 'bg-indigo-600 text-white font-bold shadow-xs'
+                : 'text-slate-300 hover:bg-slate-800/80',
+            ]"
             class="w-full flex items-center gap-3 px-3.5 py-2.5 rounded-xl text-xs transition-all cursor-pointer border-0 text-left"
           >
             <IconifyIcon icon="lucide:home" class="text-base flex-shrink-0" />
-            <span class="flex-1 truncate">{{ t('page.portal.title') }}</span>
+            <span class="flex-1 truncate">{{ t("page.portal.title") }}</span>
           </button>
 
           <!-- 2. Equipment -->
           <button
             @click="handleNavigate('/portal/equipment')"
-            :class="[route.path.startsWith('/portal/equipment') ? 'bg-indigo-600 text-white font-bold shadow-xs' : 'text-slate-300 hover:bg-slate-800/80']"
+            :class="[
+              route.path.startsWith('/portal/equipment')
+                ? 'bg-indigo-600 text-white font-bold shadow-xs'
+                : 'text-slate-300 hover:bg-slate-800/80',
+            ]"
             class="w-full flex items-center gap-3 px-3.5 py-2.5 rounded-xl text-xs transition-all cursor-pointer border-0 text-left"
           >
             <IconifyIcon icon="lucide:wrench" class="text-base flex-shrink-0" />
-            <span class="flex-1 truncate">{{ t('page.portal.equipment') }}</span>
+            <span class="flex-1 truncate">{{
+              t("page.portal.equipment")
+            }}</span>
           </button>
 
           <!-- 3. Notifications (Dashboard) -->
           <button
             @click="handleNavigate('/portal/dashboard')"
-            :class="[route.path.startsWith('/portal/dashboard') ? 'bg-indigo-600 text-white font-bold shadow-xs' : 'text-slate-300 hover:bg-slate-800/80']"
+            :class="[
+              route.path.startsWith('/portal/dashboard')
+                ? 'bg-indigo-600 text-white font-bold shadow-xs'
+                : 'text-slate-300 hover:bg-slate-800/80',
+            ]"
             class="w-full flex items-center gap-3 px-3.5 py-2.5 rounded-xl text-xs transition-all cursor-pointer border-0 text-left"
           >
             <IconifyIcon icon="lucide:bell" class="text-base flex-shrink-0" />
-            <span class="flex-1 truncate">{{ t('page.portal.notifications') }}</span>
+            <span class="flex-1 truncate">{{
+              t("page.portal.notifications")
+            }}</span>
           </button>
 
           <!-- 4. Checklist -->
           <button
             @click="handleNavigate('/portal/checklist')"
-            :class="[route.path.startsWith('/portal/checklist') ? 'bg-indigo-600 text-white font-bold shadow-xs' : 'text-slate-300 hover:bg-slate-800/80']"
+            :class="[
+              route.path.startsWith('/portal/checklist')
+                ? 'bg-indigo-600 text-white font-bold shadow-xs'
+                : 'text-slate-300 hover:bg-slate-800/80',
+            ]"
             class="w-full flex items-center gap-3 px-3.5 py-2.5 rounded-xl text-xs transition-all cursor-pointer border-0 text-left"
           >
-            <IconifyIcon icon="lucide:clipboard-check" class="text-base flex-shrink-0" />
-            <span class="flex-1 truncate">{{ t('page.portal.checklist') || 'Checklist' }}</span>
+            <IconifyIcon
+              icon="lucide:clipboard-check"
+              class="text-base flex-shrink-0"
+            />
+            <span class="flex-1 truncate">{{
+              t("page.portal.checklist") || "Checklist"
+            }}</span>
           </button>
 
           <!-- 5. Maintenance Plans -->
           <button
             @click="handleNavigate('/portal/maintain-plan')"
-            :class="[route.path.startsWith('/portal/maintain-plan') ? 'bg-indigo-600 text-white font-bold shadow-xs' : 'text-slate-300 hover:bg-slate-800/80']"
+            :class="[
+              route.path.startsWith('/portal/maintain-plan')
+                ? 'bg-indigo-600 text-white font-bold shadow-xs'
+                : 'text-slate-300 hover:bg-slate-800/80',
+            ]"
             class="w-full flex items-center gap-3 px-3.5 py-2.5 rounded-xl text-xs transition-all cursor-pointer border-0 text-left"
           >
-            <IconifyIcon icon="lucide:calendar-clock" class="text-base flex-shrink-0" />
-            <span class="flex-1 truncate">{{ t('page.portal.mPlans') || 'Kế hoạch bảo trì' }}</span>
+            <IconifyIcon
+              icon="lucide:calendar-clock"
+              class="text-base flex-shrink-0"
+            />
+            <span class="flex-1 truncate">{{
+              t("page.portal.mPlans") || "Kế hoạch bảo trì"
+            }}</span>
           </button>
 
           <div class="my-2 border-t border-slate-800/80"></div>
 
           <!-- Dynamic Web Admin Menus -->
-          <div v-for="menu in webAdminMenus" :key="menu.path" class="flex flex-col gap-0.5">
-
+          <div
+            v-for="menu in webAdminMenus"
+            :key="menu.path"
+            class="flex flex-col gap-0.5"
+          >
             <!-- Parent Menu with Children -->
             <template v-if="menu.children && menu.children.length > 0">
               <div
@@ -551,7 +615,10 @@ function handleNotificationClick(item: NotificationItem) {
                 class="w-full flex items-center justify-between px-3.5 py-2.5 rounded-xl text-xs font-semibold text-slate-400 hover:text-slate-200 hover:bg-slate-800/60 cursor-pointer transition-colors"
               >
                 <div class="flex items-center gap-3 min-w-0">
-                  <IconifyIcon :icon="getMenuIcon(menu, 'lucide:folder')" class="text-base flex-shrink-0 text-indigo-400" />
+                  <IconifyIcon
+                    :icon="getMenuIcon(menu, 'lucide:folder')"
+                    class="text-base flex-shrink-0 text-indigo-400"
+                  />
                   <span class="truncate">{{ getMenuTitle(menu) }}</span>
                 </div>
                 <IconifyIcon
@@ -562,15 +629,27 @@ function handleNotificationClick(item: NotificationItem) {
               </div>
 
               <!-- Collapsible Sub-menu items -->
-              <div v-show="expandedKeys[menu.path]" class="flex flex-col gap-0.5 pl-3.5 ml-2 border-l border-slate-800 my-0.5">
+              <div
+                v-show="expandedKeys[menu.path]"
+                class="flex flex-col gap-0.5 pl-3.5 ml-2 border-l border-slate-800 my-0.5"
+              >
                 <button
-                  v-for="child in menu.children.filter((c: any) => !isHideInMenu(c))"
+                  v-for="child in menu.children.filter(
+                    (c: any) => !isHideInMenu(c),
+                  )"
                   :key="child.path"
                   @click="handleNavigate(child.path)"
-                  :class="[route.path === child.path ? 'bg-indigo-600 text-white font-bold' : 'text-slate-300 hover:bg-slate-800/80']"
+                  :class="[
+                    route.path === child.path
+                      ? 'bg-indigo-600 text-white font-bold'
+                      : 'text-slate-300 hover:bg-slate-800/80',
+                  ]"
                   class="w-full flex items-center gap-2.5 px-3 py-2 rounded-lg text-xs transition-all cursor-pointer border-0 text-left"
                 >
-                  <IconifyIcon :icon="getMenuIcon(child, 'lucide:file-text')" class="text-sm flex-shrink-0" />
+                  <IconifyIcon
+                    :icon="getMenuIcon(child, 'lucide:file-text')"
+                    class="text-sm flex-shrink-0"
+                  />
                   <span class="truncate">{{ getMenuTitle(child) }}</span>
                 </button>
               </div>
@@ -580,33 +659,45 @@ function handleNotificationClick(item: NotificationItem) {
             <template v-else>
               <button
                 @click="handleNavigate(menu.path)"
-                :class="[route.path === menu.path ? 'bg-indigo-600 text-white font-bold' : 'text-slate-300 hover:bg-slate-800/80']"
+                :class="[
+                  route.path === menu.path
+                    ? 'bg-indigo-600 text-white font-bold'
+                    : 'text-slate-300 hover:bg-slate-800/80',
+                ]"
                 class="w-full flex items-center gap-3 px-3.5 py-2.5 rounded-xl text-xs transition-all cursor-pointer border-0 text-left"
               >
-                <IconifyIcon :icon="getMenuIcon(menu, 'lucide:file-text')" class="text-base flex-shrink-0" />
+                <IconifyIcon
+                  :icon="getMenuIcon(menu, 'lucide:file-text')"
+                  class="text-base flex-shrink-0"
+                />
                 <span class="truncate">{{ getMenuTitle(menu) }}</span>
               </button>
             </template>
-
           </div>
-
         </div>
 
         <!-- Sidebar Footer Controls (Language, Theme & Logout) -->
         <div class="pt-4 border-t border-slate-800 flex flex-col gap-2">
-
           <!-- Language Switcher -->
           <div class="flex items-center gap-1 p-1 bg-slate-800/80 rounded-xl">
             <button
               @click="changeLang('zh-CN')"
-              :class="[locale === 'zh-CN' ? 'bg-indigo-600 text-white font-bold shadow-xs' : 'text-slate-400 hover:text-slate-200']"
+              :class="[
+                locale === 'zh-CN'
+                  ? 'bg-indigo-600 text-white font-bold shadow-xs'
+                  : 'text-slate-400 hover:text-slate-200',
+              ]"
               class="flex-1 py-1.5 rounded-lg text-[10px] uppercase tracking-wider font-bold transition-all cursor-pointer border-0 outline-none"
             >
               VI
             </button>
             <button
               @click="changeLang('en-US')"
-              :class="[locale === 'en-US' ? 'bg-indigo-600 text-white font-bold shadow-xs' : 'text-slate-400 hover:text-slate-200']"
+              :class="[
+                locale === 'en-US'
+                  ? 'bg-indigo-600 text-white font-bold shadow-xs'
+                  : 'text-slate-400 hover:text-slate-200',
+              ]"
               class="flex-1 py-1.5 rounded-lg text-[10px] uppercase tracking-wider font-bold transition-all cursor-pointer border-0 outline-none"
             >
               EN
@@ -619,8 +710,15 @@ function handleNotificationClick(item: NotificationItem) {
               @click="toggleTheme"
               class="flex-1 flex items-center justify-center gap-2 py-2 px-3 rounded-xl bg-slate-800 text-xs text-slate-300 hover:text-white transition-colors cursor-pointer border-0"
             >
-              <IconifyIcon :icon="isDark ? 'lucide:sun' : 'lucide:moon'" class="text-base" />
-              <span>{{ isDark ? (t('page.portal.lightMode') || 'Sáng') : (t('page.portal.darkMode') || 'Tối') }}</span>
+              <IconifyIcon
+                :icon="isDark ? 'lucide:sun' : 'lucide:moon'"
+                class="text-base"
+              />
+              <span>{{
+                isDark
+                  ? t("page.portal.lightMode") || "Sáng"
+                  : t("page.portal.darkMode") || "Tối"
+              }}</span>
             </button>
 
             <VbenIconButton
@@ -631,38 +729,49 @@ function handleNotificationClick(item: NotificationItem) {
             </VbenIconButton>
           </div>
         </div>
-
       </div>
     </Drawer>
 
     <!-- Search Modal -->
-    <Modal 
-      v-model:open="searchModalVisible" 
-      :footer="null" 
+    <Modal
+      v-model:open="searchModalVisible"
+      :footer="null"
       :closable="false"
       centered
       width="90%"
     >
       <div class="py-2">
-        <Input 
-          v-model:value="searchQuery" 
-          :placeholder="t('page.portal.searchAllPlaceholder') || 'Tìm kiếm trang, thiết bị...'" 
-          allow-clear 
+        <Input
+          v-model:value="searchQuery"
+          :placeholder="
+            t('page.portal.searchAllPlaceholder') ||
+            'Tìm kiếm trang, thiết bị...'
+          "
+          allow-clear
           autofocus
           class="rounded-xl py-2 mb-4"
         />
         <div class="max-h-[300px] overflow-y-auto flex flex-col gap-1.5">
-          <div 
-            v-for="item in filteredSearchItems" 
-            :key="item.path" 
+          <div
+            v-for="item in filteredSearchItems"
+            :key="item.path"
             @click="handleNavigate(item.path)"
             class="p-2.5 rounded-xl hover:bg-indigo-50 dark:hover:bg-zinc-800/80 flex items-center justify-between cursor-pointer transition-colors"
           >
             <div class="flex items-center gap-2">
-              <IconifyIcon :icon="item.icon || 'lucide:file-text'" class="text-base text-indigo-500" />
-              <span class="text-xs font-semibold text-slate-800 dark:text-zinc-200">{{ item.title }}</span>
+              <IconifyIcon
+                :icon="item.icon || 'lucide:file-text'"
+                class="text-base text-indigo-500"
+              />
+              <span
+                class="text-xs font-semibold text-slate-800 dark:text-zinc-200"
+                >{{ item.title }}</span
+              >
             </div>
-            <span class="text-[10px] bg-indigo-100 text-indigo-700 dark:bg-indigo-950/60 dark:text-indigo-300 px-2 py-0.5 rounded-md">{{ item.category }}</span>
+            <span
+              class="text-[10px] bg-indigo-100 text-indigo-700 dark:bg-indigo-950/60 dark:text-indigo-300 px-2 py-0.5 rounded-md"
+              >{{ item.category }}</span
+            >
           </div>
         </div>
       </div>
@@ -677,14 +786,14 @@ function handleNotificationClick(item: NotificationItem) {
       leave-from-class="opacity-100"
       leave-to-class="opacity-0"
     >
-      <div 
-        v-if="floatMenuOpen" 
+      <div
+        v-if="floatMenuOpen"
         class="fixed inset-0 z-40 bg-slate-900/40 backdrop-blur-xs"
         @click="floatMenuOpen = false"
       />
     </Transition>
 
-    <div 
+    <div
       class="fixed z-50 select-none touch-none"
       :style="{ left: `${floatPos.x}px`, top: `${floatPos.y}px` }"
     >
@@ -693,8 +802,10 @@ function handleNotificationClick(item: NotificationItem) {
         tag="div"
         :class="[
           'absolute flex flex-col gap-2.5 transition-all duration-200',
-          floatPos.y > (windowHeight / 2) ? 'bottom-full mb-3' : 'top-full mt-3',
-          floatPos.x > (windowWidth / 2) ? 'right-0 items-end' : 'left-0 items-start'
+          floatPos.y > windowHeight / 2 ? 'bottom-full mb-3' : 'top-full mt-3',
+          floatPos.x > windowWidth / 2
+            ? 'right-0 items-end'
+            : 'left-0 items-start',
         ]"
         enter-active-class="transition duration-200 ease-out"
         enter-from-class="opacity-0 translate-y-3 scale-95"
@@ -710,11 +821,11 @@ function handleNotificationClick(item: NotificationItem) {
             @click="handleNavigate(item.path)"
             :class="[
               'flex items-center gap-2.5 cursor-pointer group',
-              floatPos.x > (windowWidth / 2) ? 'flex-row' : 'flex-row-reverse'
+              floatPos.x > windowWidth / 2 ? 'flex-row' : 'flex-row-reverse',
             ]"
           >
             <!-- Label Pill -->
-            <span 
+            <span
               class="px-3 py-1 rounded-xl text-xs font-semibold shadow-md bg-white dark:bg-zinc-800 text-slate-800 dark:text-zinc-200 border border-slate-200/80 dark:border-zinc-700/80 whitespace-nowrap transition-transform duration-150 group-active:scale-95"
             >
               {{ item.title }}
@@ -724,10 +835,10 @@ function handleNotificationClick(item: NotificationItem) {
             <button
               type="button"
               :class="[
-                route.path.startsWith(item.path) 
-                  ? 'ring-2 ring-indigo-500 ring-offset-2 dark:ring-offset-zinc-950 scale-105' 
+                route.path.startsWith(item.path)
+                  ? 'ring-2 ring-indigo-500 ring-offset-2 dark:ring-offset-zinc-950 scale-105'
                   : 'hover:scale-105',
-                item.color
+                item.color,
               ]"
               class="size-11 rounded-full flex items-center justify-center shadow-lg transition-all duration-150 cursor-pointer border-0 outline-none active:scale-95"
             >
@@ -738,32 +849,6 @@ function handleNotificationClick(item: NotificationItem) {
       </TransitionGroup>
 
       <!-- Main Floating Trigger Button (||| Iconify Icon & Draggable) -->
-      <button
-        type="button"
-        @mousedown="startDrag"
-        @touchstart="startDrag"
-        @click="handleFloatBtnClick"
-        :class="[
-          floatMenuOpen 
-            ? 'bg-slate-800 text-slate-100 dark:bg-zinc-200 dark:text-zinc-900 shadow-xl' 
-            : 'bg-indigo-600 hover:bg-indigo-700 text-white shadow-indigo-500/35 shadow-lg hover:scale-105',
-          isDraggingFloat ? 'scale-110 cursor-grabbing' : 'cursor-grab'
-        ]"
-        class="size-13 rounded-full flex items-center justify-center transition-transform duration-150 border-0 outline-none active:scale-95"
-        aria-label="Quick Navigation Menu"
-      >
-        <IconifyIcon 
-          v-if="floatMenuOpen" 
-          icon="lucide:x" 
-          class="size-6 transition-transform duration-300"
-        />
-        <IconifyIcon 
-          v-else 
-          icon="lucide:grip-vertical" 
-          class="size-6 transition-transform duration-300"
-        />
-      </button>
     </div>
-
   </div>
 </template>
