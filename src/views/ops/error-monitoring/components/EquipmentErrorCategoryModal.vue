@@ -129,7 +129,7 @@ async function handleOk() {
     :confirm-loading="submitting"
     :ok-text="$t('page.ops.btnOk')"
     :cancel-text="$t('page.ops.btnCancel')"
-    width="600px"
+    width="800px"
     @ok="handleOk"
     @cancel="emit('update:open', false)"
   >
