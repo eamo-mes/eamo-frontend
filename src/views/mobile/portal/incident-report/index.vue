@@ -5,7 +5,6 @@ import {
   Button, 
   Input, 
   Select, 
-  Spin, 
   message,
 } from 'ant-design-vue';
 import dayjs from 'dayjs';
@@ -121,12 +120,9 @@ async function startRealCameraScanner() {
       { facingMode: 'environment' },
       config,
       (decodedText: string) => {
-        // Real QR scanned successfully!
         handleRealQrScannedText(decodedText);
       },
-      (_errorMessage: string) => {
-        // Continuous scanning frame ignore
-      }
+      (_errorMessage: string) => {}
     );
   } catch (err: any) {
     console.error('Html5Qrcode camera error:', err);
@@ -152,14 +148,12 @@ async function stopCamera() {
 function findEquipByQrText(text: string): EquipmentItem | undefined {
   const cleanText = text.trim().toLowerCase();
   
-  // 1. Exact match on code or id
   let match = equipments.value.find(e => 
     e.code.toLowerCase() === cleanText || 
     e.id.toLowerCase() === cleanText
   );
   if (match) return match;
 
-  // 2. Check JSON payload
   try {
     const obj = JSON.parse(text);
     if (obj?.code) {
@@ -168,7 +162,6 @@ function findEquipByQrText(text: string): EquipmentItem | undefined {
     }
   } catch (e) {}
 
-  // 3. Check substring
   match = equipments.value.find(e => cleanText.includes(e.code.toLowerCase()));
   return match;
 }
@@ -181,7 +174,6 @@ async function handleRealQrScannedText(rawText: string) {
     message.success(`Đã quét QR thành công: ${matched.name} (${matched.code})`);
     selectedEquipment.value = matched;
   } else {
-    // If equipment code not found in seeded list, create temporary item for user
     const fallbackEquip: EquipmentItem = {
       id: rawText,
       code: rawText,
@@ -191,7 +183,7 @@ async function handleRealQrScannedText(rawText: string) {
     selectedEquipment.value = fallbackEquip;
   }
 
-  step.value = 2; // Transition to Step 2
+  step.value = 2;
 }
 
 function handleBack() {
@@ -215,26 +207,56 @@ async function handleSubmit() {
   let finalErrorId = formState.value.selected_error_id;
   let finalNotes = '';
 
-  if (errorInputMode.value === 'custom') {
-    if (!formState.value.custom_error_name.trim()) {
-      message.error('Vui lòng nhập tên sự cố / lỗi mới!');
-      return;
-    }
-    finalNotes = `Lỗi mới: ${formState.value.custom_error_name.trim()}`;
-    if (masterErrors.value.length > 0) {
-      finalErrorId = masterErrors.value[0]?.id;
-    }
-  } else {
-    if (!finalErrorId) {
-      message.error('Vui lòng chọn loại lỗi từ danh sách!');
-      return;
-    }
-    const matchedError = masterErrors.value.find(e => e.id === finalErrorId);
-    finalNotes = matchedError ? matchedError.name : 'Báo cáo sự cố từ mã QR';
-  }
-
   try {
     submitting.value = true;
+
+    // IF CUSTOM NEW ERROR MODE: Auto-register custom error into Master Data!
+    if (errorInputMode.value === 'custom') {
+      const customName = formState.value.custom_error_name.trim();
+      if (!customName) {
+        message.error('Vui lòng nhập tên sự cố / lỗi mới!');
+        submitting.value = false;
+        return;
+      }
+
+      // Check if error already exists in loaded master data
+      const existing = masterErrors.value.find(e => e.name.toLowerCase() === customName.toLowerCase());
+      if (existing) {
+        finalErrorId = existing.id;
+        finalNotes = existing.name;
+      } else {
+        // Register new error into eamo_equipment_errors Master Data table via API
+        try {
+          const createErrorRes = await axios.post(
+            `${API_BASE_URL}/v1/equipment-errors`,
+            { name: customName },
+            { headers: getAuthHeaders() }
+          );
+          const newErrObj = createErrorRes.data?.data ?? createErrorRes.data;
+          if (newErrObj && newErrObj.id) {
+            finalErrorId = newErrObj.id;
+            finalNotes = customName;
+            // Add to local list for future selection
+            masterErrors.value.push({ id: newErrObj.id, name: customName });
+          }
+        } catch (createErr) {
+          console.warn('Could not save custom error to master data, using fallback:', createErr);
+          finalNotes = `Lỗi mới: ${customName}`;
+          if (masterErrors.value.length > 0) {
+            finalErrorId = masterErrors.value[0]?.id;
+          }
+        }
+      }
+
+    } else {
+      if (!finalErrorId) {
+        message.error('Vui lòng chọn loại lỗi từ danh sách!');
+        submitting.value = false;
+        return;
+      }
+      const matchedError = masterErrors.value.find(e => e.id === finalErrorId);
+      finalNotes = matchedError ? matchedError.name : 'Báo cáo sự cố từ mã QR';
+    }
 
     const payload = {
       equipment_id: selectedEquipment.value.id,
@@ -426,7 +448,7 @@ onUnmounted(() => {
             allow-clear
           />
           <p class="text-[11px] text-amber-600 dark:text-amber-400 mt-1.5 mb-0">
-            Đang nhập tên sự cố mới chưa có sẵn trong danh sách.
+            Lỗi mới nhập sẽ tự động được lưu vào Danh Mục Lỗi Hệ Thống cho các lần sau.
           </p>
         </div>
 
