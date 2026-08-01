@@ -127,8 +127,8 @@ async function startRealCameraScanner() {
   } catch (err: any) {
     console.error('Html5Qrcode camera error:', err);
     isScanningCamera.value = false;
-    scanErrorMessage.value = 'Không thể mở Camera. Vui lòng cấp quyền Camera trên trình duyệt.';
-    message.error('Không thể truy cập Camera. Vui lòng cấp quyền!');
+    scanErrorMessage.value = t('page.portal.cameraPermissionError') || 'Không thể mở Camera. Vui lòng cấp quyền Camera trên trình duyệt.';
+    message.error(t('page.portal.cameraAccessErrorToast') || 'Không thể truy cập Camera. Vui lòng cấp quyền!');
   }
 }
 
@@ -171,15 +171,15 @@ async function handleRealQrScannedText(rawText: string) {
 
   const matched = findEquipByQrText(rawText);
   if (matched) {
-    message.success(`Đã quét QR thành công: ${matched.name} (${matched.code})`);
+    message.success(t('page.portal.msgScanSuccessWithCode', { name: matched.name, code: matched.code }) || `Đã quét QR thành công: ${matched.name} (${matched.code})`);
     selectedEquipment.value = matched;
   } else {
     const fallbackEquip: EquipmentItem = {
       id: rawText,
       code: rawText,
-      name: `Thiết bị [Mã: ${rawText}]`,
+      name: t('page.portal.fallbackEquipName', { code: rawText }) || `Thiết bị [Mã: ${rawText}]`,
     };
-    message.info(`Đã quét mã QR: ${rawText}`);
+    message.info(t('page.portal.msgScanSuccessText', { text: rawText }) || `Đã quét mã QR: ${rawText}`);
     selectedEquipment.value = fallbackEquip;
   }
 
@@ -200,7 +200,7 @@ function handleBack() {
 // ─── Submit Incident Log ───
 async function handleSubmit() {
   if (!selectedEquipment.value) {
-    message.error('Vui lòng quét thiết bị trước!');
+    message.error(t('page.portal.msgScanEquipFirst') || 'Vui lòng quét thiết bị trước!');
     return;
   }
 
@@ -214,7 +214,7 @@ async function handleSubmit() {
     if (errorInputMode.value === 'custom') {
       const customName = formState.value.custom_error_name.trim();
       if (!customName) {
-        message.error('Vui lòng nhập tên sự cố / lỗi mới!');
+        message.error(t('page.portal.msgEnterCustomErrorName') || 'Vui lòng nhập tên sự cố / lỗi mới!');
         submitting.value = false;
         return;
       }
@@ -241,7 +241,7 @@ async function handleSubmit() {
           }
         } catch (createErr) {
           console.warn('Could not save custom error to master data, using fallback:', createErr);
-          finalNotes = `Lỗi mới: ${customName}`;
+          finalNotes = `${t('page.portal.btnAddNewError') || 'Lỗi mới'}: ${customName}`;
           if (masterErrors.value.length > 0) {
             finalErrorId = masterErrors.value[0]?.id;
           }
@@ -250,7 +250,7 @@ async function handleSubmit() {
 
     } else {
       if (!finalErrorId) {
-        message.error('Vui lòng chọn loại lỗi từ danh sách!');
+        message.error(t('page.portal.msgSelectErrorFromList') || 'Vui lòng chọn loại lỗi từ danh sách!');
         submitting.value = false;
         return;
       }
@@ -271,12 +271,12 @@ async function handleSubmit() {
       { headers: getAuthHeaders() }
     );
 
-    message.success('Đã ghi nhận sự cố thành công!');
+    message.success(t('page.portal.msgSubmitSuccess') || 'Đã ghi nhận sự cố thành công!');
     await stopCamera();
     router.push('/portal');
   } catch (err: any) {
     console.error('Failed to submit incident log:', err);
-    message.error(err?.response?.data?.message || 'Ghi nhận thất bại, vui lòng thử lại!');
+    message.error(err?.response?.data?.message || t('page.portal.msgSubmitFailed') || 'Ghi nhận thất bại, vui lòng thử lại!');
   } finally {
     submitting.value = false;
   }
@@ -307,16 +307,16 @@ onUnmounted(() => {
         </Button>
         <div>
           <h1 class="text-base font-bold text-slate-800 dark:text-zinc-100 m-0 leading-tight">
-            {{ step === 1 ? 'Quét mã QR thiết bị' : 'Báo cáo sự cố' }}
+            {{ step === 1 ? (t('page.portal.scanEquipment') || 'Quét mã QR thiết bị') : (t('page.portal.reportIncident') || 'Báo cáo sự cố') }}
           </h1>
           <p class="text-xs text-slate-400 dark:text-zinc-500 m-0">
-            {{ step === 1 ? 'Quét mã QR dán trên máy' : 'Nhập thông tin sự cố phát hiện' }}
+            {{ step === 1 ? (t('page.portal.scanQROnMachine') || 'Quét mã QR dán trên máy') : (t('page.portal.enterIncidentInfo') || 'Nhập thông tin sự cố phát hiện') }}
           </p>
         </div>
       </div>
 
       <span class="text-xs font-semibold px-2 py-0.5 rounded-full bg-indigo-50 dark:bg-indigo-950/50 text-indigo-600 dark:text-indigo-400">
-        Bước {{ step }}/2
+        {{ t('page.portal.stepBadge', { step: step }) || `Bước ${step}/2` }}
       </span>
     </div>
 
@@ -339,7 +339,7 @@ onUnmounted(() => {
               <path stroke-linecap="round" stroke-linejoin="round" d="M3.75 4.875c0-.621.504-1.125 1.125-1.125h4.5c.621 0 1.125.504 1.125 1.125v4.5c0 .621-.504 1.125-1.125 1.125h-4.5A1.125 1.125 0 0 1 3.75 9.375v-4.5ZM3.75 14.625c0-.621.504-1.125 1.125-1.125h4.5c.621 0 1.125.504 1.125 1.125v4.5c0 .621-.504 1.125-1.125 1.125h-4.5a1.125 1.125 0 0 1-1.125-1.125v-4.5ZM13.5 4.875c0-.621.504-1.125 1.125-1.125h4.5c.621 0 1.125.504 1.125 1.125v4.5c0 .621-.504 1.125-1.125 1.125h-4.5A1.125 1.125 0 0 1 13.5 9.375v-4.5Z" />
               <path stroke-linecap="round" stroke-linejoin="round" d="M6.75 6.75h.008v.008H6.75V6.75ZM6.75 16.5h.008v.008H6.75V16.5ZM16.5 6.75h.008v.008H16.5V6.75ZM13.5 13.5h1.5v1.5h-1.5v-1.5ZM16.5 13.5h1.5v1.5h-1.5v-1.5ZM15 15h1.5v1.5H15V15ZM13.5 16.5h1.5v1.5h-1.5v-1.5ZM16.5 16.5h1.5v1.5h-1.5v-1.5ZM18 18h1.5v1.5H18V18ZM19.5 15h1.5v1.5h-1.5V15ZM19.5 18h1.5v1.5h-1.5V18ZM18 19.5h1.5v1.5H18v-1.5ZM13.5 19.5h1.5v1.5h-1.5v-1.5Z" />
             </svg>
-            <span class="text-xs text-zinc-300 font-medium">Bấm nút bên dưới để mở Camera quét</span>
+            <span class="text-xs text-zinc-300 font-medium">{{ t('page.portal.pressButtonToOpenCamera') || 'Bấm nút bên dưới để mở Camera quét' }}</span>
           </div>
         </div>
 
@@ -358,7 +358,7 @@ onUnmounted(() => {
             @click="startRealCameraScanner"
           >
             <svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M6.827 6.175A2.31 2.31 0 0 1 5.186 7.23c-.38.054-.757.112-1.134.175C2.999 7.58 2.25 8.507 2.25 9.574V18a2.25 2.25 0 0 0 2.25 2.25h15A2.25 2.25 0 0 0 21.75 18V9.574c0-1.067-.75-1.994-1.802-2.169a47.865 47.865 0 0 0-1.134-.175 2.31 2.31 0 0 1-1.64-1.055l-.822-1.316a2.192 2.192 0 0 0-1.736-1.039 48.774 48.774 0 0 0-5.232 0c-.698.04-1.332.417-1.736 1.039l-.821 1.316Z" /></svg>
-            Mở Camera Quét QR Thật
+            {{ t('page.portal.btnTurnOnCameraReal') || 'Mở Camera Quét QR Thật' }}
           </Button>
 
           <Button
@@ -369,7 +369,7 @@ onUnmounted(() => {
             class="bg-zinc-800 hover:bg-zinc-700 text-rose-400 border-zinc-700 font-bold text-xs h-10 rounded-xl"
             @click="stopCamera"
           >
-            Tắt Camera
+            {{ t('page.portal.btnTurnOffCamera') || 'Tắt Camera' }}
           </Button>
         </div>
 
@@ -386,7 +386,7 @@ onUnmounted(() => {
             <svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M10.34 15.84c-.141-.06-.286-.12-.43-.18m0 0a8.997 8.997 0 0 1-4.248-4.249m4.248 4.249a8.996 8.996 0 0 0 4.249-4.249m.54 7.551A9.006 9.006 0 0 0 12 21a9.006 9.006 0 0 0 6.54-2.739M12 3a9.006 9.006 0 0 0-6.54 2.739M12 3v3m0 12v3" /></svg>
           </div>
           <div class="min-w-0">
-            <span class="text-[10px] font-bold uppercase text-indigo-500 tracking-wider">Thiết Bị Đã Quét:</span>
+            <span class="text-[10px] font-bold uppercase text-indigo-500 tracking-wider">{{ t('page.portal.scannedEquipment') || 'Thiết Bị Đã Quét:' }}</span>
             <h2 class="text-base font-bold text-slate-800 dark:text-zinc-100 truncate m-0 leading-tight">
               {{ selectedEquipment.name }}
             </h2>
@@ -399,7 +399,7 @@ onUnmounted(() => {
           class="rounded-lg text-xs font-semibold shrink-0 border-indigo-300 text-indigo-600"
           @click="step = 1; startRealCameraScanner();"
         >
-          Quét lại
+          {{ t('page.portal.btnRescan') || 'Quét lại' }}
         </Button>
       </div>
 
@@ -409,7 +409,7 @@ onUnmounted(() => {
         <!-- Toggle giữa Chọn lỗi có sẵn & Nhập lỗi mới -->
         <div class="flex items-center justify-between pb-2 border-b border-slate-100 dark:border-zinc-800">
           <label class="text-xs font-bold text-slate-700 dark:text-zinc-300">
-            Thông tin sự cố / Mã lỗi <span class="text-red-500">*</span>
+            {{ t('page.portal.labelErrorType') || 'Thông tin sự cố / Mã lỗi' }} <span class="text-red-500">*</span>
           </label>
 
           <button
@@ -417,7 +417,7 @@ onUnmounted(() => {
             class="text-xs font-semibold text-indigo-600 hover:text-indigo-500 cursor-pointer outline-none bg-transparent border-0"
             @click="errorInputMode = errorInputMode === 'select' ? 'custom' : 'select'"
           >
-            {{ errorInputMode === 'select' ? '+ Nhập lỗi mới' : '← Chọn lỗi có sẵn' }}
+            {{ errorInputMode === 'select' ? (t('page.portal.btnAddNewError') || '+ Nhập lỗi mới') : (t('page.portal.btnSelectExistingError') || '← Chọn lỗi có sẵn') }}
           </button>
         </div>
 
@@ -425,7 +425,7 @@ onUnmounted(() => {
         <div v-if="errorInputMode === 'select'">
           <Select
             v-model:value="formState.selected_error_id"
-            placeholder="-- Chọn loại lỗi từ danh sách --"
+            :placeholder="t('page.portal.placeholderSelectErrorList') || '-- Chọn loại lỗi từ danh sách --'"
             class="w-full rounded-xl"
             show-search
             allow-clear
@@ -435,7 +435,7 @@ onUnmounted(() => {
             </Select.Option>
           </Select>
           <p class="text-[11px] text-slate-400 dark:text-zinc-500 mt-1.5 mb-0">
-            Chọn một sự cố đã được khai báo trước trong hệ thống.
+            {{ t('page.portal.descSelectExistingError') || 'Chọn một sự cố đã được khai báo trước trong hệ thống.' }}
           </p>
         </div>
 
@@ -443,12 +443,12 @@ onUnmounted(() => {
         <div v-else-if="errorInputMode === 'custom'">
           <Input
             v-model:value="formState.custom_error_name"
-            placeholder="Nhập tên sự cố / lỗi mới phát hiện..."
+            :placeholder="t('page.portal.placeholderInputCustomError') || 'Nhập tên sự cố / lỗi mới phát hiện...'"
             class="w-full rounded-xl"
             allow-clear
           />
           <p class="text-[11px] text-amber-600 dark:text-amber-400 mt-1.5 mb-0">
-            Lỗi mới nhập sẽ tự động được lưu vào Danh Mục Lỗi Hệ Thống cho các lần sau.
+            {{ t('page.portal.descCustomErrorAutoSave') || 'Lỗi mới nhập sẽ tự động được lưu vào Danh Mục Lỗi Hệ Thống cho các lần sau.' }}
           </p>
         </div>
 
@@ -461,7 +461,7 @@ onUnmounted(() => {
           class="bg-indigo-600 hover:bg-indigo-500 border-none font-bold text-sm h-11 rounded-xl mt-3"
           @click="handleSubmit"
         >
-          Ghi Nhận Sự Cố
+          {{ t('page.portal.btnSubmitIncidentLog') || 'Ghi Nhận Sự Cố' }}
         </Button>
 
       </div>
