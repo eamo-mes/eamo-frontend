@@ -17,19 +17,18 @@ function handleEmergencyTrigger() {
 </script>
 
 <template>
-  <div class="p-4 h-[75vh] bg-slate-50 dark:bg-zinc-950/40 flex flex-col">
-    <!-- Header -->
-    <div class="mb-5 flex items-center gap-2 shrink-0">
-      <Button
-        type="default"
-        size="small"
-        class="flex items-center justify-center p-1.5 rounded-lg shrink-0"
+  <div class="min-h-[85vh] bg-slate-50 dark:bg-zinc-950/40 flex flex-col">
+    <!-- ─── HEADER ─── -->
+    <div class="bg-white dark:bg-zinc-900 border-b border-slate-200/70 dark:border-zinc-800 px-4 pt-4 pb-3 flex items-center gap-3 mb-4">
+      <button
+        type="button"
+        class="h-8 w-8 shrink-0 flex items-center justify-center rounded-xl bg-slate-100/80 dark:bg-zinc-800/80 hover:bg-slate-200 dark:hover:bg-zinc-700 text-slate-600 dark:text-zinc-300 transition-colors border-0 cursor-pointer outline-none"
         @click="handleBack"
       >
-        <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-chevron-left"><path d="m15 18-6-6 6-6"/></svg>
-      </Button>
-      <h1 class="text-base font-bold text-slate-800 dark:text-zinc-200 m-0">
-        {{ t('page.portal.emergencyStopTitle') }}
+        <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="m15 18-6-6 6-6"/></svg>
+      </button>
+      <h1 class="text-sm font-bold text-slate-800 dark:text-zinc-200 m-0 flex-1 truncate">
+        {{ t('page.portal.emergencyStopTitle') || 'Dừng Khẩn Cấp' }}
       </h1>
     </div>
 

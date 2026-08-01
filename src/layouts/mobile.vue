@@ -1,12 +1,11 @@
 <script lang="ts" setup>
-import type { NotificationItem } from "@vben/layouts";
 import { computed, ref, watch, onMounted, onUnmounted } from "vue";
 import { useRouter, useRoute } from "vue-router";
 import { Drawer, Modal, Input, message, Avatar } from "ant-design-vue";
 import { useUserStore, useAccessStore } from "@vben/stores";
 import { usePreferences, updatePreferences } from "@vben/preferences";
-import { Notification } from "@vben/layouts";
 import MobileUserDropdown from "#/views/mobile/components/MobileUserDropdown.vue";
+import MobileNotificationDropdown from "#/views/mobile/components/MobileNotificationDropdown.vue";
 import { VbenIconButton } from "@vben/common-ui";
 import { IconifyIcon } from "@vben/icons";
 import { $t } from "#/locales";
@@ -16,6 +15,7 @@ import {
   getUserNotificationsApi,
   markNotificationReadApi,
   markAllNotificationsReadApi,
+  type BackendNotification,
 } from "#/api/core/notification";
 
 const router = useRouter();
@@ -71,29 +71,39 @@ const floatMenuOpen = ref(false);
 
 const floatMenuItems = computed(() => [
   {
+    title: t("page.portal.title") || "Trang chủ",
+    path: "/portal",
+    icon: "lucide:home",
+    color: "bg-slate-600 text-white hover:bg-slate-700 shadow-slate-500/25",
+    exact: true,
+  },
+  {
     title: t("page.portal.equipment") || "Thiết bị",
     path: "/portal/equipment",
     icon: "lucide:wrench",
     color: "bg-blue-600 text-white hover:bg-blue-700 shadow-blue-500/25",
+    exact: false,
   },
   {
-    title: t("page.portal.notifications") || "Dashboard",
+    title: t("page.portal.notifications") || "Thông báo",
     path: "/portal/dashboard",
     icon: "lucide:bell",
     color: "bg-amber-600 text-white hover:bg-amber-700 shadow-amber-500/25",
+    exact: false,
   },
   {
     title: t("page.portal.checklist") || "Checklist",
     path: "/portal/checklist",
     icon: "lucide:clipboard-check",
-    color:
-      "bg-emerald-600 text-white hover:bg-emerald-700 shadow-emerald-500/25",
+    color: "bg-emerald-600 text-white hover:bg-emerald-700 shadow-emerald-500/25",
+    exact: false,
   },
   {
     title: t("page.portal.mPlans") || "Kế hoạch bảo trì",
     path: "/portal/maintain-plan",
     icon: "lucide:calendar-clock",
     color: "bg-indigo-600 text-white hover:bg-indigo-700 shadow-indigo-500/25",
+    exact: false,
   },
 ]);
 
@@ -125,25 +135,9 @@ watch(drawerVisible, (val) => {
 });
 
 // Notification State
-const notifications = ref<NotificationItem[]>([]);
+const notifications = ref<BackendNotification[]>([]);
 const unreadCount = ref(0);
 let pollInterval: any = null;
-
-function mapNotification(item: any): NotificationItem {
-  const avatar = "/avatar.png";
-  const dateStr = item.created_at
-    ? new Date(item.created_at).toLocaleString()
-    : "";
-
-  return {
-    id: item.id,
-    avatar,
-    date: dateStr,
-    isRead: item.read_at !== null,
-    message: item.data?.message ?? "",
-    title: item.data?.entity_label ?? "Notification",
-  };
-}
 
 async function fetchNotifications() {
   const userId = userStore.userInfo?.userId;
@@ -151,7 +145,7 @@ async function fetchNotifications() {
 
   try {
     const res = await getUserNotificationsApi(userId);
-    notifications.value = (res.notifications?.data ?? []).map(mapNotification);
+    notifications.value = res.notifications?.data ?? [];
     unreadCount.value = res.unread_count ?? 0;
   } catch (error) {
     console.error("Failed to fetch notifications:", error);
@@ -191,7 +185,8 @@ const windowHeight = ref(
 
 let dragStart = { x: 0, y: 0 };
 let initialFloatPos = { x: 0, y: 0 };
-let hasMovedDistance = false;
+let isDragging = false;   // did user actually move?
+let pointerMoved = false; // tracks movement within current gesture
 
 function initFloatPos() {
   if (typeof window !== "undefined") {
@@ -219,42 +214,36 @@ function handleResize() {
   floatPos.value.y = Math.max(12, Math.min(maxY, floatPos.value.y));
 }
 
-function startDrag(e: MouseEvent | TouchEvent) {
-  const clientX = "touches" in e ? e.touches[0].clientX : e.clientX;
-  const clientY = "touches" in e ? e.touches[0].clientY : e.clientY;
+function startDrag(e: PointerEvent) {
+  // capture pointer so we get move/up even outside element
+  (e.currentTarget as HTMLElement).setPointerCapture(e.pointerId);
 
-  dragStart = { x: clientX, y: clientY };
+  dragStart = { x: e.clientX, y: e.clientY };
   initialFloatPos = { ...floatPos.value };
+  isDragging = false;
+  pointerMoved = false;
   isDraggingFloat.value = false;
-  hasMovedDistance = false;
 
-  if ("touches" in e) {
-    window.addEventListener("touchmove", onDrag, { passive: false });
-    window.addEventListener("touchend", stopDrag);
-  } else {
-    window.addEventListener("mousemove", onDrag);
-    window.addEventListener("mouseup", stopDrag);
-  }
+  window.addEventListener("pointermove", onDrag);
+  window.addEventListener("pointerup", stopDrag, { once: true });
+  window.addEventListener("pointercancel", stopDrag, { once: true });
 }
 
-function onDrag(e: MouseEvent | TouchEvent) {
-  const clientX = "touches" in e ? e.touches[0].clientX : e.clientX;
-  const clientY = "touches" in e ? e.touches[0].clientY : e.clientY;
+function onDrag(e: PointerEvent) {
+  const dx = e.clientX - dragStart.x;
+  const dy = e.clientY - dragStart.y;
 
-  const dx = clientX - dragStart.x;
-  const dy = clientY - dragStart.y;
-
-  if (Math.abs(dx) > 4 || Math.abs(dy) > 4) {
+  if (!isDragging && (Math.abs(dx) > 6 || Math.abs(dy) > 6)) {
+    isDragging = true;
+    pointerMoved = true;
     isDraggingFloat.value = true;
-    hasMovedDistance = true;
-    if (e.cancelable) e.preventDefault();
   }
 
-  if (isDraggingFloat.value) {
+  if (isDragging) {
+    if (e.cancelable) e.preventDefault();
     const btnSize = 52;
     const maxX = window.innerWidth - btnSize - 12;
     const maxY = window.innerHeight - btnSize - 12;
-
     floatPos.value = {
       x: Math.max(12, Math.min(maxX, initialFloatPos.x + dx)),
       y: Math.max(12, Math.min(maxY, initialFloatPos.y + dy)),
@@ -263,19 +252,16 @@ function onDrag(e: MouseEvent | TouchEvent) {
 }
 
 function stopDrag() {
-  window.removeEventListener("mousemove", onDrag);
-  window.removeEventListener("mouseup", stopDrag);
-  window.removeEventListener("touchmove", onDrag);
-  window.removeEventListener("touchend", stopDrag);
-  setTimeout(() => {
-    isDraggingFloat.value = false;
-  }, 50);
+  window.removeEventListener("pointermove", onDrag);
+  isDraggingFloat.value = false;
+  isDragging = false;
+  // pointerMoved stays true until click handler reads it
 }
 
 function handleFloatBtnClick() {
-  if (hasMovedDistance) {
-    hasMovedDistance = false;
-    return;
+  if (pointerMoved) {
+    pointerMoved = false;
+    return; // was a drag, ignore click
   }
   floatMenuOpen.value = !floatMenuOpen.value;
 }
@@ -391,16 +377,12 @@ const filteredSearchItems = computed(() => {
 });
 
 // Notifications Handlers
-function handleNoticeClear() {
-  notifications.value = [];
-}
-
-async function markRead(id: number | string) {
+async function markRead(id: string) {
   const item = notifications.value.find((item) => item.id === id);
-  if (item && !item.isRead) {
+  if (item && !item.read_at) {
     try {
       await markNotificationReadApi(String(id));
-      item.isRead = true;
+      item.read_at = new Date().toISOString();
       unreadCount.value = Math.max(0, unreadCount.value - 1);
     } catch (e) {
       console.error("Failed to mark notification as read:", e);
@@ -408,23 +390,13 @@ async function markRead(id: number | string) {
   }
 }
 
-function remove(id: number | string) {
-  notifications.value = notifications.value.filter((item) => item.id !== id);
-}
-
 async function handleMakeAll() {
   try {
     await markAllNotificationsReadApi();
-    notifications.value.forEach((item) => (item.isRead = true));
+    notifications.value.forEach((item) => (item.read_at = new Date().toISOString()));
     unreadCount.value = 0;
   } catch (e) {
     console.error("Failed to mark all as read:", e);
-  }
-}
-
-function handleNotificationClick(item: NotificationItem) {
-  if (item.link) {
-    router.push(item.link);
   }
 }
 </script>
@@ -454,16 +426,13 @@ function handleNotificationClick(item: NotificationItem) {
           <IconifyIcon icon="lucide:search" class="size-4" />
         </VbenIconButton>
 
-        <!-- Notification -->
-        <Notification
-          :dot="showDot"
+        <!-- Mobile Notification Dropdown -->
+        <MobileNotificationDropdown
           :notifications="notifications"
-          @clear="handleNoticeClear"
-          @read="(item) => item.id && markRead(item.id)"
-          @remove="(item) => item.id && remove(item.id)"
+          :unread-count="unreadCount"
+          @read="(id) => markRead(id)"
           @make-all="handleMakeAll"
-          @on-click="handleNotificationClick"
-          @view-all="() => handleNavigate('/notifications')"
+          @view-all="() => handleNavigate('/portal/dashboard')"
         />
 
         <!-- Reload / Refresh Page Button -->
@@ -597,6 +566,41 @@ function handleNotificationClick(item: NotificationItem) {
             />
             <span class="flex-1 truncate">{{
               t("page.portal.mPlans") || "Kế hoạch bảo trì"
+            }}</span>
+          </button>
+
+          <!-- Divider line separating quick actions -->
+          <div class="my-2 border-t border-slate-800/80"></div>
+
+          <!-- 6. Report Incident -->
+          <button
+            @click="handleNavigate('/portal/incident-report')"
+            :class="[
+              route.path.startsWith('/portal/incident-report')
+                ? 'bg-indigo-600 text-white font-bold shadow-xs'
+                : 'text-slate-300 hover:bg-slate-800/80',
+            ]"
+            class="w-full flex items-center gap-3 px-3.5 py-2.5 rounded-xl text-xs transition-all cursor-pointer border-0 text-left"
+          >
+            <IconifyIcon icon="lucide:alert-triangle" class="text-base flex-shrink-0 text-indigo-400" />
+            <span class="flex-1 truncate">{{
+              t("page.portal.reportIncident") || "Báo cáo sự cố"
+            }}</span>
+          </button>
+
+          <!-- 7. Emergency Stop -->
+          <button
+            @click="handleNavigate('/portal/emergency-stop')"
+            :class="[
+              route.path.startsWith('/portal/emergency-stop')
+                ? 'bg-rose-600 text-white font-bold shadow-xs'
+                : 'text-slate-300 hover:bg-slate-800/80',
+            ]"
+            class="w-full flex items-center gap-3 px-3.5 py-2.5 rounded-xl text-xs transition-all cursor-pointer border-0 text-left"
+          >
+            <IconifyIcon icon="lucide:square" class="text-base flex-shrink-0 text-rose-400" />
+            <span class="flex-1 truncate">{{
+              t("page.portal.emergencyStop") || "Dừng khẩn cấp"
             }}</span>
           </button>
 
@@ -816,8 +820,9 @@ function handleNotificationClick(item: NotificationItem) {
       >
         <template v-if="floatMenuOpen">
           <div
-            v-for="item in floatMenuItems"
+            v-for="(item, idx) in floatMenuItems"
             :key="item.path"
+            :style="{ transitionDelay: `${idx * 30}ms` }"
             @click="handleNavigate(item.path)"
             :class="[
               'flex items-center gap-2.5 cursor-pointer group',
@@ -835,8 +840,8 @@ function handleNotificationClick(item: NotificationItem) {
             <button
               type="button"
               :class="[
-                route.path.startsWith(item.path)
-                  ? 'ring-2 ring-indigo-500 ring-offset-2 dark:ring-offset-zinc-950 scale-105'
+                (item.exact ? route.path === item.path : route.path.startsWith(item.path))
+                  ? 'ring-2 ring-white/60 ring-offset-1 ring-offset-transparent scale-110'
                   : 'hover:scale-105',
                 item.color,
               ]"
@@ -848,7 +853,24 @@ function handleNotificationClick(item: NotificationItem) {
         </template>
       </TransitionGroup>
 
-      <!-- Main Floating Trigger Button (||| Iconify Icon & Draggable) -->
+      <!-- Main Floating Trigger Button (Draggable FAB) -->
+      <button
+        type="button"
+        :class="[
+          floatMenuOpen
+            ? 'bg-slate-700 dark:bg-zinc-600 rotate-45'
+            : 'bg-indigo-600 hover:bg-indigo-500',
+          isDraggingFloat ? 'scale-90 shadow-md' : 'shadow-xl hover:shadow-indigo-500/40',
+        ]"
+        class="size-13 rounded-full flex items-center justify-center border-0 outline-none cursor-pointer transition-all duration-200 active:scale-90"
+        @pointerdown="startDrag"
+        @click="handleFloatBtnClick"
+      >
+        <IconifyIcon
+          :icon="floatMenuOpen ? 'lucide:x' : 'lucide:navigation'"
+          class="size-5 text-white transition-all duration-200"
+        />
+      </button>
     </div>
   </div>
 </template>

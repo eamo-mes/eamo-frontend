@@ -4,6 +4,7 @@ import { useRouter } from 'vue-router';
 import { useI18n } from '@vben/locales';
 import { useUserStore } from '@vben/stores';
 import { useAuthStore } from '#/store';
+import dayjs from 'dayjs';
 import { Card, Button, Tag, Spin, Empty, message } from 'ant-design-vue';
 import {
   getUserNotificationsApi,
@@ -149,6 +150,7 @@ function navigateToEntity(item: BackendNotification) {
     handleMarkRead(item);
   }
   const entityType = item.data?.entity_type;
+
   switch (entityType) {
     case 'checklist_session':
       router.push('/portal/checklist');
@@ -160,8 +162,11 @@ function navigateToEntity(item: BackendNotification) {
     case 'error_log':
       router.push('/portal/incident-report');
       break;
+    case 'equipment':
+      router.push('/portal/equipment');
+      break;
     default:
-      router.push('/portal');
+      router.push('/portal/dashboard');
       break;
   }
 }
