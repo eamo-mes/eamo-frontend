@@ -119,11 +119,11 @@ async function loadChecklistDetail(id: string) {
     });
     const record = res.data?.data ?? res.data;
     if (record) {
-      const isSingle = record.schedule_mode === 'single' || (record.cycle_type === 'daily' && record.cycle_interval === 1 && !record.occurrences);
+      const isSingle = record.schedule_mode === 'single';
       formState.value = {
         id: record.id,
         name: record.name || '',
-        schedule_mode: isSingle ? 'single' : (record.schedule_mode || 'repeating'),
+        schedule_mode: isSingle ? 'single' : 'repeating',
         equipment_id: record.equipment_id || undefined,
         user_ids: record.users?.map((u: { id: string }) => u.id) || [],
         session_date: normalizeDateTime(record.session_date),
@@ -182,6 +182,12 @@ const rules = computed(() => ({
 async function handleSubmit() {
   try {
     await formRef.value.validateFields();
+    const validDetails = formState.value.checklist_details.filter((d) => d.description.trim());
+    if (validDetails.length === 0) {
+      message.warning($t('page.ops.checklistDrawer.msgValidationAtLeastOneItem') || 'Vui lòng nhập ít nhất một hạng mục');
+      return;
+    }
+
     submitting.value = true;
 
     const isSingleMode = formState.value.schedule_mode === 'single';
@@ -198,6 +204,11 @@ async function handleSubmit() {
         cycle_interval: effectiveCycleInterval,
         schedule_mode: formState.value.schedule_mode,
         user_ids: formState.value.user_ids,
+        details: validDetails.map(item => ({
+          id: item.id,
+          checklist_id: item.checklist_id,
+          description: item.description,
+        })),
       };
       await axios.put(`${API_BASE_URL}/v1/checklist-sessions/${editId.value}`, sessionPayload, {
         headers: getAuthHeaders(),
@@ -206,7 +217,7 @@ async function handleSubmit() {
       await axios.put(`${API_BASE_URL}/v1/checklist-details`, {
         session_id: editId.value,
         date: formState.value.session_date,
-        checklists: formState.value.checklist_details.map(item => ({
+        checklists: validDetails.map(item => ({
           checklist_id: item.checklist_id,
           description: item.description,
         })),
@@ -225,7 +236,7 @@ async function handleSubmit() {
         cycle_interval: effectiveCycleInterval,
         schedule_mode: formState.value.schedule_mode,
         user_ids: formState.value.user_ids,
-        details: formState.value.checklist_details.map(item => ({
+        details: validDetails.map(item => ({
           checklist_id: item.checklist_id,
           description: item.description,
         })),

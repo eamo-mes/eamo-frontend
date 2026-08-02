@@ -84,6 +84,7 @@ const userSelectOptions = computed(() =>
 const sessionForm = ref({
   id: undefined as string | undefined,
   name: '',
+  schedule_mode: 'repeating' as 'repeating' | 'single',
   equipment_id: undefined as string | undefined,
   session_date: '' as string,
   user_ids: [] as string[],
@@ -148,7 +149,7 @@ const rules = computed(() => ({
   name: [{ required: true, message: $t('page.ops.checklistDrawer.validationName') }],
   equipment_id: [{ required: true, message: $t('page.ops.checklistDrawer.validationEquipment') }],
   session_date: [{ required: true, message: $t('page.ops.validationDate') }],
-  cycle_interval: [{ required: true, type: 'number' as const, min: 1, message: 'Vui lòng nhập khoảng chu kỳ lặp hợp lệ' }],
+  cycle_interval: [{ required: sessionForm.value.schedule_mode === 'repeating', type: 'number' as const, min: 1, message: 'Vui lòng nhập khoảng chu kỳ lặp hợp lệ' }],
 }));
 
 function addDetailRow() {
@@ -183,6 +184,7 @@ function openCreateForm() {
   sessionForm.value = {
     id: undefined,
     name: '',
+    schedule_mode: 'repeating',
     equipment_id: undefined,
     session_date: props.date ? props.date.format('YYYY-MM-DD HH:mm') : dayjs().format('YYYY-MM-DD HH:mm'),
     user_ids: [],
@@ -212,6 +214,7 @@ function openEditForm(session: ChecklistSession) {
   sessionForm.value = {
     id: session.id,
     name: session.name || session.equipment?.name || '',
+    schedule_mode: session.schedule_mode === 'single' ? 'single' : 'repeating',
     equipment_id: session.equipment_id || session.equipment?.id || undefined,
     session_date: session.session_date ? dayjs(session.session_date).format('YYYY-MM-DD HH:mm') : (props.date ? props.date.format('YYYY-MM-DD HH:mm') : dayjs().format('YYYY-MM-DD HH:mm')),
     user_ids: session.users?.map((u) => u.id) || [],
@@ -242,6 +245,7 @@ async function handleSaveSession() {
       // 1. Create eamo_checklist_session + eamo_checklist_details
       await createChecklistSessionApi({
         name: sessionForm.value.name,
+        schedule_mode: sessionForm.value.schedule_mode,
         equipment_id: sessionForm.value.equipment_id,
         session_date: sessionDateStr,
         cycle_type: sessionForm.value.cycle_type,
@@ -257,11 +261,17 @@ async function handleSaveSession() {
       // 2. Update eamo_checklist_session + eamo_checklist_details
       await updateChecklistSessionApi(sessionForm.value.id, {
         name: sessionForm.value.name,
+        schedule_mode: sessionForm.value.schedule_mode,
         equipment_id: sessionForm.value.equipment_id,
         session_date: sessionDateStr,
         cycle_type: sessionForm.value.cycle_type,
         cycle_interval: sessionForm.value.cycle_interval,
         user_ids: sessionForm.value.user_ids,
+        details: validDetails.map((item) => ({
+          id: item.id,
+          checklist_id: item.checklist_id,
+          description: item.description,
+        })),
       });
 
       await updateChecklistDetailsApi({
@@ -433,6 +443,13 @@ function goToChecklistDetail(): void {
               />
             </FormItem>
 
+            <FormItem :label="$t('page.ops.scheduleMode')" name="schedule_mode" class="mb-2">
+              <Select v-model:value="sessionForm.schedule_mode">
+                <Select.Option value="repeating">{{ $t('page.ops.modeRepeating') }}</Select.Option>
+                <Select.Option value="single">{{ $t('page.ops.modeSingle') }}</Select.Option>
+              </Select>
+            </FormItem>
+
             <FormItem :label="$t('page.ops.colDate')" name="session_date" class="mb-2">
               <DatePicker
                 v-model:value="sessionForm.session_date"
@@ -445,7 +462,7 @@ function goToChecklistDetail(): void {
               />
             </FormItem>
 
-            <div class="grid grid-cols-2 gap-3">
+            <div v-if="sessionForm.schedule_mode === 'repeating'" class="grid grid-cols-2 gap-3">
               <FormItem :label="$t('page.ops.colCycleType')" name="cycle_type" class="col-span-1 mb-2">
                 <Select v-model:value="sessionForm.cycle_type" :placeholder="$t('page.ops.placeholderCycleType')">
                   <Select.Option value="daily">{{ $t('page.ops.cycleDaily') }}</Select.Option>

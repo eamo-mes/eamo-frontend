@@ -43,6 +43,7 @@ interface ChecklistSession {
   equipment_id: string | null;
   equipment?: { name: string; code: string } | null;
   session_date: string | null;
+  schedule_mode?: string | null;
   details?: ChecklistDetailItem[];
   users?: UserDetail[];
   deleted_at?: string | null;
@@ -103,6 +104,12 @@ const columns = [
     title: $t('page.ops.colCode') || 'Session Name',
     dataIndex: 'name',
     key: 'name',
+  },
+  {
+    title: $t('page.ops.scheduleMode') || 'Chế độ lịch trình',
+    dataIndex: 'schedule_mode',
+    key: 'schedule_mode',
+    width: 140,
   },
   {
     title: $t('page.ops.colDate') || 'Session Date',
@@ -366,7 +373,13 @@ watch(
             @change="handleTableChange"
           >
             <template #bodyCell="{ column, record }">
-              <template v-if="column.key === 'session_date'">
+              <template v-if="column.key === 'schedule_mode'">
+                <Tag :color="(record as ChecklistSession).schedule_mode === 'single' ? 'blue' : 'green'">
+                  {{ (record as ChecklistSession).schedule_mode === 'single' ? 'Thêm lẻ' : 'Theo chu kỳ' }}
+                </Tag>
+              </template>
+
+              <template v-else-if="column.key === 'session_date'">
                 <span>{{ getSessionDate(record) }}</span>
               </template>
 

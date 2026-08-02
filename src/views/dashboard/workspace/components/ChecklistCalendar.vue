@@ -322,8 +322,11 @@ onMounted(() => {
                 :title="session.equipment?.name || session.name || ''"
                 @click.stop="openJudgeModal(session)"
               >
-                <div class="font-semibold text-xs truncate leading-tight">
-                  {{ session.name || session.equipment?.name || $t('page.ops.checklistDrawer.sessionText') }}
+                <div class="flex items-center justify-between gap-1 font-semibold text-xs truncate leading-tight">
+                  <span class="truncate">{{ session.name || session.equipment?.name || $t('page.ops.checklistDrawer.sessionText') }}</span>
+                  <Tag :color="session.schedule_mode === 'single' ? 'blue' : 'green'" class="!text-[9px] !leading-[14px] !px-1 !py-0 shrink-0 border-0">
+                    {{ session.schedule_mode === 'single' ? 'Thêm lẻ' : 'Theo chu kỳ' }}
+                  </Tag>
                 </div>
                 <div class="text-[10px] opacity-80 mt-0.5 font-medium leading-tight truncate">
                   {{ session.equipment?.code || '—' }}

@@ -40,6 +40,7 @@ export interface ChecklistSession {
   equipment_id?: string | null;
   equipment?: EquipmentDetail | null;
   session_date?: string | null;
+  schedule_mode?: string | null;
   cycle_type?: string;
   cycle_interval?: number;
   details?: ChecklistDetailItem[];

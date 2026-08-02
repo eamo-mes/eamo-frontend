@@ -8,6 +8,7 @@ export interface ChecklistDetailPayloadItem {
 
 export interface CreateChecklistSessionPayload {
   name: string;
+  schedule_mode?: string;
   equipment_id?: string;
   session_date: string;
   cycle_type?: string;
@@ -18,11 +19,13 @@ export interface CreateChecklistSessionPayload {
 
 export interface UpdateChecklistSessionPayload {
   name?: string;
+  schedule_mode?: string;
   equipment_id?: string;
   session_date?: string;
   cycle_type?: string;
   cycle_interval?: number;
   user_ids?: string[];
+  details?: ChecklistDetailPayloadItem[];
   schedules?: Array<{ id: string; date?: string; user_ids?: string[] }>;
 }
 

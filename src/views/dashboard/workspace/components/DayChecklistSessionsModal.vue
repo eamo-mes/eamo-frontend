@@ -31,6 +31,11 @@ const columns = [
     key: 'equipment',
   },
   {
+    title: $t('page.ops.scheduleMode') || 'Chế độ lịch trình',
+    key: 'schedule_mode',
+    width: 140,
+  },
+  {
     title: $t('page.ops.colStatus') || 'Trạng thái',
     key: 'status',
     align: 'center' as const,
@@ -100,6 +105,12 @@ function handleEvaluate(session: ChecklistSession) {
                 {{ (record as ChecklistSession).equipment?.name }}
               </span>
             </div>
+          </template>
+
+          <template v-else-if="column.key === 'schedule_mode'">
+            <Tag :color="(record as ChecklistSession).schedule_mode === 'single' ? 'blue' : 'green'">
+              {{ (record as ChecklistSession).schedule_mode === 'single' ? 'Thêm lẻ' : 'Theo chu kỳ' }}
+            </Tag>
           </template>
 
           <template v-else-if="column.key === 'status'">

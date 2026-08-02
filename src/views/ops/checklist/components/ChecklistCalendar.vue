@@ -1,6 +1,6 @@
 <script lang="ts" setup>
 import { ref, onMounted, watch } from 'vue';
-import { Calendar, Spin, Button, message } from 'ant-design-vue';
+import { Calendar, Spin, Button, Tag, message } from 'ant-design-vue';
 import axios from 'axios';
 import dayjs, { Dayjs } from 'dayjs';
 import { useAccessStore } from '@vben/stores';
@@ -102,11 +102,6 @@ function getSessionClass(session: ChecklistSession): string {
 }
 
 function getSessionsForDay(date: Dayjs): ChecklistSession[] {
-  const today = dayjs().startOf('day');
-  if (date.isBefore(today, 'day')) {
-    return [];
-  }
-
   const dateStr = date.format('YYYY-MM-DD');
   const dailySessions = new Map<string, ChecklistSession>();
 
@@ -180,8 +175,11 @@ onMounted(() => {
                   :title="session.equipment?.name || session.name || ''"
                   @click.stop="openJudgeModal(session)"
                 >
-                  <div class="font-semibold text-xs truncate leading-tight">
-                    {{ session.name || session.equipment?.name || $t('page.ops.checklistDrawer.sessionText') }}
+                  <div class="flex items-center justify-between gap-1 font-semibold text-xs truncate leading-tight">
+                    <span class="truncate">{{ session.name || session.equipment?.name || $t('page.ops.checklistDrawer.sessionText') }}</span>
+                    <Tag :color="session.schedule_mode === 'single' ? 'blue' : 'green'" class="!text-[9px] !leading-[14px] !px-1 !py-0 shrink-0 border-0">
+                      {{ session.schedule_mode === 'single' ? 'Thêm lẻ' : 'Theo chu kỳ' }}
+                    </Tag>
                   </div>
                   <div class="text-[10px] opacity-80 mt-1 font-medium leading-tight truncate">
                     {{ session.equipment?.code || '—' }}

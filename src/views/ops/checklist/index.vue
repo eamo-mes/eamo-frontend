@@ -52,6 +52,7 @@ interface ChecklistSession {
   equipment_id: string | null;
   equipment?: EquipmentDetail | null;
   session_date: string | null;
+  schedule_mode?: string | null;
   details?: ChecklistDetailItem[];
   users?: UserDetail[];
   deleted_at?: string | null;
@@ -213,6 +214,12 @@ const columns = computed(() => [
     title: $t('page.ops.colEquipment'),
     dataIndex: 'equipment_id',
     key: 'equipment',
+  },
+  {
+    title: $t('page.ops.scheduleMode') || 'Chế độ lịch trình',
+    dataIndex: 'schedule_mode',
+    key: 'schedule_mode',
+    width: 150,
   },
   {
     title: $t('page.ops.colDate'),
@@ -383,6 +390,12 @@ onMounted(() => {
                 {{ (record as ChecklistSession).equipment_id }}
               </span>
               <span v-else class="text-gray-400">—</span>
+            </template>
+
+            <template v-else-if="column.key === 'schedule_mode'">
+              <Tag :color="(record as ChecklistSession).schedule_mode === 'single' ? 'blue' : 'green'">
+                {{ (record as ChecklistSession).schedule_mode === 'single' ? 'Thêm lẻ' : 'Theo chu kỳ' }}
+              </Tag>
             </template>
 
             <template v-else-if="column.key === 'session_date'">

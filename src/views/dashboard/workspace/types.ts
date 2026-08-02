@@ -79,6 +79,7 @@ export interface ChecklistDetailItem {
 export interface ChecklistSession {
   id: string;
   name?: string;
+  schedule_mode?: string;
   equipment_id?: string | null;
   equipment?: {
     id: string;
