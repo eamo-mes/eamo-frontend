@@ -65,11 +65,6 @@ interface AxiosErrorResponse {
   response?: { data?: { message?: string } };
 }
 
-interface TablePagination {
-  current?: number;
-  pageSize?: number;
-}
-
 const router = useRouter();
 
 const loading = ref(false);

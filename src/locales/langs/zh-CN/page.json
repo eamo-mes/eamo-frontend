@@ -129,7 +129,13 @@
     "diagramParent": "Thiết bị cha",
     "diagramCurrent": "Thiết bị hiện tại",
     "diagramChildren": "Thiết bị con",
-    "noParentRoot": "Thiết bị gốc (Không có cha)"
+    "noParentRoot": "Thiết bị gốc (Không có cha)",
+    "paramCode": "参数代码",
+    "paramStandard": "标准",
+    "paramMin": "最小值",
+    "paramMax": "最大值",
+    "paramUnit": "单位",
+    "paramDelete": "删除"
   },
   "company": {
     "title": "Quản lý doanh nghiệp",
@@ -225,8 +231,8 @@
     "chartLongestOperatingTitle": "Thời gian hoạt động lâu nhất theo thiết bị",
     "chartMaintenanceStatusTitle": "Thời gian đến kỳ bảo trì tiếp theo (giờ)",
     "chartRemainingHours": "Thời gian còn lại",
-    "btnShowCharts": "Xem biểu đồ",
-    "btnHideCharts": "Ẩn biểu đồ",
+    "btnShowCharts": "Xem phân tích",
+    "btnHideCharts": "Ẩn phân tích",
     "chartAvailable": "Sẵn sàng",
     "chartUnavailable": "Không sẵn sàng",
     "startTime": "Thời gian bắt đầu",
@@ -329,8 +335,6 @@
     "itemNotesPlaceholder": "Ví dụ: Dầu hơi đen",
     "deleteItemConfirm": "Xóa hạng mục kiểm tra này?",
     "btnDelete": "Xóa",
-    "btnShowCharts": "Xem phân tích",
-    "btnHideCharts": "Ẩn phân tích",
     "chartResultTitle": "Tỷ lệ kết quả kiểm tra",
     "chartStatus": "Trạng thái",
     "chartPassed": "Đạt (Passed)",
@@ -342,7 +346,6 @@
     "chartUnassigned": "Chưa gán",
     "chartLoadError": "Không thể tải dữ liệu biểu đồ",
     "btnConfirm": "Xác nhận",
-    "btnCancel": "Hủy",
     "btnAddCategory": "Thêm danh mục bảo trì",
     "btnEditCategory": "Sửa danh mục bảo trì",
     "categoryName": "Tên danh mục bảo trì",
@@ -499,5 +502,6 @@
     "importDateNoteTitle": "Lưu ý về định dạng ngày giờ:",
     "importDateNoteDesc": "Đối với Excel, định dạng cột dưới dạng ô Date/Time chuẩn. Đối với CSV/văn bản, sử dụng định dạng: YYYY-MM-DD HH:mm:ss (ví dụ: 2026-07-14 08:00:00) hoặc YYYY-MM-DD HH:mm (ví dụ: 2026-07-14 08:00).",
     "importEquipIdDesc": "Từ đồng nghĩa: equipment_id, equipment id, mã thiết bị. Giá trị: Nhập Mã thiết bị (eamo_equipment.code, ví dụ: CNC-HAAS-VF2) thay cho chuỗi UUID."
-  }
+  },
+  "totalRecords": "Tổng {total} bản ghi"
 }

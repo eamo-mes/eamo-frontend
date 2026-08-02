@@ -129,7 +129,13 @@
     "diagramParent": "Parent Equipment",
     "diagramCurrent": "Current Equipment",
     "diagramChildren": "Children Equipment",
-    "noParentRoot": "Root (No parent)"
+    "noParentRoot": "Root (No parent)",
+    "paramCode": "Parameter Code",
+    "paramStandard": "Standard",
+    "paramMin": "Minimum",
+    "paramMax": "Maximum",
+    "paramUnit": "Unit",
+    "paramDelete": "Delete"
   },
   "company": {
     "title": "Company Management",
@@ -225,8 +231,8 @@
     "chartLongestOperatingTitle": "Longest Operating Time by Equipment",
     "chartMaintenanceStatusTitle": "Time to Next Maintenance (Hours)",
     "chartRemainingHours": "Remaining Time",
-    "btnShowCharts": "View Charts",
-    "btnHideCharts": "Hide Charts",
+    "btnShowCharts": "Show Analytics",
+    "btnHideCharts": "Hide Analytics",
     "chartAvailable": "Available",
     "chartUnavailable": "Unavailable",
     "startTime": "Start Time",
@@ -329,8 +335,6 @@
     "itemNotesPlaceholder": "E.g., Oil is dark",
     "deleteItemConfirm": "Delete this checklist item?",
     "btnDelete": "Delete",
-    "btnShowCharts": "Show Analytics",
-    "btnHideCharts": "Hide Analytics",
     "chartResultTitle": "Checklist Result Ratio",
     "chartStatus": "Status",
     "chartPassed": "Passed",
@@ -342,7 +346,6 @@
     "chartUnassigned": "Unassigned",
     "chartLoadError": "Unable to load chart data",
     "btnConfirm": "Confirm",
-    "btnCancel": "Cancel",
     "btnAddCategory": "Add Maintenance Category",
     "btnEditCategory": "Edit Maintenance Category",
     "categoryName": "Maintenance Category Name",
@@ -499,5 +502,6 @@
     "importDateNoteTitle": "Date & Time Formatting Note:",
     "importDateNoteDesc": "For Excel, format columns as standard Date/Time cells. For CSV/text, use format: YYYY-MM-DD HH:mm:ss (e.g. 2026-07-14 08:00:00) or YYYY-MM-DD HH:mm (e.g. 2026-07-14 08:00).",
     "importEquipIdDesc": "Synonyms: equipment_id, equipment id, mã thiết bị. Value: Enter the Equipment Code (eamo_equipment.code, e.g. CNC-HAAS-VF2) instead of UUID."
-  }
+  },
+  "totalRecords": "Total {total} records"
 }

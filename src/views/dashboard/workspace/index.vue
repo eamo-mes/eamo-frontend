@@ -171,6 +171,9 @@ onMounted(() => {
 
 <template>
   <div class="p-6 space-y-6">
+    <div class="flex items-center justify-between">
+      <h1 class="text-xl font-bold text-foreground">{{ greeting }}</h1>
+    </div>
     <!-- Bottom Section: 2 Columns -->
     <div class="grid grid-cols-1 lg:grid-cols-3 gap-6 items-start pt-2">
       <!-- Left Column (Always displays Calendar) -->

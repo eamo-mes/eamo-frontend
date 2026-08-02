@@ -240,7 +240,7 @@ async function handleOk() {
             pageSize: pageSize,
             total: total,
             showSizeChanger: true,
-            showTotal: (tot: number) => `Tổng ${tot} bản ghi`,
+            showTotal: (tot: number) => $t('page.totalRecords', { total: tot }),
           }"
           class="w-full"
           @change="handleTableChange"

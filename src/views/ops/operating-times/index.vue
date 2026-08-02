@@ -326,7 +326,7 @@ const columns = computed(() => [
           :pagination="{
             pageSize: 10,
             showSizeChanger: true,
-            showTotal: (tot: number) => `Tổng ${tot} bản ghi`,
+            showTotal: (tot: number) => $t('page.totalRecords', { total: tot }),
           }"
           class="w-full"
         >
