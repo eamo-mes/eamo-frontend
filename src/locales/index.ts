@@ -18,7 +18,7 @@ import antdDefaultLocale from 'ant-design-vue/es/locale/zh_CN';
 import antdViLocale from 'ant-design-vue/es/locale/vi_VN';
 import dayjs from 'dayjs';
 
-const antdLocale = ref<Locale>(antdViLocale);
+const antdLocale = ref<Locale>(antdEnLocale);
 
 const modules = import.meta.glob('./langs/**/*.json');
 
