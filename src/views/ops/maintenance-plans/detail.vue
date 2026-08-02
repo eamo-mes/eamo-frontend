@@ -321,12 +321,28 @@ function removeScheduleRow(index: number): void {
   formState.value.schedules.splice(index, 1);
 }
 
+function addScheduleRow(): void {
+  formState.value.schedules.push({
+    maintenance_item_id: '',
+    date: formState.value.date || new Date().toISOString().split('T')[0],
+    user_ids: [],
+    equipment_id: formState.value.equipment_id,
+    maintenance_plan_id: editId.value,
+    _key: generateKey(),
+  });
+}
+
 // ─── Submit ──────────────────────────────────────────────────────────────────
 
 async function handleSubmit(): Promise<void> {
   try {
     await formRef.value.validateFields();
     submitting.value = true;
+
+    // Schedules lẻ mới (không có id) khi có cycle_type phải gọi API riêng
+    const newAdhocSchedules = formState.value.cycle_type
+      ? formState.value.schedules.filter(s => !!s.maintenance_item_id && !s.id)
+      : [];
 
     const payload = {
       plan_code: formState.value.plan_code || null,
@@ -340,35 +356,63 @@ async function handleSubmit(): Promise<void> {
       cycle_interval: formState.value.cycle_interval ?? null,
       occurrences: formState.value.occurrences ?? null,
       notes: formState.value.notes || null,
-      schedules: formState.value.schedules.map(s => ({
-        id: s.id,
-        maintenance_item_id: s.maintenance_item_id,
-        date: s.date,
-        user_ids: s.user_ids,
-      })),
+      schedules: formState.value.schedules
+        .filter(s => !!s.maintenance_item_id)
+        .map(s => ({
+          id: s.id,
+          maintenance_item_id: s.maintenance_item_id,
+          date: s.date,
+          user_ids: s.user_ids,
+        })),
     };
 
     if (isEditing.value && editId.value) {
-      const res = await axios.put(`${API_BASE_URL}/v1/maintenance-plans/${editId.value}`, payload, {
+      await axios.put(`${API_BASE_URL}/v1/maintenance-plans/${editId.value}`, payload, {
         headers: getAuthHeaders(),
       });
-      message.success($t('page.ops.planSaveSuccess'));
-      const updated = res.data?.data ?? res.data;
-      if (updated) {
-        setFormStateFromRecord(updated);
+
+      // Gọi individual-schedules API cho từng lịch lẻ mới khi có cycle_type
+      if (newAdhocSchedules.length > 0) {
+        await Promise.all(
+          newAdhocSchedules.map(s =>
+            axios.post(
+              `${API_BASE_URL}/v1/maintenance-plans/${editId.value}/individual-schedules`,
+              { maintenance_item_id: s.maintenance_item_id || null, date: s.date, user_ids: s.user_ids, is_adhoc: true },
+              { headers: getAuthHeaders() }
+            )
+          )
+        );
       }
+
+      message.success($t('page.ops.planSaveSuccess'));
+      // Reload để lấy toàn bộ schedules cập nhật từ server
+      await loadPlanDetail(editId.value);
     } else {
       const res = await axios.post(`${API_BASE_URL}/v1/maintenance-plans`, payload, {
         headers: getAuthHeaders(),
       });
-      message.success($t('page.ops.planSaveSuccess'));
       const created = res.data?.data ?? res.data;
       if (created) {
         setFormStateFromRecord(created);
         if (created.id) {
           router.replace({ name: 'OpsMaintenancePlanDetail', query: { id: created.id } });
+
+          // Gọi individual-schedules sau khi tạo mới nếu có
+          if (newAdhocSchedules.length > 0) {
+            await Promise.all(
+              newAdhocSchedules.map(s =>
+                axios.post(
+                  `${API_BASE_URL}/v1/maintenance-plans/${created.id}/individual-schedules`,
+                  { maintenance_item_id: s.maintenance_item_id || null, date: s.date, user_ids: s.user_ids, is_adhoc: true },
+                  { headers: getAuthHeaders() }
+                )
+              )
+            );
+            await loadPlanDetail(created.id);
+          }
         }
       }
+      message.success($t('page.ops.planSaveSuccess'));
     }
   } catch (err: unknown) {
     const axiosErr = err as AxiosErrorResponse;
@@ -593,8 +637,8 @@ onMounted(async () => {
               />
             </FormItem>
 
-            <!-- Ngày kế hoạch -->
-            <FormItem :label="$t('page.ops.startDate')" name="date">
+            <!-- Ngày thực hiện -->
+            <FormItem :label="$t('page.ops.colScheduleDate')" name="date">
               <DatePicker
                 v-model:value="formState.date"
                 value-format="YYYY-MM-DD"
@@ -748,11 +792,98 @@ onMounted(async () => {
                   </div>
                 </div>
               </div>
+
+              <!-- ── Lịch trình lẻ thêm thủ công (song song với chu kỳ tự động) ── -->
+              <div class="mt-4 border border-border rounded-lg overflow-hidden bg-gray-50/10">
+                <div class="bg-gray-50 dark:bg-gray-900/50 px-4 py-2 flex items-center justify-between border-b border-border">
+                  <span class="font-semibold text-gray-700 dark:text-gray-300">
+                    {{ $t('page.ops.schedulesTitle') }}
+                  </span>
+                  <Button
+                    type="link"
+                    size="small"
+                    class="text-blue-600 hover:text-blue-700 dark:text-blue-400 dark:hover:text-blue-300 font-semibold p-0 flex items-center gap-1"
+                    @click="addScheduleRow"
+                  >
+                    + {{ $t('page.ops.btnAddShort') }}
+                  </Button>
+                </div>
+
+                <div class="divide-y divide-border">
+                  <!-- Danh sách lịch trình lẻ -->
+                  <div
+                    v-for="(schedule, idx) in formState.schedules"
+                    :key="schedule._key"
+                    class="px-4 py-3 flex flex-wrap md:flex-nowrap gap-2 items-end hover:bg-gray-50/50 transition-colors"
+                  >
+                    <!-- Hạng mục bảo trì -->
+                    <div class="flex-1 min-w-[200px]">
+                      <span class="text-xs text-gray-500 block mb-1 font-medium">{{ $t('page.ops.colMaintenanceItem') }}</span>
+                      <Select
+                        v-model:value="schedule.maintenance_item_id"
+                        :options="maintenanceItemOptions"
+                        :placeholder="$t('page.ops.placeholderMaintenanceItem')"
+                        show-search
+                        option-filter-prop="label"
+                        allow-clear
+                        class="w-full"
+                      />
+                    </div>
+
+                    <!-- Ngày thực hiện -->
+                    <div class="w-[160px]">
+                      <span class="text-xs text-gray-500 block mb-1 font-medium">{{ $t('page.ops.colScheduleDate') }}</span>
+                      <DatePicker
+                        v-model:value="schedule.date"
+                        value-format="YYYY-MM-DD"
+                        format="YYYY-MM-DD"
+                        :placeholder="$t('page.ops.placeholderScheduleDate')"
+                        class="w-full"
+                      />
+                    </div>
+
+                    <!-- Người thực hiện -->
+                    <div class="flex-1 min-w-[200px]">
+                      <span class="text-xs text-gray-500 block mb-1 font-medium">{{ $t('page.ops.colAssignedUsers') }}</span>
+                      <Select
+                        v-model:value="schedule.user_ids"
+                        :options="userOptions"
+                        :placeholder="$t('page.ops.placeholderAssignedUsers')"
+                        mode="multiple"
+                        option-filter-prop="label"
+                        show-search
+                        allow-clear
+                        class="w-full"
+                      />
+                    </div>
+
+                    <!-- Nút Xóa -->
+                    <div class="pb-1">
+                      <Button type="text" danger @click="removeScheduleRow(idx)">
+                        {{ $t('page.company.btnDelete') }}
+                      </Button>
+                    </div>
+                  </div>
+
+                  <!-- Empty state -->
+                  <div v-if="formState.schedules.length === 0" class="px-4 py-6 text-center text-gray-400 text-sm italic">
+                    {{ $t('page.ops.noSchedules') }}
+                  </div>
+                </div>
+              </div>
             </div>
 
             <div v-else>
               <div class="flex items-center justify-between mb-3">
                 <span class="font-semibold text-gray-700">{{ $t('page.ops.schedulesTitle') }}</span>
+                <Button
+                  type="link"
+                  size="small"
+                  class="text-blue-600 hover:text-blue-700 dark:text-blue-400 dark:hover:text-blue-300 font-semibold p-0 flex items-center gap-1"
+                  @click="addScheduleRow"
+                >
+                  + {{ $t('page.ops.btnAddShort') }}
+                </Button>
               </div>
 
               <!-- Schedule list -->
