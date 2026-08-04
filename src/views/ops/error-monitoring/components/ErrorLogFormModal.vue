@@ -1,5 +1,5 @@
 <script lang="ts" setup>
-import { ref, computed, watch } from 'vue';
+import { ref, computed, watch, nextTick } from 'vue';
 import { Modal, Form, FormItem, Select, DatePicker, message } from 'ant-design-vue';
 import axios from 'axios';
 import dayjs from 'dayjs';
@@ -112,7 +112,7 @@ watch(
           handler_ids: [],
         };
       }
-      formRef.value?.resetFields();
+      nextTick(() => formRef.value?.clearValidate());
     }
   },
   { immediate: true },
@@ -162,9 +162,15 @@ async function handleOk() {
   } catch (err: unknown) {
     const formErr = err as { errorFields?: unknown[] };
     if (!formErr?.errorFields) {
-      const axiosErr = err as { response?: { data?: { message?: string } } };
-      const msg = axiosErr?.response?.data?.message || $t('page.ops.saveFailed');
-      message.error(msg);
+      const axiosErr = err as { response?: { data?: { message?: string; errors?: Record<string, string[]> } } };
+      const errors = axiosErr?.response?.data?.errors;
+      if (errors) {
+        const errorMessages = Object.values(errors).flat().join('\n');
+        message.error(errorMessages || $t('page.ops.saveFailed'));
+      } else {
+        const msg = axiosErr?.response?.data?.message || $t('page.ops.saveFailed');
+        message.error(msg);
+      }
     }
   } finally {
     submitting.value = false;
