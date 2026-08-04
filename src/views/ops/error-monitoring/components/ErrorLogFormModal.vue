@@ -166,8 +166,15 @@ async function handleOk() {
   } catch (err: unknown) {
     const formErr = err as { errorFields?: unknown[] };
     if (!formErr?.errorFields) {
-      const axiosErr = err as { response?: { data?: { message?: string } } };
-      const msg = axiosErr?.response?.data?.message || $t('page.ops.saveFailed');
+      const axiosErr = err as { response?: { data?: { message?: string; errors?: Record<string, string[]> } } };
+      const serverErrors = axiosErr?.response?.data?.errors;
+      let msg = axiosErr?.response?.data?.message || $t('page.ops.saveFailed');
+      if (serverErrors && typeof serverErrors === 'object') {
+        const errorDetails = Object.values(serverErrors).flat().join(', ');
+        if (errorDetails) {
+          msg = `${msg}: ${errorDetails}`;
+        }
+      }
       message.error(msg);
     }
   } finally {
