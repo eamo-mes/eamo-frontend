@@ -78,6 +78,13 @@ const floatMenuItems = computed(() => [
     exact: true,
   },
   {
+    title: t("page.portal.errorHandling") || "Xử lý lỗi",
+    path: "/portal/incident-report",
+    icon: "lucide:qr-code",
+    color: "bg-rose-600 text-white hover:bg-rose-700 shadow-rose-500/25",
+    exact: false,
+  },
+  {
     title: t("page.portal.equipment") || "Thiết bị",
     path: "/portal/equipment",
     icon: "lucide:wrench",
@@ -506,7 +513,23 @@ async function handleMakeAll() {
             <span class="flex-1 truncate">{{ t("page.portal.title") }}</span>
           </button>
 
-          <!-- 2. Equipment -->
+          <!-- 2. Xử lý lỗi -->
+          <button
+            @click="handleNavigate('/portal/incident-report')"
+            :class="[
+              route.path.startsWith('/portal/incident-report')
+                ? 'bg-rose-600 text-white font-bold shadow-xs'
+                : 'text-slate-300 hover:bg-slate-800/80',
+            ]"
+            class="w-full flex items-center gap-3 px-3.5 py-2.5 rounded-xl text-xs transition-all cursor-pointer border-0 text-left"
+          >
+            <IconifyIcon icon="lucide:qr-code" class="text-base flex-shrink-0 text-rose-400" />
+            <span class="flex-1 truncate">{{
+              t("page.portal.errorHandling") || "Xử lý lỗi"
+            }}</span>
+          </button>
+
+          <!-- 3. Equipment -->
           <button
             @click="handleNavigate('/portal/equipment')"
             :class="[
@@ -578,22 +601,6 @@ async function handleMakeAll() {
 
           <!-- Divider line separating quick actions -->
           <div class="my-2 border-t border-slate-800/80"></div>
-
-          <!-- 6. Xử lý lỗi -->
-          <button
-            @click="handleNavigate('/portal/incident-report')"
-            :class="[
-              route.path.startsWith('/portal/incident-report')
-                ? 'bg-rose-600 text-white font-bold shadow-xs'
-                : 'text-slate-300 hover:bg-slate-800/80',
-            ]"
-            class="w-full flex items-center gap-3 px-3.5 py-2.5 rounded-xl text-xs transition-all cursor-pointer border-0 text-left"
-          >
-            <IconifyIcon icon="lucide:qr-code" class="text-base flex-shrink-0 text-rose-400" />
-            <span class="flex-1 truncate">{{
-              t("page.portal.errorHandling") || "Xử lý lỗi"
-            }}</span>
-          </button>
 
           <!-- 7. Report Incident -->
           <button
