@@ -199,7 +199,18 @@ const coreRoutes: RouteRecordRaw[] = [
         path: '/portal/incident-report',
         component: () => import('#/views/mobile/portal/incident-report/index.vue'),
         meta: {
-          title: 'Báo cáo sự cố',
+          title: 'Xử lý lỗi - Quét QR',
+          ignoreAccess: true,
+          hideInMenu: true,
+          hideInTab: true,
+        },
+      },
+      {
+        name: 'MobilePortalIncidentReportHandle',
+        path: '/portal/incident-report/handle/:equipmentId',
+        component: () => import('#/views/mobile/portal/incident-report/handle.vue'),
+        meta: {
+          title: 'Xử lý lỗi thiết bị',
           ignoreAccess: true,
           hideInMenu: true,
           hideInTab: true,
