@@ -8,6 +8,8 @@ export interface BackendNotificationData {
   entity_id: string;
   entity_label: string;
   message: string;
+  deadline?: string | null;
+  due_date?: string | null;
 }
 
 export interface BackendNotification {

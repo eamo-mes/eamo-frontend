@@ -6,6 +6,7 @@ import {
   Button,
   Tag,
   Select,
+  DatePicker,
   message,
   Spin,
 } from 'ant-design-vue';
@@ -19,6 +20,7 @@ import {
   type BackendNotification,
 } from '#/api/core/notification';
 
+const RangePicker = DatePicker.RangePicker;
 const router = useRouter();
 const userStore = useUserStore();
 const authStore = useAuthStore();
@@ -29,6 +31,7 @@ const currentPage = ref(1);
 const pageSize = ref(10);
 const total = ref(0);
 const filterStatus = ref<'all' | 'unread' | 'read'>('all');
+const filterDeadlineRange = ref<[string, string] | undefined>(undefined);
 
 const columns = computed(() => [
   {
@@ -61,11 +64,12 @@ const columns = computed(() => [
 ]);
 
 async function getUserId(): Promise<string> {
-  let id = userStore.userInfo?.userId || (userStore.userInfo as any)?.id;
+  const userInfo = userStore.userInfo as { userId?: string; id?: string } | undefined;
+  let id = userInfo?.userId || userInfo?.id;
   if (!id) {
     try {
-      const info = await authStore.fetchUserInfo();
-      id = info?.userId || (info as any)?.id;
+      const info = await authStore.fetchUserInfo() as { userId?: string; id?: string } | undefined;
+      id = info?.userId || info?.id;
     } catch {
       // ignore
     }
@@ -82,12 +86,16 @@ async function loadNotifications(page = currentPage.value, size = pageSize.value
       return;
     }
 
-    const params: Record<string, any> = {
+    const params: Record<string, unknown> = {
       page,
       per_page: size,
     };
     if (filterStatus.value === 'unread') {
       params.unread_only = true;
+    }
+    if (filterDeadlineRange.value && filterDeadlineRange.value.length === 2) {
+      params.start_deadline = filterDeadlineRange.value[0];
+      params.end_deadline = filterDeadlineRange.value[1];
     }
 
     const res = await getUserNotificationsApi(userId, params);
@@ -97,12 +105,25 @@ async function loadNotifications(page = currentPage.value, size = pageSize.value
       list = list.filter((item) => item.read_at !== null);
     }
 
+    if (filterDeadlineRange.value && filterDeadlineRange.value.length === 2) {
+      const [startTs, endTs] = filterDeadlineRange.value;
+      const startTime = new Date(startTs).getTime();
+      const endTime = new Date(endTs).getTime();
+      list = list.filter((item) => {
+        const itemDeadlineStr = item.data?.deadline || item.data?.due_date || item.created_at;
+        if (!itemDeadlineStr) return false;
+        const itemTime = new Date(itemDeadlineStr).getTime();
+        return itemTime >= startTime && itemTime <= endTime;
+      });
+    }
+
     notifications.value = list;
     total.value = res.notifications?.total ?? list.length;
     currentPage.value = page;
     pageSize.value = size;
-  } catch (err: any) {
-    message.error(err?.message || 'Không thể tải danh sách thông báo');
+  } catch (err: unknown) {
+    const errorObj = err as Error;
+    message.error(errorObj?.message || 'Không thể tải danh sách thông báo');
   } finally {
     loading.value = false;
   }
@@ -113,8 +134,9 @@ async function handleMarkRead(record: BackendNotification) {
     await markNotificationReadApi(record.id);
     record.read_at = new Date().toISOString();
     message.success($t('page.notification.msgMarkReadSuccess') || 'Đã đánh dấu là đã đọc');
-  } catch (err: any) {
-    message.error(err?.message || 'Lỗi khi cập nhật trạng thái');
+  } catch (err: unknown) {
+    const errorObj = err as Error;
+    message.error(errorObj?.message || 'Lỗi khi cập nhật trạng thái');
   }
 }
 
@@ -125,8 +147,9 @@ async function handleMarkAllRead() {
       n.read_at = new Date().toISOString();
     });
     message.success($t('page.notification.msgMarkAllReadSuccess') || 'Đã đánh dấu tất cả thông báo là đã đọc');
-  } catch (err: any) {
-    message.error(err?.message || 'Lỗi khi cập nhật trạng thái');
+  } catch (err: unknown) {
+    const errorObj = err as Error;
+    message.error(errorObj?.message || 'Lỗi khi cập nhật trạng thái');
   }
 }
 
@@ -137,6 +160,7 @@ function handleFilterChange() {
 
 function handleReset() {
   filterStatus.value = 'all';
+  filterDeadlineRange.value = undefined;
   currentPage.value = 1;
   loadNotifications(1);
 }
@@ -224,7 +248,7 @@ onMounted(() => {
     <div class="action-bar bg-card border border-border rounded-xl p-4 shadow-sm flex flex-nowrap items-center gap-3 overflow-x-auto w-full">
       <Select
         v-model:value="filterStatus"
-        class="min-w-[180px]"
+        class="min-w-[160px]"
         @change="handleFilterChange"
       >
         <Select.Option value="all">
@@ -237,6 +261,20 @@ onMounted(() => {
           {{ $t('page.notification.filterRead') || 'Đã đọc' }}
         </Select.Option>
       </Select>
+
+      <RangePicker
+        v-model:value="filterDeadlineRange"
+        show-time
+        format="YYYY-MM-DD HH:mm:ss"
+        value-format="YYYY-MM-DD HH:mm:ss"
+        :placeholder="[
+          $t('page.notification.deadlineFrom') || 'Hạn chót từ',
+          $t('page.notification.deadlineTo') || 'Hạn chót đến'
+        ]"
+        class="min-w-[340px] flex-shrink-0"
+        allow-clear
+        @change="handleFilterChange"
+      />
 
       <Button type="default" @click="handleFilterChange">
         {{ $t('page.company.btnFilter') }}
@@ -288,7 +326,7 @@ onMounted(() => {
 
             <!-- Title & Message Column -->
             <template v-else-if="column.key === 'title_content'">
-              <div class="flex flex-col gap-0.5">
+              <div class="flex flex-col gap-0.5 cursor-pointer hover:text-primary transition-colors" @click="navigateToEntity(record as BackendNotification)">
                 <span class="font-semibold text-sm text-foreground">
                   {{ record.data?.entity_label || record.data?.message || 'Notification' }}
                 </span>
@@ -322,13 +360,6 @@ onMounted(() => {
                   @click="handleMarkRead(record as BackendNotification)"
                 >
                   {{ $t('page.notification.btnMarkRead') || 'Đánh dấu đã đọc' }}
-                </Button>
-                <Button
-                  size="small"
-                  class="rounded bg-blue-50/50 hover:bg-blue-500 hover:text-white border-blue-200"
-                  @click="navigateToEntity(record as BackendNotification)"
-                >
-                  {{ $t('page.notification.btnViewDetail') || 'Xem chi tiết' }}
                 </Button>
               </div>
             </template>
