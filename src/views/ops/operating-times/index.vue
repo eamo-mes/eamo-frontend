@@ -46,17 +46,16 @@ const filterTimeRange = ref<any>(null);
 const activeEquipmentId = ref<string | undefined>(undefined);
 const activeTimeRange = ref<any>(null);
 
-// Stop Time column toggle: 'combined' | 'planned' | 'unplanned'
-const stopTimeMode = ref<'combined' | 'planned' | 'unplanned'>('combined');
-const stopTimeModes = ['combined', 'planned', 'unplanned'] as const;
+// Stop Time column toggle: 'planned' | 'unplanned'
+const stopTimeMode = ref<'planned' | 'unplanned'>('planned');
+const stopTimeModes = ['planned', 'unplanned'] as const;
 function cycleStopTimeMode() {
   const idx = stopTimeModes.indexOf(stopTimeMode.value);
   stopTimeMode.value = stopTimeModes[(idx + 1) % stopTimeModes.length];
 }
 const stopTimeModeLabel = computed(() => {
   if (stopTimeMode.value === 'planned') return $t('page.ops.plannedStopTime') || 'Planned Stop';
-  if (stopTimeMode.value === 'unplanned') return $t('page.ops.unplannedStopTime') || 'Unplanned Stop';
-  return $t('page.ops.stopTime') || 'Stop Time';
+  return $t('page.ops.unplannedStopTime') || 'Unplanned Stop';
 });
 
 function getAuthHeaders() {
@@ -348,8 +347,7 @@ const columns = computed(() => [
               <Tooltip placement="top">
                 <template #title>
                   <div class="text-xs">
-                    <div v-if="stopTimeMode === 'combined'" v-html="$t('page.ops.tooltipCombined')"></div>
-                    <div v-else-if="stopTimeMode === 'planned'" v-html="$t('page.ops.tooltipPlanned')"></div>
+                    <div v-if="stopTimeMode === 'planned'" v-html="$t('page.ops.tooltipPlanned')"></div>
                     <div v-else v-html="$t('page.ops.tooltipUnplanned')"></div>
                   </div>
                 </template>
@@ -392,26 +390,7 @@ const columns = computed(() => [
               <span>{{ formatCellHours(record[column.key as keyof OperatingTimeItem]) }}</span>
             </template>
             <template v-else-if="column.key === 'stop_time'">
-              <span v-if="stopTimeMode === 'combined'">
-                <Tooltip placement="top">
-                  <template #title>
-                    <div class="text-xs space-y-1">
-                      <div class="flex justify-between gap-4">
-                        <span class="opacity-70">{{ $t('page.ops.plannedStopTime') }}:</span>
-                        <span class="font-semibold">{{ formatCellHours((record as OperatingTimeItem).planned_stop_time) }}</span>
-                      </div>
-                      <div class="flex justify-between gap-4">
-                        <span class="opacity-70">{{ $t('page.ops.unplannedStopTime') }}:</span>
-                        <span class="font-semibold text-red-300">{{ formatCellHours((record as OperatingTimeItem).unplanned_stop_time) }}</span>
-                      </div>
-                    </div>
-                  </template>
-                  <span class="cursor-help whitespace-nowrap">
-                    {{ formatCellHours((record as OperatingTimeItem).planned_stop_time) }}<span v-if="(record as OperatingTimeItem).unplanned_stop_time" class="text-red-500 ml-1">({{ formatCellHours((record as OperatingTimeItem).unplanned_stop_time) }})</span>
-                  </span>
-                </Tooltip>
-              </span>
-              <span v-else-if="stopTimeMode === 'planned'">
+              <span v-if="stopTimeMode === 'planned'">
                 {{ formatCellHours((record as OperatingTimeItem).planned_stop_time) }}
               </span>
               <span v-else class="text-red-500">
