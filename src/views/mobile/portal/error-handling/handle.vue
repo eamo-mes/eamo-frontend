@@ -150,6 +150,8 @@ async function handleSubmit() {
       equipment_id: equipment.value.id,
       equipment_error_id: selectedErrorId.value,
       occurred_at: dayjs().format('YYYY-MM-DD HH:mm:ss'),
+      handled_at: dayjs().format('YYYY-MM-DD HH:mm:ss'),
+      restarted_at: dayjs().format('YYYY-MM-DD HH:mm:ss'),
       notes: finalNotes,
     };
 
