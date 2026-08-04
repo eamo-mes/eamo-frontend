@@ -109,7 +109,8 @@ const floatMenuItems = computed(() => [
     title: t("page.portal.checklist") || "Checklist",
     path: "/portal/checklist",
     icon: "lucide:clipboard-check",
-    color: "bg-emerald-600 text-white hover:bg-emerald-700 shadow-emerald-500/25",
+    color:
+      "bg-emerald-600 text-white hover:bg-emerald-700 shadow-emerald-500/25",
     exact: false,
   },
   {
@@ -199,7 +200,7 @@ const windowHeight = ref(
 
 let dragStart = { x: 0, y: 0 };
 let initialFloatPos = { x: 0, y: 0 };
-let isDragging = false;   // did user actually move?
+let isDragging = false; // did user actually move?
 let pointerMoved = false; // tracks movement within current gesture
 
 function initFloatPos() {
@@ -407,7 +408,9 @@ async function markRead(id: string) {
 async function handleMakeAll() {
   try {
     await markAllNotificationsReadApi();
-    notifications.value.forEach((item) => (item.read_at = new Date().toISOString()));
+    notifications.value.forEach(
+      (item) => (item.read_at = new Date().toISOString()),
+    );
     unreadCount.value = 0;
   } catch (e) {
     console.error("Failed to mark all as read:", e);
@@ -523,7 +526,10 @@ async function handleMakeAll() {
             ]"
             class="w-full flex items-center gap-3 px-3.5 py-2.5 rounded-xl text-xs transition-all cursor-pointer border-0 text-left"
           >
-            <IconifyIcon icon="lucide:qr-code" class="text-base flex-shrink-0" />
+            <IconifyIcon
+              icon="lucide:qr-code"
+              class="text-base flex-shrink-0"
+            />
             <span class="flex-1 truncate">{{
               t("page.portal.errorHandling") || "Xử lý lỗi"
             }}</span>
@@ -612,7 +618,10 @@ async function handleMakeAll() {
             ]"
             class="w-full flex items-center gap-3 px-3.5 py-2.5 rounded-xl text-xs transition-all cursor-pointer border-0 text-left"
           >
-            <IconifyIcon icon="lucide:alert-triangle" class="text-base flex-shrink-0 text-indigo-400" />
+            <IconifyIcon
+              icon="lucide:alert-triangle"
+              class="text-base flex-shrink-0 text-indigo-400"
+            />
             <span class="flex-1 truncate">{{
               t("page.portal.reportIncident") || "Báo cáo sự cố"
             }}</span>
@@ -628,7 +637,10 @@ async function handleMakeAll() {
             ]"
             class="w-full flex items-center gap-3 px-3.5 py-2.5 rounded-xl text-xs transition-all cursor-pointer border-0 text-left"
           >
-            <IconifyIcon icon="lucide:square" class="text-base flex-shrink-0 text-rose-400" />
+            <IconifyIcon
+              icon="lucide:square"
+              class="text-base flex-shrink-0 text-rose-400"
+            />
             <span class="flex-1 truncate">{{
               t("page.portal.emergencyStop") || "Dừng khẩn cấp"
             }}</span>
@@ -870,7 +882,11 @@ async function handleMakeAll() {
             <button
               type="button"
               :class="[
-                (item.exact ? route.path === item.path : route.path.startsWith(item.path))
+                (
+                  item.exact
+                    ? route.path === item.path
+                    : route.path.startsWith(item.path)
+                )
                   ? 'ring-2 ring-white/60 ring-offset-1 ring-offset-transparent scale-110'
                   : 'hover:scale-105',
                 item.color,
@@ -884,23 +900,6 @@ async function handleMakeAll() {
       </TransitionGroup>
 
       <!-- Main Floating Trigger Button (Draggable FAB) -->
-      <button
-        type="button"
-        :class="[
-          floatMenuOpen
-            ? 'bg-slate-700 dark:bg-zinc-600 rotate-45'
-            : 'bg-indigo-600 hover:bg-indigo-500',
-          isDraggingFloat ? 'scale-90 shadow-md' : 'shadow-xl hover:shadow-indigo-500/40',
-        ]"
-        class="size-13 rounded-full flex items-center justify-center border-0 outline-none cursor-pointer transition-all duration-200 active:scale-90"
-        @pointerdown="startDrag"
-        @click="handleFloatBtnClick"
-      >
-        <IconifyIcon
-          :icon="floatMenuOpen ? 'lucide:x' : 'lucide:navigation'"
-          class="size-5 text-white transition-all duration-200"
-        />
-      </button>
     </div>
   </div>
 </template>
