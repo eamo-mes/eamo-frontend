@@ -233,7 +233,7 @@ const columns = computed(() => [
     key: 'stop_time',
     align: 'right' as const,
     customTitle: true,
-    width: 220, // Fixed width to prevent layout jumping
+    width: 280, // Increased width to fit long Vietnamese translation without shifting
   },
   {
     title: $t('page.ops.plannedOperatingTime'),
@@ -352,11 +352,11 @@ const columns = computed(() => [
                   </div>
                 </template>
                 <span
-                  class="cursor-pointer flex items-center justify-end select-none text-slate-800 dark:text-zinc-200 hover:text-primary transition-colors group"
+                  class="cursor-pointer flex items-center justify-end select-none text-slate-800 dark:text-zinc-200 hover:text-primary transition-colors group whitespace-nowrap"
                   @click.stop="cycleStopTimeMode"
                 >
-                  {{ stopTimeModeLabel }}
-                  <div class="flex flex-col ml-2 opacity-50 group-hover:opacity-100 transition-opacity">
+                  <span class="w-[200px] text-right truncate" :title="stopTimeModeLabel">{{ stopTimeModeLabel }}</span>
+                  <div class="flex flex-col ml-2 opacity-50 group-hover:opacity-100 transition-opacity flex-shrink-0">
                     <!-- Caret Up -->
                     <svg viewBox="0 0 1024 1024" width="11" height="11" fill="currentColor" style="margin-bottom: -2px;">
                       <path d="M858.9 689L530.5 308.2c-9.4-10.9-27.5-10.9-37 0L165.1 689c-12.2 14.2-1.2 35 18.5 35h656.8c19.7 0 30.7-20.8 18.5-35z"></path>
