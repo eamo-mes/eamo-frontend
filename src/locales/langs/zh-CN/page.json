@@ -1011,6 +1011,25 @@
     "msgEnterCustomErrorName": "Vui lòng nhập tên sự cố / lỗi mới!",
     "msgSelectErrorFromList": "Vui lòng chọn loại lỗi từ danh sách!",
     "msgSubmitSuccess": "Đã ghi nhận sự cố thành công!",
-    "msgSubmitFailed": "Ghi nhận thất bại, vui lòng thử lại!"
+    "msgSubmitFailed": "Ghi nhận thất bại, vui lòng thử lại!",
+    "handleErrorTitle": "Xử lý lỗi thiết bị (Quét QR)",
+    "step1Of2": "Bước 1/2",
+    "invalidEquipmentId": "Mã thiết bị không hợp lệ",
+    "equipNotFound": "Không tìm thấy thông tin thiết bị",
+    "msgSelectErrorToHandle": "Vui lòng chọn loại lỗi đã xử lý từ danh sách!",
+    "defaultHandlingNote": "Xử lý lỗi sau khi quét QR",
+    "msgHandleSuccess": "Đã hoàn tất xử lý và ghi nhận lỗi thành công!",
+    "msgHandleFailed": "Xử lý thất bại, vui lòng thử lại!",
+    "handleErrorCompleteTitle": "Hoàn tất xử lý lỗi",
+    "step2Of2": "Bước 2/2",
+    "scannedEquipmentCardTitle": "Thiết Bị Đã Quét QR",
+    "btnRescanQR": "Quét lại",
+    "equipCodeLabel": "Mã: ",
+    "selectHandledErrorLabel": "Chọn loại lỗi đã khắc phục",
+    "searchErrorPlaceholder": "Tìm kiếm loại sự cố / mã lỗi...",
+    "noMatchingError": "Không có loại lỗi nào phù hợp",
+    "handleErrorInstruction": "Chạm vào 1 loại lỗi trong danh sách trên để xác nhận đã xử lý xong. Thời điểm khắc phục và người xử lý sẽ tự động được ghi nhận.",
+    "btnConfirmHandleError": "Xác Nhận Đã Xử Lý Lỗi",
+    "noEquipFound": "Không tìm thấy thiết bị"
   }
 }

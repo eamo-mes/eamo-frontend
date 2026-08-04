@@ -78,10 +78,10 @@ onMounted(() => {
           <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="m15 18-6-6 6-6"/></svg>
         </button>
         <h1 class="text-sm font-bold text-slate-800 dark:text-zinc-200 m-0 flex-1 truncate">
-          Xử lý lỗi thiết bị (Quét QR)
+          {{ t('page.portal.handleErrorTitle') }}
         </h1>
         <span class="text-xs font-semibold px-2.5 py-0.5 rounded-full bg-purple-50 dark:bg-purple-950/50 text-purple-600 dark:text-purple-400 shrink-0">
-          Bước 1/2
+          {{ t('page.portal.step1Of2') }}
         </span>
       </div>
     </div>

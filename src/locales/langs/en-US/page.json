@@ -1018,6 +1018,25 @@
     "msgEnterCustomErrorName": "Please enter new error name!",
     "msgSelectErrorFromList": "Please select error from list!",
     "msgSubmitSuccess": "Incident reported successfully!",
-    "msgSubmitFailed": "Submission failed, please try again!"
+    "msgSubmitFailed": "Submission failed, please try again!",
+    "handleErrorTitle": "Handle Equipment Error (QR Scan)",
+    "step1Of2": "Step 1/2",
+    "invalidEquipmentId": "Invalid equipment code",
+    "equipNotFound": "Equipment information not found",
+    "msgSelectErrorToHandle": "Please select the handled error from the list!",
+    "defaultHandlingNote": "Error handled after QR scan",
+    "msgHandleSuccess": "Error successfully handled and logged!",
+    "msgHandleFailed": "Handling failed, please try again!",
+    "handleErrorCompleteTitle": "Complete Error Handling",
+    "step2Of2": "Step 2/2",
+    "scannedEquipmentCardTitle": "Scanned Equipment",
+    "btnRescanQR": "Re-scan",
+    "equipCodeLabel": "Code: ",
+    "selectHandledErrorLabel": "Select resolved error",
+    "searchErrorPlaceholder": "Search error or code...",
+    "noMatchingError": "No matching errors found",
+    "handleErrorInstruction": "Tap an error from the list above to confirm it is resolved. The resolution time and handler will be recorded automatically.",
+    "btnConfirmHandleError": "Confirm Error Handled",
+    "noEquipFound": "Equipment not found"
   }
 }

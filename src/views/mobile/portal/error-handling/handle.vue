@@ -58,7 +58,7 @@ function getAuthHeaders() {
 // ─── Data Loading ───
 async function loadData() {
   if (!equipmentId.value) {
-    message.error('Mã thiết bị không hợp lệ');
+    message.error(t('page.portal.invalidEquipmentId') || 'Mã thiết bị không hợp lệ');
     router.push('/portal/error-handling');
     return;
   }
@@ -82,7 +82,7 @@ async function loadData() {
       equipment.value = {
         id: equipmentId.value,
         code: equipmentId.value,
-        name: `Thiết bị [${equipmentId.value}]`,
+        name: t('page.portal.fallbackEquipName', { code: equipmentId.value }) || `Thiết bị [Mã: ${equipmentId.value}]`,
       };
     }
 
@@ -104,7 +104,7 @@ async function loadData() {
     equipment.value = {
       id: equipmentId.value,
       code: equipmentId.value,
-      name: `Thiết bị [${equipmentId.value}]`,
+      name: t('page.portal.fallbackEquipName', { code: equipmentId.value }) || `Thiết bị [Mã: ${equipmentId.value}]`,
     };
   } finally {
     loading.value = false;
@@ -132,17 +132,17 @@ function toggleSelectError(id: string) {
 // ─── Submit Error Resolution Log ───
 async function handleSubmit() {
   if (!equipment.value) {
-    message.error('Không tìm thấy thông tin thiết bị');
+    message.error(t('page.portal.equipNotFound') || 'Không tìm thấy thông tin thiết bị');
     return;
   }
 
   if (!selectedErrorId.value) {
-    message.error('Vui lòng chọn loại lỗi đã xử lý từ danh sách!');
+    message.error(t('page.portal.msgSelectErrorToHandle') || 'Vui lòng chọn loại lỗi đã xử lý từ danh sách!');
     return;
   }
 
   const matchedError = masterErrors.value.find((e) => e.id === selectedErrorId.value);
-  const finalNotes = matchedError ? matchedError.name : 'Xử lý lỗi sau khi quét QR';
+  const finalNotes = matchedError ? matchedError.name : t('page.portal.defaultHandlingNote') || 'Xử lý lỗi sau khi quét QR';
 
   try {
     submitting.value = true;
@@ -161,12 +161,12 @@ async function handleSubmit() {
       { headers: getAuthHeaders() }
     );
 
-    message.success('Đã hoàn tất xử lý và ghi nhận lỗi thành công!');
+    message.success(t('page.portal.msgHandleSuccess') || 'Đã hoàn tất xử lý và ghi nhận lỗi thành công!');
     router.push('/portal');
   } catch (err: any) {
     console.error('Failed to submit equipment error log:', err);
     message.error(
-      err?.response?.data?.message || 'Xử lý thất bại, vui lòng thử lại!'
+      err?.response?.data?.message || t('page.portal.msgHandleFailed') || 'Xử lý thất bại, vui lòng thử lại!'
     );
   } finally {
     submitting.value = false;
@@ -195,10 +195,10 @@ onMounted(() => {
           <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="m15 18-6-6 6-6"/></svg>
         </button>
         <h1 class="text-sm font-bold text-slate-800 dark:text-zinc-200 m-0 flex-1 truncate">
-          Hoàn tất xử lý lỗi
+          {{ t('page.portal.handleErrorCompleteTitle') }}
         </h1>
         <span class="text-xs font-semibold px-2.5 py-0.5 rounded-full bg-indigo-50 dark:bg-indigo-950/50 text-indigo-600 dark:text-indigo-400 shrink-0">
-          Bước 2/2
+          {{ t('page.portal.step2Of2') }}
         </span>
       </div>
     </div>
@@ -213,14 +213,14 @@ onMounted(() => {
         <!-- Card Thông Tin Thiết Bị Đã Quét -->
         <div class="bg-white dark:bg-zinc-900 border border-slate-200/80 dark:border-zinc-800 rounded-2xl p-4 shadow-3xs space-y-2">
           <div class="flex items-center justify-between">
-            <span class="text-[10px] font-bold uppercase text-indigo-500 tracking-wider">Thiết Bị Đã Quét QR</span>
+            <span class="text-[10px] font-bold uppercase text-indigo-500 tracking-wider">{{ t('page.portal.scannedEquipmentCardTitle') }}</span>
             <Button
               type="link"
               size="small"
               class="p-0 h-auto text-xs text-slate-400 hover:text-indigo-600"
               @click="handleBack"
             >
-              Quét lại
+              {{ t('page.portal.btnRescanQR') }}
             </Button>
           </div>
 
@@ -230,7 +230,7 @@ onMounted(() => {
             </h2>
             <div class="flex flex-wrap items-center gap-2 mt-1">
               <span class="text-xs font-mono bg-slate-100 dark:bg-zinc-800 px-2 py-0.5 rounded-md text-slate-600 dark:text-zinc-400 font-semibold">
-                Mã: {{ equipment.code }}
+                {{ t('page.portal.equipCodeLabel') }}{{ equipment.code }}
               </span>
               <span v-if="equipment.equipment_category?.name" class="text-xs bg-indigo-50 dark:bg-indigo-950/40 px-2 py-0.5 rounded-md text-indigo-600 dark:text-indigo-400">
                 {{ equipment.equipment_category.name }}
@@ -244,7 +244,7 @@ onMounted(() => {
           
           <div class="flex items-center justify-between pb-2 border-b border-slate-100 dark:border-zinc-800">
             <label class="text-xs font-bold text-slate-700 dark:text-zinc-300">
-              Chọn loại lỗi đã khắc phục <span class="text-indigo-500">*</span>
+              {{ t('page.portal.selectHandledErrorLabel') }} <span class="text-indigo-500">*</span>
             </label>
           </div>
 
@@ -252,7 +252,7 @@ onMounted(() => {
           <Input
             v-if="masterErrors.length > 4"
             v-model:value="errorSearchQuery"
-            placeholder="Tìm kiếm loại sự cố / mã lỗi..."
+            :placeholder="t('page.portal.searchErrorPlaceholder')"
             size="small"
             class="rounded-xl text-xs"
             allow-clear
@@ -280,11 +280,11 @@ onMounted(() => {
           </div>
 
           <div v-else class="text-center py-6">
-            <Empty description="Không có loại lỗi nào phù hợp" />
+            <Empty :description="t('page.portal.noMatchingError')" />
           </div>
 
           <p class="text-[11px] text-slate-400 dark:text-zinc-500 mt-1 mb-0">
-            Chạm vào 1 loại lỗi trong danh sách trên để xác nhận đã xử lý xong. Thời điểm khắc phục và người xử lý sẽ tự động được ghi nhận.
+            {{ t('page.portal.handleErrorInstruction') }}
           </p>
 
           <!-- Submit Button -->
@@ -297,14 +297,14 @@ onMounted(() => {
             class="bg-indigo-600 hover:bg-indigo-500 border-none font-bold text-sm h-11 rounded-xl mt-3 text-white"
             @click="handleSubmit"
           >
-            Xác Nhận Đã Xử Lý Lỗi
+            {{ t('page.portal.btnConfirmHandleError') }}
           </Button>
 
         </div>
       </template>
 
       <div v-else class="py-12">
-        <Empty description="Không tìm thấy thiết bị" />
+        <Empty :description="t('page.portal.noEquipFound')" />
       </div>
 
     </div>
