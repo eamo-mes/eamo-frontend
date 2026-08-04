@@ -78,46 +78,10 @@ const floatMenuItems = computed(() => [
     exact: true,
   },
   {
-    title: t("page.portal.errorHandling") || "Xử lý lỗi",
-    path: "/portal/error-handling",
-    icon: "lucide:qr-code",
-    color: "bg-rose-600 text-white hover:bg-rose-700 shadow-rose-500/25",
-    exact: false,
-  },
-  {
     title: t("page.portal.equipment") || "Thiết bị",
     path: "/portal/equipment",
     icon: "lucide:wrench",
     color: "bg-blue-600 text-white hover:bg-blue-700 shadow-blue-500/25",
-    exact: false,
-  },
-  {
-    title: t("page.portal.notifications") || "Thông báo",
-    path: "/portal/dashboard",
-    icon: "lucide:bell",
-    color: "bg-amber-600 text-white hover:bg-amber-700 shadow-amber-500/25",
-    exact: false,
-  },
-  {
-    title: t("page.portal.errorHandling") || "Xử lý lỗi",
-    path: "/portal/incident-report",
-    icon: "lucide:qr-code",
-    color: "bg-rose-600 text-white hover:bg-rose-700 shadow-rose-500/25",
-    exact: false,
-  },
-  {
-    title: t("page.portal.checklist") || "Checklist",
-    path: "/portal/checklist",
-    icon: "lucide:clipboard-check",
-    color:
-      "bg-emerald-600 text-white hover:bg-emerald-700 shadow-emerald-500/25",
-    exact: false,
-  },
-  {
-    title: t("page.portal.mPlans") || "Kế hoạch bảo trì",
-    path: "/portal/maintain-plan",
-    icon: "lucide:calendar-clock",
-    color: "bg-indigo-600 text-white hover:bg-indigo-700 shadow-indigo-500/25",
     exact: false,
   },
 ]);
@@ -516,26 +480,7 @@ async function handleMakeAll() {
             <span class="flex-1 truncate">{{ t("page.portal.title") }}</span>
           </button>
 
-          <!-- 2. Xử lý lỗi -->
-          <button
-            @click="handleNavigate('/portal/error-handling')"
-            :class="[
-              route.path.startsWith('/portal/error-handling')
-                ? 'bg-indigo-600 text-white font-bold shadow-xs'
-                : 'text-slate-300 hover:bg-slate-800/80',
-            ]"
-            class="w-full flex items-center gap-3 px-3.5 py-2.5 rounded-xl text-xs transition-all cursor-pointer border-0 text-left"
-          >
-            <IconifyIcon
-              icon="lucide:qr-code"
-              class="text-base flex-shrink-0"
-            />
-            <span class="flex-1 truncate">{{
-              t("page.portal.errorHandling") || "Xử lý lỗi"
-            }}</span>
-          </button>
-
-          <!-- 3. Equipment -->
+          <!-- 2. Equipment -->
           <button
             @click="handleNavigate('/portal/equipment')"
             :class="[
@@ -608,6 +553,25 @@ async function handleMakeAll() {
           <!-- Divider line separating quick actions -->
           <div class="my-2 border-t border-slate-800/80"></div>
 
+          <!-- 6. Xử lý lỗi -->
+          <button
+            @click="handleNavigate('/portal/error-handling')"
+            :class="[
+              route.path.startsWith('/portal/error-handling')
+                ? 'bg-indigo-600 text-white font-bold shadow-xs'
+                : 'text-slate-300 hover:bg-slate-800/80',
+            ]"
+            class="w-full flex items-center gap-3 px-3.5 py-2.5 rounded-xl text-xs transition-all cursor-pointer border-0 text-left"
+          >
+            <IconifyIcon
+              icon="lucide:qr-code"
+              class="text-base flex-shrink-0 text-purple-400"
+            />
+            <span class="flex-1 truncate">{{
+              t("page.portal.errorHandling") || "Xử lý lỗi"
+            }}</span>
+          </button>
+
           <!-- 7. Report Incident -->
           <button
             @click="handleNavigate('/portal/incident-report')"
@@ -627,7 +591,7 @@ async function handleMakeAll() {
             }}</span>
           </button>
 
-          <!-- 7. Emergency Stop -->
+          <!-- 8. Emergency Stop -->
           <button
             @click="handleNavigate('/portal/emergency-stop')"
             :class="[
