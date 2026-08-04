@@ -341,11 +341,7 @@ const columns = computed(() => [
     dataIndex: "occurred_at",
     key: "occurred_at",
   },
-  {
-    title: "Restarted At",
-    dataIndex: "restarted_at",
-    key: "restarted_at",
-  },
+
   {
     title: "Handled At",
     dataIndex: "handled_at",
@@ -455,13 +451,7 @@ const columns = computed(() => [
                   : "-"
               }}</span>
             </template>
-            <template v-else-if="column.key === 'restarted_at'">
-              <span>{{
-                record.restarted_at
-                  ? dayjs(record.restarted_at).format("YYYY-MM-DD HH:mm:ss")
-                  : "-"
-              }}</span>
-            </template>
+
             <template v-else-if="column.key === 'handled_at'">
               <span>{{
                 record.handled_at
