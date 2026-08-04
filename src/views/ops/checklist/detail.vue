@@ -119,11 +119,13 @@ async function loadChecklistDetail(id: string) {
     });
     const record = res.data?.data ?? res.data;
     if (record) {
-      const isSingle = record.schedule_mode === 'single' || (record.cycle_type === 'daily' && record.cycle_interval === 1 && !record.occurrences);
+      const scheduleMode = record.schedule_mode
+        ? (record.schedule_mode as 'repeating' | 'single')
+        : (record.cycle_type === 'daily' && record.cycle_interval === 1 ? 'single' : 'repeating');
       formState.value = {
         id: record.id,
         name: record.name || '',
-        schedule_mode: isSingle ? 'single' : (record.schedule_mode || 'repeating'),
+        schedule_mode: scheduleMode,
         equipment_id: record.equipment_id || undefined,
         user_ids: record.users?.map((u: { id: string }) => u.id) || [],
         session_date: normalizeDateTime(record.session_date),
@@ -176,6 +178,7 @@ const rules = computed(() => ({
   name: [{ required: true, message: $t('page.ops.validationName') }],
   equipment_id: [{ required: true, message: $t('page.ops.validationEquipment') }],
   session_date: [{ required: true, message: $t('page.ops.validationDate') }],
+  cycle_type: [{ required: formState.value.schedule_mode === 'repeating', message: $t('page.ops.placeholderCycleType') }],
   cycle_interval: [{ required: formState.value.schedule_mode === 'repeating', type: 'number' as const, min: 1, message: 'Vui lòng nhập khoảng chu kỳ lặp hợp lệ' }],
 }));
 
@@ -347,8 +350,8 @@ onMounted(() => {
           >
             <!-- Main Information Card -->
             <Card class="shadow-sm border-border rounded-xl">
-              <div class="grid grid-cols-2 gap-x-4">
-                <FormItem :label="$t('page.ops.colName')" name="name" class="col-span-2">
+              <div class="grid grid-cols-1 md:grid-cols-3 gap-x-4">
+                <FormItem :label="$t('page.ops.colName')" name="name" class="col-span-1">
                   <Input v-model:value="formState.name" :placeholder="$t('page.ops.placeholderName')" />
                 </FormItem>
 
@@ -401,7 +404,7 @@ onMounted(() => {
                   />
                 </FormItem>
 
-                <FormItem :label="$t('page.ops.colExecutor')" name="user_ids" class="col-span-2">
+                <FormItem :label="$t('page.ops.colExecutor')" name="user_ids" class="col-span-1 md:col-span-3">
                   <Select
                     v-model:value="formState.user_ids"
                     mode="multiple"

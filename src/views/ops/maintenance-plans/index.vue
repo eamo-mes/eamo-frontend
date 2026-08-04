@@ -130,7 +130,7 @@ const columns = computed(() => [
     key: 'maintenance_type',
   },
   {
-    title: $t('page.ops.startDate'),
+    title: $t('page.ops.planDate'),
     dataIndex: 'date',
     key: 'date',
   },

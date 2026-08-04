@@ -229,6 +229,10 @@ export async function deleteMaintenancePlanApi(id: string): Promise<void> {
   await requestClient.delete(`/v1/maintenance-plans/${id}`);
 }
 
+export async function deleteMaintenanceScheduleApi(id: string): Promise<void> {
+  await requestClient.delete(`/v1/maintenance-schedules/${id}`);
+}
+
 export async function getMaintenancePlanDetailApi(id: string): Promise<MaintenancePlanRecord> {
   return await requestClient.get<MaintenancePlanRecord>(`/v1/maintenance-plans/${id}`);
 }

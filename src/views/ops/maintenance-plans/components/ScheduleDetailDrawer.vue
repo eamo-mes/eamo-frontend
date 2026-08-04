@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { ref, computed, watch } from 'vue';
 import { useRouter } from 'vue-router';
-import { Drawer, Button, message, Input, Spin, DatePicker, Select, Empty, Tag } from 'ant-design-vue';
+import { Drawer, Button, message, Input, Spin, DatePicker, Select, Empty, Tag, Popconfirm } from 'ant-design-vue';
 
 const equipmentBannerInfo = computed(() => {
   if (!activeSchedule.value) return null;
@@ -38,6 +38,7 @@ import { $t } from '#/locales';
 import { requestClient } from '#/api/request';
 import {
   createMaintenanceLogApi,
+  deleteMaintenanceScheduleApi,
   type EquipmentOption,
   type MaintenanceCategoryOption,
   type MaintenanceItemOption,
@@ -83,6 +84,7 @@ const drawerSchedule = ref<{ date: string; user_ids: string[] }>({
 const itemEvaluations = ref<Record<string, ItemEvalState>>({});
 const loadingLog = ref(false);
 const submitting = ref(false);
+const deleting = ref(false);
 
 const activeSchedule = computed(() => props.selectedSchedule);
 
@@ -285,6 +287,57 @@ async function handleSaveDrawer(): Promise<void> {
   }
 }
 
+async function handleDeleteSchedule(): Promise<void> {
+  if (!activeSchedule.value) return;
+
+  deleting.value = true;
+  try {
+    const updatedSchedules = [...props.schedules];
+
+    for (const s of planSchedules.value) {
+      if (s.id) {
+        await deleteMaintenanceScheduleApi(s.id);
+      }
+      const idx = updatedSchedules.findIndex((x) => (x.id && x.id === s.id) || (x._key && x._key === s._key));
+      if (idx !== -1) {
+        updatedSchedules.splice(idx, 1);
+      }
+    }
+
+    emit('update:schedules', updatedSchedules);
+    emit('update:open', false);
+    message.success($t('page.ops.deleteScheduleSuccess') || 'Đã xóa lịch bảo trì thành công');
+  } catch (err: unknown) {
+    const apiError = (err as { response?: { data?: { message?: string } } })?.response?.data?.message;
+    message.error(apiError || $t('page.ops.deleteScheduleError') || 'Không thể xóa lịch bảo trì');
+  } finally {
+    deleting.value = false;
+  }
+}
+
+async function handleDeleteItemSchedule(sched: ScheduleRow): Promise<void> {
+  deleting.value = true;
+  try {
+    if (sched.id) {
+      await deleteMaintenanceScheduleApi(sched.id);
+    }
+    const updatedSchedules = props.schedules.filter(
+      (x) => !((x.id && x.id === sched.id) || (x._key && x._key === sched._key))
+    );
+    emit('update:schedules', updatedSchedules);
+    message.success($t('page.ops.deleteScheduleSuccess') || 'Đã xóa lịch bảo trì thành công');
+
+    if (planSchedules.value.length <= 1) {
+      emit('update:open', false);
+    }
+  } catch (err: unknown) {
+    const apiError = (err as { response?: { data?: { message?: string } } })?.response?.data?.message;
+    message.error(apiError || $t('page.ops.deleteScheduleError') || 'Không thể xóa lịch bảo trì');
+  } finally {
+    deleting.value = false;
+  }
+}
+
 function handleCancelDrawer(): void {
   emit('update:open', false);
 }
@@ -433,6 +486,17 @@ function goToPlan(): void {
     <template #footer>
       <div class="flex items-center justify-between gap-2 py-1">
         <div class="flex items-center gap-2">
+          <Popconfirm
+            :title="$t('page.ops.deleteScheduleConfirm') || 'Bạn có chắc chắn muốn xóa lịch bảo trì này không?'"
+            :ok-text="$t('page.ops.btnConfirm') || 'Xóa'"
+            :cancel-text="$t('page.ops.btnCancel') || 'Hủy'"
+            ok-type="danger"
+            @confirm="handleDeleteSchedule"
+          >
+            <Button danger :loading="deleting">
+              {{ $t('page.ops.btnDelete') || 'Xóa' }}
+            </Button>
+          </Popconfirm>
           <Button @click="handleCancelDrawer">
             {{ $t('page.ops.btnCancel') || 'Hủy' }}
           </Button>

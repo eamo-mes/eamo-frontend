@@ -196,6 +196,15 @@ function handleCategoryChange(): void {
   formState.value.schedules = newSchedules;
 }
 
+function handlePlanDateChange(val: unknown): void {
+  const dateStr = typeof val === 'string' ? val : '';
+  if (dateStr && formState.value.schedules.length > 0) {
+    formState.value.schedules.forEach((s) => {
+      s.date = dateStr;
+    });
+  }
+}
+
 async function loadUsers(): Promise<void> {
   try {
     users.value = await listUsersApi({ per_page: 1000 });
@@ -349,9 +358,9 @@ async function handleSubmit(): Promise<void> {
     }
 
     const isSingleMode = formState.value.schedule_mode === 'single';
-    const effectiveCycleType = isSingleMode ? 'daily' : (formState.value.cycle_type ?? null);
-    const effectiveCycleInterval = isSingleMode ? 1 : (formState.value.cycle_interval ?? null);
-    const effectiveOccurrences = isSingleMode ? 1 : (formState.value.occurrences ?? null);
+    const effectiveCycleType = isSingleMode ? null : (formState.value.cycle_type ?? null);
+    const effectiveCycleInterval = isSingleMode ? null : (formState.value.cycle_interval ?? null);
+    const effectiveOccurrences = isSingleMode ? null : (formState.value.occurrences ?? null);
 
     const payload = {
       plan_code: formState.value.plan_code || null,
@@ -657,13 +666,14 @@ onMounted(async () => {
               </FormItem>
 
               <!-- Ngày kế hoạch -->
-              <FormItem :label="$t('page.ops.startDate')" name="date">
+              <FormItem :label="$t('page.ops.planDate')" name="date">
                 <DatePicker
                   v-model:value="formState.date"
                   value-format="YYYY-MM-DD"
                   format="YYYY-MM-DD"
                   :placeholder="$t('page.ops.placeholderDate')"
                   class="w-full"
+                  @change="handlePlanDateChange"
                 />
               </FormItem>
 

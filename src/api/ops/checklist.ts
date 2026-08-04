@@ -12,6 +12,7 @@ export interface CreateChecklistSessionPayload {
   session_date: string;
   cycle_type?: string;
   cycle_interval?: number;
+  schedule_mode?: 'repeating' | 'single';
   user_ids?: string[];
   details?: ChecklistDetailPayloadItem[];
 }
@@ -22,6 +23,7 @@ export interface UpdateChecklistSessionPayload {
   session_date?: string;
   cycle_type?: string;
   cycle_interval?: number;
+  schedule_mode?: 'repeating' | 'single';
   user_ids?: string[];
   schedules?: Array<{ id: string; date?: string; user_ids?: string[] }>;
 }

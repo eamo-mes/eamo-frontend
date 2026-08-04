@@ -327,17 +327,17 @@ function goToChecklistDetail(): void {
     <template #footer>
       <div class="flex items-center justify-between gap-2 py-1">
         <div class="flex items-center gap-2">
-          <Button @click="handleClose">
-            {{ $t('page.ops.btnCancel') || 'Hủy' }}
-          </Button>
           <Popconfirm
-            :title="$t('page.ops.confirmDeleteSchedule') || 'Bạn có chắc chắn muốn xóa lịch này?'"
+            :title="$t('page.ops.confirmDeleteSchedule', { name: props.session?.equipment?.name || props.session?.name || '', date: props.session?.session_date?.slice(0, 10) || '' })"
             @confirm="handleDeleteSchedule"
           >
             <Button danger :loading="deletingSchedule">
               {{ $t('page.ops.btnDelete') || 'Xóa' }}
             </Button>
           </Popconfirm>
+          <Button @click="handleClose">
+            {{ $t('page.ops.btnCancel') || 'Hủy' }}
+          </Button>
           <Button type="primary" @click="goToChecklistDetail">
             {{ $t('page.ops.btnGoToChecklist') || 'Đi tới Checklist' }}
           </Button>
