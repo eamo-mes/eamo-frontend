@@ -1,5 +1,5 @@
 <script lang="ts" setup>
-import { ref, computed, watch, nextTick } from 'vue';
+import { ref, computed, watch } from 'vue';
 import { Modal, Form, FormItem, Select, DatePicker, message } from 'ant-design-vue';
 import axios from 'axios';
 import dayjs from 'dayjs';
@@ -112,9 +112,7 @@ watch(
           handler_ids: [],
         };
       }
-      nextTick(() => {
-        formRef.value?.clearValidate();
-      });
+      formRef.value?.resetFields();
     }
   },
   { immediate: true },
@@ -137,9 +135,7 @@ async function handleOk() {
     const payload = {
       equipment_id: formState.value.equipment_id,
       equipment_error_id: formState.value.equipment_error_id,
-      occurred_at: formState.value.occurred_at
-        ? formState.value.occurred_at.format('YYYY-MM-DD HH:mm:ss')
-        : dayjs().format('YYYY-MM-DD HH:mm:ss'),
+      occurred_at: formState.value.occurred_at ? formState.value.occurred_at.format('YYYY-MM-DD HH:mm:ss') : null,
       restarted_at: formState.value.restarted_at ? formState.value.restarted_at.format('YYYY-MM-DD HH:mm:ss') : null,
       handled_at: formState.value.handled_at ? formState.value.handled_at.format('YYYY-MM-DD HH:mm:ss') : null,
       handler_ids: formState.value.handler_ids || [],
