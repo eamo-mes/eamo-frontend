@@ -588,7 +588,7 @@ onMounted(() => {
         <button
           type="button"
           @click="router.push('/portal/emergency-stop')"
-          class="h-11 flex flex-col items-center justify-center gap-0.5 rounded-2xl bg-amber-50 dark:bg-amber-950/40 border border-amber-200/70 dark:border-amber-800/50 text-amber-600 dark:text-amber-400 cursor-pointer outline-none transition-all hover:bg-amber-100 dark:hover:bg-amber-900/60 active:scale-95 select-none"
+          class="h-11 flex flex-col items-center justify-center gap-0.5 rounded-2xl bg-red-50 dark:bg-red-950/40 border border-red-200/70 dark:border-red-800/50 text-red-600 dark:text-red-400 cursor-pointer outline-none transition-all hover:bg-red-100 dark:hover:bg-red-900/60 active:scale-95 select-none"
         >
           <svg
             class="w-4 h-4"

@@ -244,7 +244,7 @@ onMounted(() => {
       <div v-if="step === 2 && selectedEquipment" class="space-y-4">
         
         <!-- Card hiển thị Duy nhất Tên Thiết Bị đã quét -->
-        <div class="bg-indigo-50 dark:bg-indigo-950/50 border border-indigo-200/80 dark:border-indigo-800/60 rounded-2xl p-4 flex items-center justify-between shadow-3xs">
+        <div class="bg-white dark:bg-indigo-950/50 border border-slate-200/80 dark:border-indigo-800/60 rounded-2xl p-4 flex items-center justify-between shadow-3xs">
           <div class="flex items-center gap-3 min-w-0">
             <div class="min-w-0">
               <span class="text-[10px] font-bold uppercase text-indigo-500 tracking-wider">{{ t('page.portal.scannedEquipment') || 'Thiết Bị Đã Quét:' }}</span>

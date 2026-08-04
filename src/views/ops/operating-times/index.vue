@@ -10,7 +10,8 @@ import {
   Progress,
   Input,
   Select,
-  DatePicker
+  DatePicker,
+  Tooltip
 } from 'ant-design-vue';
 import axios from 'axios';
 import dayjs from 'dayjs';
@@ -18,6 +19,7 @@ import { API_BASE_URL } from '#/api/config';
 import { useAccessStore } from '@vben/stores';
 import { $t } from '#/locales';
 import { isSoftDeleted, softDeletedRowClass } from '#/utils/soft-delete';
+import { IconifyIcon } from '@vben/icons';
 
 import type { OperatingTimeItem, EquipmentOption } from './types';
 import OperatingTimesCharts from './components/OperatingTimesCharts.vue';
@@ -44,6 +46,18 @@ const filterEquipmentId = ref<string | undefined>(undefined);
 const filterTimeRange = ref<any>(null);
 const activeEquipmentId = ref<string | undefined>(undefined);
 const activeTimeRange = ref<any>(null);
+
+// Stop Time column toggle: 'planned' | 'unplanned'
+const stopTimeMode = ref<'planned' | 'unplanned'>('planned');
+const stopTimeModes = ['planned', 'unplanned'] as const;
+function cycleStopTimeMode() {
+  const idx = stopTimeModes.indexOf(stopTimeMode.value);
+  stopTimeMode.value = stopTimeModes[(idx + 1) % stopTimeModes.length];
+}
+const stopTimeModeLabel = computed(() => {
+  if (stopTimeMode.value === 'planned') return $t('page.ops.plannedStopTime') || 'Planned Stop';
+  return $t('page.ops.unplannedStopTime') || 'Unplanned Stop';
+});
 
 function getAuthHeaders() {
   const accessStore = useAccessStore();
@@ -215,16 +229,11 @@ const columns = computed(() => [
     align: 'right' as const
   },
   {
-    title: $t('page.ops.plannedStopTime'),
-    dataIndex: 'planned_stop_time',
-    key: 'planned_stop_time',
-    align: 'right' as const
-  },
-  {
-    title: $t('page.ops.unplannedStopTime'),
-    dataIndex: 'unplanned_stop_time',
-    key: 'unplanned_stop_time',
-    align: 'right' as const
+    title: stopTimeModeLabel.value,
+    key: 'stop_time',
+    align: 'right' as const,
+    customTitle: true,
+    width: 280, // Increased width to fit long Vietnamese translation without shifting
   },
   {
     title: $t('page.ops.plannedOperatingTime'),
@@ -334,6 +343,34 @@ const columns = computed(() => [
           }"
           class="w-full"
         >
+          <template #headerCell="{ column }">
+            <template v-if="column.key === 'stop_time'">
+              <Tooltip placement="top">
+                <template #title>
+                  <div class="text-xs">
+                    {{ stopTimeMode === 'planned' ? $t('page.ops.plannedStopTime') : $t('page.ops.unplannedStopTime') }}
+                  </div>
+                </template>
+                <span
+                  class="cursor-pointer flex items-center justify-end select-none text-slate-800 dark:text-zinc-200 hover:text-primary transition-colors group whitespace-nowrap"
+                  @click.stop="cycleStopTimeMode"
+                >
+                  <span class="w-[200px] text-right truncate" :title="stopTimeModeLabel">{{ stopTimeModeLabel }}</span>
+                  <div class="flex flex-col ml-2 opacity-50 group-hover:opacity-100 transition-opacity flex-shrink-0">
+                    <!-- Caret Up -->
+                    <svg viewBox="0 0 1024 1024" width="11" height="11" fill="currentColor" style="margin-bottom: -2px;">
+                      <path d="M858.9 689L530.5 308.2c-9.4-10.9-27.5-10.9-37 0L165.1 689c-12.2 14.2-1.2 35 18.5 35h656.8c19.7 0 30.7-20.8 18.5-35z"></path>
+                    </svg>
+                    <!-- Caret Down -->
+                    <svg viewBox="0 0 1024 1024" width="11" height="11" fill="currentColor" style="margin-top: -2px;">
+                      <path d="M858.9 335H165.1c-19.7 0-30.7 20.8-18.5 35l328.4 380.8c9.4 10.9 27.5 10.9 37 0L840.4 370c12.2-14.2 1.2-35-18.5-35z"></path>
+                    </svg>
+                  </div>
+                </span>
+              </Tooltip>
+            </template>
+          </template>
+
           <template #bodyCell="{ column, record }">
             <template v-if="column.key === 'equipment_name'">
               <span v-if="record.equipment">
@@ -359,8 +396,16 @@ const columns = computed(() => [
                 </Tag>
               </div>
             </template>
-            <template v-else-if="['working_time', 'planned_stop_time', 'unplanned_stop_time', 'planned_operating_time', 'actual_operating_time'].includes(column.key as string)">
+            <template v-else-if="['working_time', 'planned_operating_time', 'actual_operating_time'].includes(column.key as string)">
               <span>{{ formatCellHours(record[column.key as keyof OperatingTimeItem]) }}</span>
+            </template>
+            <template v-else-if="column.key === 'stop_time'">
+              <span v-if="stopTimeMode === 'planned'">
+                {{ formatCellHours((record as OperatingTimeItem).planned_stop_time) }}
+              </span>
+              <span v-else class="text-red-500">
+                {{ formatCellHours((record as OperatingTimeItem).unplanned_stop_time) }}
+              </span>
             </template>
             <template v-else-if="column.key === 'actions'">
               <div class="space-x-2">

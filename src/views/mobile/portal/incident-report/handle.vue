@@ -222,7 +222,7 @@ onMounted(() => {
 
       <template v-else-if="equipment">
         <!-- Card Thông Tin Thiết Bị Đã Quét -->
-        <div class="bg-white dark:bg-zinc-900 border border-slate-200/80 dark:border-zinc-800 rounded-2xl p-4 shadow-3xs space-y-2">
+        <div style="background-color: white;" class="dark:!bg-zinc-900 border border-slate-200 dark:border-zinc-800 rounded-2xl p-4 shadow-sm space-y-2">
           <div class="flex items-center justify-between">
             <span class="text-[10px] font-bold uppercase text-indigo-500 tracking-wider">Thiết Bị Đã Quét QR</span>
             <Button
