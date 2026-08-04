@@ -19,6 +19,7 @@ import { API_BASE_URL } from '#/api/config';
 import { useAccessStore } from '@vben/stores';
 import { $t } from '#/locales';
 import { isSoftDeleted, softDeletedRowClass } from '#/utils/soft-delete';
+import { IconifyIcon } from '@vben/icons';
 
 import type { OperatingTimeItem, EquipmentOption } from './types';
 import OperatingTimesCharts from './components/OperatingTimesCharts.vue';
@@ -233,6 +234,7 @@ const columns = computed(() => [
     align: 'right' as const,
     customTitle: true,
     width: 220, // Fixed width to prevent layout jumping
+    sorter: (a: any, b: any) => 0, // Adds native sort triangles without sorting
   },
   {
     title: $t('page.ops.plannedOperatingTime'),
@@ -347,12 +349,11 @@ const columns = computed(() => [
               <Tooltip placement="top">
                 <template #title>
                   <div class="text-xs">
-                    <div v-if="stopTimeMode === 'planned'" v-html="$t('page.ops.tooltipPlanned')"></div>
-                    <div v-else v-html="$t('page.ops.tooltipUnplanned')"></div>
+                    {{ stopTimeMode === 'planned' ? $t('page.ops.plannedStopTime') : $t('page.ops.unplannedStopTime') }}
                   </div>
                 </template>
                 <span
-                  class="cursor-pointer flex items-center select-none hover:text-primary transition-colors justify-end"
+                  class="cursor-pointer flex items-center select-none hover:text-primary transition-colors justify-end group"
                   @click.stop="cycleStopTimeMode"
                 >
                   {{ stopTimeModeLabel }}
