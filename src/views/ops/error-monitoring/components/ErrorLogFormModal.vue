@@ -1,5 +1,5 @@
 <script lang="ts" setup>
-import { ref, computed, watch } from 'vue';
+import { ref, computed, watch, nextTick } from 'vue';
 import { Modal, Form, FormItem, Select, DatePicker, message } from 'ant-design-vue';
 import axios from 'axios';
 import dayjs from 'dayjs';
@@ -112,7 +112,9 @@ watch(
           handler_ids: [],
         };
       }
-      formRef.value?.resetFields();
+      nextTick(() => {
+        formRef.value?.clearValidate();
+      });
     }
   },
   { immediate: true },
