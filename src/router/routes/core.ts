@@ -206,6 +206,28 @@ const coreRoutes: RouteRecordRaw[] = [
         },
       },
       {
+        name: 'MobilePortalErrorHandlingIndex',
+        path: '/portal/error-handling',
+        component: () => import('#/views/mobile/portal/error-handling/index.vue'),
+        meta: {
+          title: 'Xử lý lỗi thiết bị',
+          ignoreAccess: true,
+          hideInMenu: true,
+          hideInTab: true,
+        },
+      },
+      {
+        name: 'MobilePortalErrorHandlingHandle',
+        path: '/portal/error-handling/:equipmentId',
+        component: () => import('#/views/mobile/portal/error-handling/handle.vue'),
+        meta: {
+          title: 'Hoàn tất xử lý lỗi',
+          ignoreAccess: true,
+          hideInMenu: true,
+          hideInTab: true,
+        },
+      },
+      {
         name: 'MobilePortalEmergencyStop',
         path: '/portal/emergency-stop',
         component: () => import('#/views/mobile/portal/emergency-stop/index.vue'),
