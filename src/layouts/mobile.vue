@@ -92,7 +92,7 @@ const floatMenuItems = computed(() => [
     exact: false,
   },
   {
-    title: "Xử lý lỗi",
+    title: t("page.portal.errorHandling") || "Xử lý lỗi",
     path: "/portal/incident-report",
     icon: "lucide:qr-code",
     color: "bg-rose-600 text-white hover:bg-rose-700 shadow-rose-500/25",
@@ -590,7 +590,9 @@ async function handleMakeAll() {
             class="w-full flex items-center gap-3 px-3.5 py-2.5 rounded-xl text-xs transition-all cursor-pointer border-0 text-left"
           >
             <IconifyIcon icon="lucide:qr-code" class="text-base flex-shrink-0 text-rose-400" />
-            <span class="flex-1 truncate">Xử lý lỗi</span>
+            <span class="flex-1 truncate">{{
+              t("page.portal.errorHandling") || "Xử lý lỗi"
+            }}</span>
           </button>
 
           <!-- 7. Report Incident -->
