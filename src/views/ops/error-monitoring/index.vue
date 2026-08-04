@@ -48,13 +48,11 @@ interface ErrorLogItem {
   handled_at?: string | null;
   created_at?: string;
   updated_at?: string;
-  handler_id?: string | null;
   handler_ids?: string[];
   handled_time?: number;
   is_synced?: boolean;
   equipment?: { name: string; code: string };
   equipment_error?: { name: string };
-  handler?: { id: string; name: string };
   handlers?: Array<{ id: string; name: string }>;
   deleted_at?: string | null;
 }
@@ -193,28 +191,10 @@ function getErrorName(record: ErrorLogItem) {
 }
 
 function getHandlersText(record: ErrorLogItem) {
-  const names: string[] = [];
-
   if (record.handlers && record.handlers.length > 0) {
-    record.handlers.forEach((h) => {
-      if (h.name && !names.includes(h.name)) {
-        names.push(h.name);
-      }
-    });
+    return record.handlers.map((h) => h.name).join(", ");
   }
-
-  if (record.handler?.name && !names.includes(record.handler.name)) {
-    names.push(record.handler.name);
-  }
-
-  if (names.length === 0 && record.handler_id) {
-    const u = users.value.find((user) => user.id === record.handler_id);
-    if (u?.name) {
-      names.push(u.name);
-    }
-  }
-
-  return names.length > 0 ? names.join(", ") : "-";
+  return "-";
 }
 
 onMounted(() => {

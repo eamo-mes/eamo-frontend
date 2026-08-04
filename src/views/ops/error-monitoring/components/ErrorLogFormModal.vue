@@ -1,5 +1,5 @@
 <script lang="ts" setup>
-import { ref, computed, watch, nextTick } from 'vue';
+import { ref, computed, watch } from 'vue';
 import { Modal, Form, FormItem, Select, DatePicker, message } from 'ant-design-vue';
 import axios from 'axios';
 import dayjs from 'dayjs';
@@ -112,9 +112,7 @@ watch(
           handler_ids: [],
         };
       }
-      nextTick(() => {
-        formRef.value?.clearValidate();
-      });
+      formRef.value?.resetFields();
     }
   },
   { immediate: true },
@@ -137,9 +135,7 @@ async function handleOk() {
     const payload = {
       equipment_id: formState.value.equipment_id,
       equipment_error_id: formState.value.equipment_error_id,
-      occurred_at: formState.value.occurred_at
-        ? formState.value.occurred_at.format('YYYY-MM-DD HH:mm:ss')
-        : dayjs().format('YYYY-MM-DD HH:mm:ss'),
+      occurred_at: formState.value.occurred_at ? formState.value.occurred_at.format('YYYY-MM-DD HH:mm:ss') : null,
       restarted_at: formState.value.restarted_at ? formState.value.restarted_at.format('YYYY-MM-DD HH:mm:ss') : null,
       handled_at: formState.value.handled_at ? formState.value.handled_at.format('YYYY-MM-DD HH:mm:ss') : null,
       handler_ids: formState.value.handler_ids || [],
@@ -166,15 +162,8 @@ async function handleOk() {
   } catch (err: unknown) {
     const formErr = err as { errorFields?: unknown[] };
     if (!formErr?.errorFields) {
-      const axiosErr = err as { response?: { data?: { message?: string; errors?: Record<string, string[]> } } };
-      const serverErrors = axiosErr?.response?.data?.errors;
-      let msg = axiosErr?.response?.data?.message || $t('page.ops.saveFailed');
-      if (serverErrors && typeof serverErrors === 'object') {
-        const errorDetails = Object.values(serverErrors).flat().join(', ');
-        if (errorDetails) {
-          msg = `${msg}: ${errorDetails}`;
-        }
-      }
+      const axiosErr = err as { response?: { data?: { message?: string } } };
+      const msg = axiosErr?.response?.data?.message || $t('page.ops.saveFailed');
       message.error(msg);
     }
   } finally {
