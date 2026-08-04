@@ -117,14 +117,28 @@ async function loadData() {
 // ─── Shared QR Camera Scanner Event Handler ───
 function handleQrScanned(payload: { rawText: string; matchedEquipment?: QrEquipmentItem }) {
   const { rawText, matchedEquipment } = payload;
-  const equipId = matchedEquipment?.id || rawText;
 
-  message.success(
-    t('page.portal.msgScanSuccessWithCode') ||
-    'Quét mã QR thành công!'
-  );
+  if (matchedEquipment) {
+    message.success(
+      t('page.portal.msgScanSuccessWithCode') ||
+      'Quét mã QR thành công!'
+    );
+    selectedEquipment.value = {
+      id: matchedEquipment.id,
+      code: matchedEquipment.code,
+      name: matchedEquipment.name || matchedEquipment.code,
+    };
+  } else {
+    // Fallback equipment placeholder if equipment is not in master list
+    const fallbackEquip: EquipmentItem = {
+      id: rawText,
+      code: rawText,
+      name: t('page.portal.fallbackEquipName', { code: rawText }) || `Thiết bị [Mã: ${rawText}]`,
+    };
+    selectedEquipment.value = fallbackEquip;
+  }
 
-  router.push(`/portal/incident-report/handle/${equipId}`);
+  step.value = 2;
 }
 
 function handleBack() {

@@ -79,7 +79,7 @@ const floatMenuItems = computed(() => [
   },
   {
     title: t("page.portal.errorHandling") || "Xử lý lỗi",
-    path: "/portal/incident-report",
+    path: "/portal/error-handling",
     icon: "lucide:qr-code",
     color: "bg-rose-600 text-white hover:bg-rose-700 shadow-rose-500/25",
     exact: false,
@@ -515,9 +515,9 @@ async function handleMakeAll() {
 
           <!-- 2. Xử lý lỗi -->
           <button
-            @click="handleNavigate('/portal/incident-report')"
+            @click="handleNavigate('/portal/error-handling')"
             :class="[
-              route.path.startsWith('/portal/incident-report')
+              route.path.startsWith('/portal/error-handling')
                 ? 'bg-indigo-600 text-white font-bold shadow-xs'
                 : 'text-slate-300 hover:bg-slate-800/80',
             ]"
