@@ -195,7 +195,7 @@ onMounted(() => {
         <h1 class="text-sm font-bold text-slate-800 dark:text-zinc-200 m-0 flex-1 truncate">
           Hoàn tất xử lý lỗi
         </h1>
-        <span class="text-xs font-semibold px-2.5 py-0.5 rounded-full bg-purple-50 dark:bg-purple-950/50 text-purple-600 dark:text-purple-400 shrink-0">
+        <span class="text-xs font-semibold px-2.5 py-0.5 rounded-full bg-indigo-50 dark:bg-indigo-950/50 text-indigo-600 dark:text-indigo-400 shrink-0">
           Bước 2/2
         </span>
       </div>
@@ -211,11 +211,11 @@ onMounted(() => {
         <!-- Card Thông Tin Thiết Bị Đã Quét -->
         <div class="bg-white dark:bg-zinc-900 border border-slate-200/80 dark:border-zinc-800 rounded-2xl p-4 shadow-3xs space-y-2">
           <div class="flex items-center justify-between">
-            <span class="text-[10px] font-bold uppercase text-purple-500 tracking-wider">Thiết Bị Đã Quét QR</span>
+            <span class="text-[10px] font-bold uppercase text-indigo-500 tracking-wider">Thiết Bị Đã Quét QR</span>
             <Button
               type="link"
               size="small"
-              class="p-0 h-auto text-xs text-slate-400 hover:text-purple-600"
+              class="p-0 h-auto text-xs text-slate-400 hover:text-indigo-600"
               @click="handleBack"
             >
               Quét lại
@@ -230,7 +230,7 @@ onMounted(() => {
               <span class="text-xs font-mono bg-slate-100 dark:bg-zinc-800 px-2 py-0.5 rounded-md text-slate-600 dark:text-zinc-400 font-semibold">
                 Mã: {{ equipment.code }}
               </span>
-              <span v-if="equipment.equipment_category?.name" class="text-xs bg-purple-50 dark:bg-purple-950/40 px-2 py-0.5 rounded-md text-purple-600 dark:text-purple-400">
+              <span v-if="equipment.equipment_category?.name" class="text-xs bg-indigo-50 dark:bg-indigo-950/40 px-2 py-0.5 rounded-md text-indigo-600 dark:text-indigo-400">
                 {{ equipment.equipment_category.name }}
               </span>
             </div>
@@ -242,7 +242,7 @@ onMounted(() => {
           
           <div class="flex items-center justify-between pb-2 border-b border-slate-100 dark:border-zinc-800">
             <label class="text-xs font-bold text-slate-700 dark:text-zinc-300">
-              Chọn loại lỗi đã khắc phục <span class="text-purple-500">*</span>
+              Chọn loại lỗi đã khắc phục <span class="text-indigo-500">*</span>
             </label>
           </div>
 
@@ -264,12 +264,12 @@ onMounted(() => {
               :class="[
                 'flex items-center gap-1.5 px-3.5 py-2.5 rounded-xl text-xs font-semibold cursor-pointer transition-all duration-150 select-none border',
                 selectedErrorId === err.id
-                  ? 'bg-purple-50 dark:bg-purple-950/70 border-purple-600 text-purple-600 dark:text-purple-400 shadow-xs font-bold ring-1 ring-purple-600/30'
-                  : 'bg-slate-50 dark:bg-zinc-800/60 border-slate-200 dark:border-zinc-700/70 text-slate-700 dark:text-zinc-300 hover:border-purple-300 dark:hover:border-purple-700'
+                  ? 'bg-indigo-50 dark:bg-indigo-950/70 border-indigo-600 text-indigo-600 dark:text-indigo-400 shadow-xs font-bold ring-1 ring-indigo-600/30'
+                  : 'bg-slate-50 dark:bg-zinc-800/60 border-slate-200 dark:border-zinc-700/70 text-slate-700 dark:text-zinc-300 hover:border-indigo-300 dark:hover:border-indigo-700'
               ]"
               @click="toggleSelectError(err.id)"
             >
-              <svg v-if="selectedErrorId === err.id" class="w-3.5 h-3.5 text-purple-600 dark:text-purple-400 shrink-0" fill="none" stroke="currentColor" stroke-width="3" viewBox="0 0 24 24">
+              <svg v-if="selectedErrorId === err.id" class="w-3.5 h-3.5 text-indigo-600 dark:text-indigo-400 shrink-0" fill="none" stroke="currentColor" stroke-width="3" viewBox="0 0 24 24">
                 <path stroke-linecap="round" stroke-linejoin="round" d="m4.5 12.75 6 6 9-13.5" />
               </svg>
               <span>{{ err.name }}</span>
@@ -292,7 +292,7 @@ onMounted(() => {
             size="large"
             :loading="submitting"
             :disabled="!selectedErrorId"
-            class="bg-purple-600 hover:bg-purple-500 border-none font-bold text-sm h-11 rounded-xl mt-3 text-white"
+            class="bg-indigo-600 hover:bg-indigo-500 border-none font-bold text-sm h-11 rounded-xl mt-3 text-white"
             @click="handleSubmit"
           >
             Xác Nhận Đã Xử Lý Lỗi
