@@ -420,7 +420,19 @@ onMounted(() => {
 
     <!-- ─── BOTTOM BAR ─── -->
     <div class="fixed bottom-0 left-0 right-0 z-30 bg-white/95 dark:bg-zinc-900/95 backdrop-blur-xl border-t border-slate-200/60 dark:border-zinc-800/60">
-      <div class="px-4 pt-2.5 pb-4 grid grid-cols-2 gap-2">
+      <div class="px-4 pt-2.5 pb-4 grid grid-cols-3 gap-2">
+        <!-- Xử lý lỗi -->
+        <button
+          type="button"
+          @click="router.push('/portal/incident-report')"
+          class="h-11 flex flex-col items-center justify-center gap-0.5 rounded-2xl bg-rose-50 dark:bg-rose-950/40 border border-rose-200/70 dark:border-rose-800/50 text-rose-600 dark:text-rose-400 cursor-pointer outline-none transition-all hover:bg-rose-100 dark:hover:bg-rose-900/60 active:scale-95 select-none"
+        >
+          <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M3.75 4.875c0-.621.504-1.125 1.125-1.125h4.5c.621 0 1.125.504 1.125 1.125v4.5c0 .621-.504 1.125-1.125 1.125h-4.5A1.125 1.125 0 0 1 3.75 9.375v-4.5ZM3.75 14.625c0-.621.504-1.125 1.125-1.125h4.5c.621 0 1.125.504 1.125 1.125v4.5c0 .621-.504 1.125-1.125 1.125h-4.5a1.125 1.125 0 0 1-1.125-1.125v-4.5ZM13.5 4.875c0-.621.504-1.125 1.125-1.125h4.5c.621 0 1.125.504 1.125 1.125v4.5c0 .621-.504 1.125-1.125 1.125h-4.5A1.125 1.125 0 0 1 13.5 9.375v-4.5Z" />
+          </svg>
+          <span class="text-[11px] font-bold tracking-wide">Xử lý lỗi</span>
+        </button>
+
         <!-- Báo cáo sự cố -->
         <button
           type="button"
@@ -437,7 +449,7 @@ onMounted(() => {
         <button
           type="button"
           @click="router.push('/portal/emergency-stop')"
-          class="h-11 flex flex-col items-center justify-center gap-0.5 rounded-2xl bg-rose-50 dark:bg-rose-950/40 border border-rose-200/70 dark:border-rose-800/50 text-rose-600 dark:text-rose-400 cursor-pointer outline-none transition-all hover:bg-rose-100 dark:hover:bg-rose-900/60 active:scale-95 select-none"
+          class="h-11 flex flex-col items-center justify-center gap-0.5 rounded-2xl bg-amber-50 dark:bg-amber-950/40 border border-amber-200/70 dark:border-amber-800/50 text-amber-600 dark:text-amber-400 cursor-pointer outline-none transition-all hover:bg-amber-100 dark:hover:bg-amber-900/60 active:scale-95 select-none"
         >
           <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
             <path stroke-linecap="round" stroke-linejoin="round" d="M5.25 7.5A2.25 2.25 0 0 1 7.5 5.25h9a2.25 2.25 0 0 1 2.25 2.25v9a2.25 2.25 0 0 1-2.25 2.25h-9a2.25 2.25 0 0 1-2.25-2.25v-9Z" />
