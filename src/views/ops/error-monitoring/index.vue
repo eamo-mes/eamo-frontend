@@ -10,13 +10,12 @@ import {
   Input,
 } from "ant-design-vue";
 import axios from "axios";
-import dayjs from "dayjs";
+import { formatVNTime } from "#/utils/date";
 import { API_BASE_URL } from "#/api/config";
 import { useAccessStore } from "@vben/stores";
 import { $t } from "#/locales";
 import {
   isSoftDeleted,
-  softDeletedRowClass,
   sortBySoftDeleted,
 } from "#/utils/soft-delete";
 import EquipmentErrorCategoryModal from "./components/EquipmentErrorCategoryModal.vue";
@@ -50,6 +49,7 @@ interface ErrorLogItem {
   updated_at?: string;
   handler_ids?: string[];
   handled_time?: number;
+  is_handled?: boolean;
   is_synced?: boolean;
   equipment?: { name: string; code: string };
   equipment_error?: { name: string };
@@ -58,16 +58,11 @@ interface ErrorLogItem {
 }
 
 const loading = ref(false);
-const syncingAll = ref(false);
-const syncingId = ref<string | null>(null);
 const items = ref<ErrorLogItem[]>([]);
 
 function getRowClassName(record: ErrorLogItem): string {
-  if (isSoftDeleted(record)) {
-    return "opacity-50";
-  }
-  if (record.is_synced) {
-    return "opacity-40 pointer-events-none";
+  if (isSoftDeleted(record) || record.is_handled) {
+    return "opacity-50 pointer-events-none";
   }
   return "";
 }
@@ -226,10 +221,10 @@ const filteredItems = computed(() => {
   }
   return sortBySoftDeleted(
     [...res].sort((a, b) => {
-      const aSynced = a.is_synced ? 1 : 0;
-      const bSynced = b.is_synced ? 1 : 0;
-      if (aSynced !== bSynced) {
-        return aSynced - bSynced;
+      const aHandled = a.is_handled ? 1 : 0;
+      const bHandled = b.is_handled ? 1 : 0;
+      if (aHandled !== bHandled) {
+        return aHandled - bHandled;
       }
       const aTime = a.occurred_at
         ? new Date(a.occurred_at).getTime()
@@ -275,48 +270,6 @@ async function handleDelete(id: string) {
   } catch (error) {
     message.error($t("page.ops.deleteFailed"));
     console.error(error);
-  }
-}
-
-async function syncOneResolved(id: string) {
-  syncingId.value = id;
-  try {
-    await axios.post(
-      `${API_BASE_URL}/v1/equipment/error-monitoring/equipment-error-logs/${id}/sync-resolved`,
-      {},
-      { headers: getAuthHeaders() },
-    );
-    message.success($t("page.ops.syncSuccess"));
-    await loadInitialData();
-    await loadItems();
-  } catch (error: unknown) {
-    const axiosErr = error as { response?: { data?: { message?: string } } };
-    message.error(
-      axiosErr?.response?.data?.message || $t("page.ops.syncFailed"),
-    );
-  } finally {
-    syncingId.value = null;
-  }
-}
-
-async function syncAllResolved() {
-  syncingAll.value = true;
-  try {
-    const res = await axios.post(
-      `${API_BASE_URL}/v1/equipment/error-monitoring/equipment-error-logs/sync-resolved`,
-      {},
-      { headers: getAuthHeaders() },
-    );
-    message.success(res.data?.message || $t("page.ops.syncSuccess"));
-    await loadInitialData();
-    await loadItems();
-  } catch (error: unknown) {
-    const axiosErr = error as { response?: { data?: { message?: string } } };
-    message.error(
-      axiosErr?.response?.data?.message || $t("page.ops.syncFailed"),
-    );
-  } finally {
-    syncingAll.value = false;
   }
 }
 
@@ -381,19 +334,6 @@ const columns = computed(() => [
         {{ $t("page.company.btnReset") }}
       </Button>
       <div class="ml-auto flex gap-2">
-        <Popconfirm
-          :title="$t('page.ops.syncConfirmAll')"
-          :ok-text="$t('page.ops.btnOk')"
-          :cancel-text="$t('page.ops.btnCancel')"
-          @confirm="syncAllResolved"
-        >
-          <Button
-            :loading="syncingAll"
-            class="rounded-md font-medium border-blue-500 text-blue-600 hover:bg-blue-50"
-          >
-            {{ $t("page.ops.syncResolvedAll") }}
-          </Button>
-        </Popconfirm>
         <Button
           type="default"
           class="rounded-md font-medium border-emerald-600 text-emerald-600 hover:bg-emerald-50"
@@ -437,27 +377,16 @@ const columns = computed(() => [
               <span>{{ getErrorName(record as ErrorLogItem) }}</span>
             </template>
             <template v-else-if="column.key === 'status'">
-              <Tag v-if="record.handled_at" color="green">Resolved</Tag>
-              <Tag v-else-if="record.restarted_at" color="orange"
-                >Restarted</Tag
-              >
-              <Tag v-else-if="record.occurred_at" color="red">Active Error</Tag>
-              <Tag v-else color="blue">Definition</Tag>
+              <Tag v-if="record.is_handled || record.handled_at" color="green">Resolved</Tag>
+              <Tag v-else-if="record.restarted_at" color="orange">Restarted</Tag>
+              <Tag v-else color="red">Active Error</Tag>
             </template>
             <template v-else-if="column.key === 'occurred_at'">
-              <span>{{
-                record.occurred_at
-                  ? dayjs(record.occurred_at).format("YYYY-MM-DD HH:mm:ss")
-                  : "-"
-              }}</span>
+              <span>{{ formatVNTime(record.occurred_at) }}</span>
             </template>
 
             <template v-else-if="column.key === 'handled_at'">
-              <span>{{
-                record.handled_at
-                  ? dayjs(record.handled_at).format("YYYY-MM-DD HH:mm:ss")
-                  : "-"
-              }}</span>
+              <span>{{ formatVNTime(record.handled_at) }}</span>
             </template>
             <template v-else-if="column.key === 'handlers'">
               <span>{{ getHandlersText(record as ErrorLogItem) }}</span>
@@ -466,28 +395,12 @@ const columns = computed(() => [
               <div class="flex items-center gap-2 justify-center">
                 <Button
                   size="small"
-                  :disabled="isSoftDeleted(record as ErrorLogItem)"
-                  class="rounded hover:border-primary hover:text-primary"
+                  type="link"
+                  class="text-primary hover:text-primary/80"
                   @click="openEditModal(record as ErrorLogItem)"
                 >
                   {{ $t("page.ops.editErrorLog") }}
                 </Button>
-                <Popconfirm
-                  v-if="record.handled_at && !record.is_synced"
-                  :title="$t('page.ops.syncConfirmOne')"
-                  :ok-text="$t('page.ops.btnOk')"
-                  :cancel-text="$t('page.ops.btnCancel')"
-                  @confirm="syncOneResolved(record.id)"
-                >
-                  <Button
-                    size="small"
-                    :disabled="isSoftDeleted(record as ErrorLogItem)"
-                    :loading="syncingId === record.id"
-                    class="rounded border-blue-400 text-blue-600 hover:bg-blue-50"
-                  >
-                    {{ $t("page.ops.syncResolvedOne") }}
-                  </Button>
-                </Popconfirm>
                 <Popconfirm
                   :title="$t('page.company.deleteConfirm')"
                   :ok-text="$t('page.ops.btnOk')"

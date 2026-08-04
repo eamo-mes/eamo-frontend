@@ -16,7 +16,6 @@ import {
   Breadcrumb,
   Popconfirm,
   Empty,
-  Tag,
 } from 'ant-design-vue';
 import VisualMaintenanceCalendar from '../../dashboard/workspace/components/VisualMaintenanceCalendar.vue';
 import { ChevronLeft } from '@vben/icons';
@@ -213,13 +212,6 @@ async function loadUsers(): Promise<void> {
   }
 }
 
-function getUserNames(userIds: string[] = []): string[] {
-  if (!userIds || userIds.length === 0) return [];
-  return userIds.map((id) => {
-    const found = users.value.find((u) => u.id === id);
-    return found ? found.name : id;
-  });
-}
 
 function generateKey(): string {
   return Math.random().toString(36).slice(2) + Date.now().toString(36);

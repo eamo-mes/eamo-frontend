@@ -9,9 +9,9 @@ import {
   Button,
   message,
 } from 'ant-design-vue';
-import dayjs from 'dayjs';
 import axios from 'axios';
 import { useAccessStore } from '@vben/stores';
+import { getVNNowString } from '#/utils/date';
 import { API_BASE_URL } from '#/api/config';
 
 defineOptions({ name: 'MobilePortalIncidentReportHandle' });
@@ -87,19 +87,29 @@ async function loadData() {
       };
     }
 
-    // 2. Fetch Master Errors List
-    const errorsRes = await axios.get(`${API_BASE_URL}/v1/equipment-errors`, {
-      headers: getAuthHeaders(),
-      params: { per_page: 1000 },
-    });
-    const rawErrors = errorsRes.data?.data ?? errorsRes.data ?? [];
-    masterErrors.value = Array.isArray(rawErrors)
-      ? rawErrors.map((e: any) => ({
-          id: e.id,
-          name: e.name,
-          code: e.code,
-        }))
-      : [];
+    // 2. Load Error List (Prioritize errors configured specifically for this equipment)
+    const equipErrors = rawEquip?.equipment_errors ?? rawEquip?.errors;
+    if (Array.isArray(equipErrors) && equipErrors.length > 0) {
+      masterErrors.value = equipErrors.map((e: ErrorItem) => ({
+        id: e.id,
+        name: e.name,
+        code: e.code,
+      }));
+    } else {
+      // Fallback to fetch all master errors if equipment has no specific assigned errors
+      const errorsRes = await axios.get(`${API_BASE_URL}/v1/equipment-errors`, {
+        headers: getAuthHeaders(),
+        params: { per_page: 1000 },
+      });
+      const rawErrors = errorsRes.data?.data ?? errorsRes.data ?? [];
+      masterErrors.value = Array.isArray(rawErrors)
+        ? rawErrors.map((e: ErrorItem) => ({
+            id: e.id,
+            name: e.name,
+            code: e.code,
+          }))
+        : [];
+    }
   } catch (err: unknown) {
     console.error('Failed to load equipment error handling page data:', err);
     // If equipment fetch fails by ID, use ID as fallback code
@@ -151,7 +161,7 @@ async function handleSubmit() {
     const payload = {
       equipment_id: equipment.value.id,
       equipment_error_id: selectedErrorId.value,
-      occurred_at: dayjs().format('YYYY-MM-DD HH:mm:ss'),
+      occurred_at: getVNNowString(),
       notes: finalNotes,
     };
 
@@ -163,10 +173,11 @@ async function handleSubmit() {
 
     message.success('Đã hoàn tất xử lý và ghi nhận lỗi thành công!');
     router.push('/portal');
-  } catch (err: any) {
+  } catch (err: unknown) {
     console.error('Failed to submit equipment error log:', err);
+    const errObj = err as { response?: { data?: { message?: string } } };
     message.error(
-      err?.response?.data?.message || 'Xử lý thất bại, vui lòng thử lại!'
+      errObj?.response?.data?.message || 'Xử lý thất bại, vui lòng thử lại!'
     );
   } finally {
     submitting.value = false;

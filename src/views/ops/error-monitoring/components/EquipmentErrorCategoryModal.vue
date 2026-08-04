@@ -3,6 +3,7 @@ import { ref, computed, watch } from 'vue';
 import { Modal, Form, FormItem, Select, DatePicker, message } from 'ant-design-vue';
 import axios from 'axios';
 import type { Dayjs } from 'dayjs';
+import { VN_TIMEZONE, dayjsToVNString } from '#/utils/date';
 import { API_BASE_URL } from '#/api/config';
 import { useAccessStore } from '@vben/stores';
 import { $t } from '#/locales';
@@ -96,7 +97,7 @@ async function handleOk() {
 
     const payload = {
       equipment_error_ids: updatedErrorIds,
-      occurred_at: formState.value.occurred_at ? formState.value.occurred_at.format('YYYY-MM-DD HH:mm:ss') : null,
+      occurred_at: dayjsToVNString(formState.value.occurred_at),
       handler_ids: formState.value.handler_ids,
     };
 

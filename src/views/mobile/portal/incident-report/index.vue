@@ -7,10 +7,10 @@ import {
   Select, 
   message,
 } from 'ant-design-vue';
-import dayjs from 'dayjs';
 import axios from 'axios';
 import { useI18n } from '@vben/locales';
-import { useAccessStore } from '@vben/stores';
+import { useAccessStore, useUserStore } from '@vben/stores';
+import { getVNNowString } from '#/utils/date';
 import { API_BASE_URL } from '#/api/config';
 import QrCameraScanner, { type EquipmentItem as QrEquipmentItem } from '../components/QrCameraScanner.vue';
 
@@ -19,6 +19,7 @@ defineOptions({ name: 'MobilePortalIncidentReport' });
 const router = useRouter();
 const { t } = useI18n();
 const accessStore = useAccessStore();
+const userStore = useUserStore();
 
 // ─── States ───
 const step = ref<1 | 2>(1); // 1: Real Camera QR Scan, 2: Error Input Form
@@ -45,6 +46,7 @@ const masterErrors = ref<ErrorItem[]>([]);
 const selectedEquipment = ref<EquipmentItem | null>(null);
 
 const errorSearchQuery = ref('');
+const scanTimestamp = ref<string | null>(null);
 
 const filteredMasterErrors = computed(() => {
   if (!errorSearchQuery.value.trim()) return masterErrors.value;
@@ -89,7 +91,7 @@ async function loadData() {
     });
     const rawEquip = equipRes.data;
     const listEquip = Array.isArray(rawEquip) ? rawEquip : (rawEquip?.data ?? []);
-    equipments.value = listEquip.map((item: any) => ({
+    equipments.value = listEquip.map((item: { id: string; code: string; name?: string | null }) => ({
       id: item.id,
       code: item.code,
       name: item.name || item.code,
@@ -101,7 +103,7 @@ async function loadData() {
       params: { per_page: 1000 },
     });
     const rawErrors = errorsRes.data?.data ?? errorsRes.data ?? [];
-    masterErrors.value = Array.isArray(rawErrors) ? rawErrors.map((e: any) => ({
+    masterErrors.value = Array.isArray(rawErrors) ? rawErrors.map((e: { id: string; name: string; code?: string }) => ({
       id: e.id,
       name: e.name,
       code: e.code,
@@ -138,6 +140,8 @@ function handleQrScanned(payload: { rawText: string; matchedEquipment?: QrEquipm
     selectedEquipment.value = fallbackEquip;
   }
 
+  scanTimestamp.value = getVNNowString();
+
   step.value = 2;
 }
 
@@ -166,14 +170,19 @@ async function handleSubmit() {
   const matchedError = masterErrors.value.find(e => e.id === finalErrorId);
   const finalNotes = matchedError ? matchedError.name : 'Báo cáo sự cố từ mã QR';
 
-  try {
-    submitting.value = true;
-    const payload = {
-      equipment_id: selectedEquipment.value.id,
-      equipment_error_id: finalErrorId,
-      occurred_at: dayjs().format('YYYY-MM-DD HH:mm:ss'),
-      notes: finalNotes,
-    };
+    try {
+      submitting.value = true;
+      const currentUserId = userStore.userInfo?.userId || userStore.userInfo?.id;
+      const payload: Record<string, unknown> = {
+        equipment_id: selectedEquipment.value.id,
+        equipment_error_id: finalErrorId,
+        occurred_at: scanTimestamp.value || getVNNowString(),
+        is_handled: false,
+        notes: finalNotes,
+      };
+      if (currentUserId) {
+        payload.handler_ids = [currentUserId];
+      }
 
     await axios.post(
       `${API_BASE_URL}/v1/equipment/error-monitoring/equipment-error-logs`,

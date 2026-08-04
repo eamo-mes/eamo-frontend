@@ -9,9 +9,9 @@ import {
   Button,
   message,
 } from 'ant-design-vue';
-import dayjs from 'dayjs';
 import axios from 'axios';
-import { useAccessStore } from '@vben/stores';
+import { useAccessStore, useUserStore } from '@vben/stores';
+import { getVNNowString } from '#/utils/date';
 import { API_BASE_URL } from '#/api/config';
 
 defineOptions({ name: 'MobilePortalErrorHandlingHandle' });
@@ -20,8 +20,10 @@ const route = useRoute();
 const router = useRouter();
 const { t } = useI18n();
 const accessStore = useAccessStore();
+const userStore = useUserStore();
 
 const equipmentId = computed(() => route.params.equipmentId as string);
+const handledAtTime = computed(() => (route.query.scan_time as string) || getVNNowString());
 
 // ─── Interfaces ───
 interface EquipmentItem {
@@ -30,12 +32,14 @@ interface EquipmentItem {
   name: string | null;
   equipment_category?: { name: string } | null;
   device_id?: string | null;
+  equipment_errors?: ErrorItem[];
 }
 
 interface ErrorItem {
   id: string;
   name: string;
   code?: string;
+  log_id?: string;
 }
 
 // ─── App State ───
@@ -77,6 +81,7 @@ async function loadData() {
         name: rawEquip.name || rawEquip.code,
         equipment_category: rawEquip.equipment_category,
         device_id: rawEquip.device_id,
+        equipment_errors: rawEquip.equipment_errors || rawEquip.errors || [],
       };
     } else {
       equipment.value = {
@@ -86,17 +91,46 @@ async function loadData() {
       };
     }
 
-    // 2. Fetch Master Errors List
+    // 2. Query Active Error Logs for this equipment to match active unresolved incidents
+    const logsRes = await axios.get(
+      `${API_BASE_URL}/v1/equipment/error-monitoring/equipment-error-logs`,
+      { headers: getAuthHeaders() }
+    );
+    const rawLogs = logsRes.data?.data ?? logsRes.data ?? [];
+    const activeLogs = Array.isArray(rawLogs)
+      ? rawLogs.filter(
+          (log: { equipment_id: string; handled_at?: string | null; deleted_at?: string | null; is_handled?: boolean }) =>
+            log.equipment_id === equipmentId.value &&
+            !log.handled_at &&
+            !log.deleted_at &&
+            !log.is_handled
+        )
+      : [];
+
+    const activeLogMap = new Map<string, string>();
+    activeLogs.forEach(
+      (log: { id: string; equipment_error_id?: string | null }) => {
+        if (log.equipment_error_id) {
+          activeLogMap.set(log.equipment_error_id, log.id);
+        }
+      }
+    );
+
+    // 3. Load Error List (ONLY errors configured specifically for this equipment)
     const errorsRes = await axios.get(`${API_BASE_URL}/v1/equipment-errors`, {
       headers: getAuthHeaders(),
-      params: { per_page: 1000 },
+      params: {
+        equipment_id: equipmentId.value,
+        per_page: 1000,
+      },
     });
     const rawErrors = errorsRes.data?.data ?? errorsRes.data ?? [];
     masterErrors.value = Array.isArray(rawErrors)
-      ? rawErrors.map((e: any) => ({
+      ? rawErrors.map((e: ErrorItem) => ({
           id: e.id,
           name: e.name,
           code: e.code,
+          log_id: activeLogMap.get(e.id),
         }))
       : [];
   } catch (err: unknown) {
@@ -146,27 +180,56 @@ async function handleSubmit() {
 
   try {
     submitting.value = true;
-    const payload = {
-      equipment_id: equipment.value.id,
-      equipment_error_id: selectedErrorId.value,
-      occurred_at: dayjs().format('YYYY-MM-DD HH:mm:ss'),
-      handled_at: dayjs().format('YYYY-MM-DD HH:mm:ss'),
-      restarted_at: dayjs().format('YYYY-MM-DD HH:mm:ss'),
-      notes: finalNotes,
-    };
+    const timeStr = handledAtTime.value;
+    const currentUserId = userStore.userInfo?.userId || userStore.userInfo?.id;
+    const handlerIds = currentUserId ? [currentUserId] : [];
 
-    await axios.post(
-      `${API_BASE_URL}/v1/equipment/error-monitoring/equipment-error-logs`,
-      payload,
-      { headers: getAuthHeaders() }
-    );
+    if (matchedError?.log_id) {
+      // An active unresolved error log exists -> UPDATE it to resolve and soft-delete it
+      const payload: Record<string, unknown> = {
+        handled_at: timeStr,
+        restarted_at: timeStr,
+        is_handled: true,
+        notes: finalNotes,
+      };
+      if (handlerIds.length > 0) {
+        payload.handler_ids = handlerIds;
+      }
+
+      await axios.put(
+        `${API_BASE_URL}/v1/equipment/error-monitoring/equipment-error-logs/${matchedError.log_id}`,
+        payload,
+        { headers: getAuthHeaders() }
+      );
+    } else {
+      // No active log exists -> CREATE a new resolved error log
+      const payload: Record<string, unknown> = {
+        equipment_id: equipment.value.id,
+        equipment_error_id: selectedErrorId.value,
+        occurred_at: timeStr,
+        handled_at: timeStr,
+        restarted_at: timeStr,
+        is_handled: true,
+        notes: finalNotes,
+      };
+      if (handlerIds.length > 0) {
+        payload.handler_ids = handlerIds;
+      }
+
+      await axios.post(
+        `${API_BASE_URL}/v1/equipment/error-monitoring/equipment-error-logs`,
+        payload,
+        { headers: getAuthHeaders() }
+      );
+    }
 
     message.success(t('page.portal.msgHandleSuccess') || 'Đã hoàn tất xử lý và ghi nhận lỗi thành công!');
     router.push('/portal');
-  } catch (err: any) {
+  } catch (err: unknown) {
     console.error('Failed to submit equipment error log:', err);
+    const errObj = err as { response?: { data?: { message?: string } } };
     message.error(
-      err?.response?.data?.message || t('page.portal.msgHandleFailed') || 'Xử lý thất bại, vui lòng thử lại!'
+      errObj?.response?.data?.message || t('page.portal.msgHandleFailed') || 'Xử lý thất bại, vui lòng thử lại!'
     );
   } finally {
     submitting.value = false;

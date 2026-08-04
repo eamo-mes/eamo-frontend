@@ -900,6 +900,25 @@ async function handleMakeAll() {
       </TransitionGroup>
 
       <!-- Main Floating Trigger Button (Draggable FAB) -->
+      <button
+        type="button"
+        :class="[
+          floatMenuOpen
+            ? 'bg-slate-700 dark:bg-zinc-600 rotate-45'
+            : 'bg-indigo-600 hover:bg-indigo-500',
+          isDraggingFloat
+            ? 'scale-90 shadow-md'
+            : 'shadow-xl hover:shadow-indigo-500/40',
+        ]"
+        class="size-13 rounded-full flex items-center justify-center border-0 outline-none cursor-pointer transition-all duration-200 active:scale-90"
+        @pointerdown="startDrag"
+        @click="handleFloatBtnClick"
+      >
+        <IconifyIcon
+          :icon="floatMenuOpen ? 'lucide:x' : 'lucide:navigation'"
+          class="size-5 text-white transition-all duration-200"
+        />
+      </button>
     </div>
   </div>
 </template>

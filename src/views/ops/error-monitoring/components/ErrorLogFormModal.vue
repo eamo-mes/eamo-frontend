@@ -4,6 +4,7 @@ import { Modal, Form, FormItem, Select, DatePicker, message } from 'ant-design-v
 import axios from 'axios';
 import dayjs from 'dayjs';
 import type { Dayjs } from 'dayjs';
+import { getVNNow, parseVNTime, dayjsToVNString } from '#/utils/date';
 import { API_BASE_URL } from '#/api/config';
 import { useAccessStore } from '@vben/stores';
 import { $t } from '#/locales';
@@ -97,16 +98,16 @@ watch(
         formState.value = {
           equipment_id: props.record.equipment_id,
           equipment_error_id: props.record.equipment_error_id,
-          occurred_at: props.record.occurred_at ? dayjs(props.record.occurred_at) : undefined,
-          restarted_at: props.record.restarted_at ? dayjs(props.record.restarted_at) : undefined,
-          handled_at: props.record.handled_at ? dayjs(props.record.handled_at) : undefined,
+          occurred_at: props.record.occurred_at ? parseVNTime(props.record.occurred_at) : undefined,
+          restarted_at: props.record.restarted_at ? parseVNTime(props.record.restarted_at) : undefined,
+          handled_at: props.record.handled_at ? parseVNTime(props.record.handled_at) : undefined,
           handler_ids: props.record.handlers ? props.record.handlers.map((h) => h.id) : [],
         };
       } else {
         formState.value = {
           equipment_id: undefined,
           equipment_error_id: undefined,
-          occurred_at: dayjs(),
+          occurred_at: getVNNow(),
           restarted_at: undefined,
           handled_at: undefined,
           handler_ids: [],
@@ -135,9 +136,9 @@ async function handleOk() {
     const payload = {
       equipment_id: formState.value.equipment_id,
       equipment_error_id: formState.value.equipment_error_id,
-      occurred_at: formState.value.occurred_at ? formState.value.occurred_at.format('YYYY-MM-DD HH:mm:ss') : null,
-      restarted_at: formState.value.restarted_at ? formState.value.restarted_at.format('YYYY-MM-DD HH:mm:ss') : null,
-      handled_at: formState.value.handled_at ? formState.value.handled_at.format('YYYY-MM-DD HH:mm:ss') : null,
+      occurred_at: dayjsToVNString(formState.value.occurred_at),
+      restarted_at: dayjsToVNString(formState.value.restarted_at),
+      handled_at: dayjsToVNString(formState.value.handled_at),
       handler_ids: formState.value.handler_ids || [],
     };
 

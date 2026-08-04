@@ -6,6 +6,7 @@ import { message } from 'ant-design-vue';
 import axios from 'axios';
 import { useAccessStore } from '@vben/stores';
 import { API_BASE_URL } from '#/api/config';
+import { getVNNowString } from '#/utils/date';
 import QrCameraScanner, { type EquipmentItem as QrEquipmentItem } from '../components/QrCameraScanner.vue';
 
 defineOptions({ name: 'MobilePortalErrorHandlingIndex' });
@@ -52,7 +53,8 @@ function handleQrScanned(payload: { rawText: string; matchedEquipment?: QrEquipm
 
   message.success(t('page.portal.msgScanSuccessWithCode') || 'Quét mã QR thành công!');
   qrScannerRef.value?.stopCamera();
-  router.push(`/portal/error-handling/${equipId}`);
+  const scanTime = getVNNowString();
+  router.push(`/portal/error-handling/${equipId}?scan_time=${encodeURIComponent(scanTime)}`);
 }
 
 function handleBack() {
