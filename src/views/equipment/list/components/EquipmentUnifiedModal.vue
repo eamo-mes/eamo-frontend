@@ -28,6 +28,11 @@ interface CategoryOption {
   name: string;
 }
 
+interface ErrorOption {
+  id: string;
+  name: string;
+}
+
 interface EquipmentListItem {
   id: string;
   code: string;
@@ -43,6 +48,7 @@ interface EquipmentData {
   is_active?: boolean;
   maintenance_interval_hours?: number | null;
   parent_id?: string | null;
+  equipment_errors?: Array<{ id: string; name?: string }> | null;
 }
 
 const props = withDefaults(
@@ -66,6 +72,7 @@ const loading = ref(false);
 const saving = ref(false);
 
 const categories = ref<CategoryOption[]>([]);
+const errorsList = ref<ErrorOption[]>([]);
 const parentEquipmentOptions = ref<EquipmentListItem[]>([]);
 
 const equipmentData = ref<EquipmentData | null>(null);
@@ -77,6 +84,7 @@ const formState = ref({
   is_active: true,
   maintenance_interval_hours: undefined as number | undefined,
   parent_id: undefined as string | undefined,
+  equipment_error_ids: [] as string[],
 });
 
 const qrContainerRef = ref<HTMLDivElement | null>(null);
@@ -92,15 +100,19 @@ function getAuthHeaders() {
 
 async function loadOptions() {
   try {
-    const [catRes, eqRes] = await Promise.all([
+    const [catRes, eqRes, errRes] = await Promise.all([
       axios.get(`${API_BASE_URL}/v1/equipment-categories`, { headers: getAuthHeaders(), params: { per_page: 1000 } }),
       axios.get(`${API_BASE_URL}/v1/equipment`, { headers: getAuthHeaders(), params: { per_page: 1000 } }),
+      axios.get(`${API_BASE_URL}/v1/equipment-errors`, { headers: getAuthHeaders(), params: { per_page: 1000 } }),
     ]);
     const rawCats = catRes.data?.data ?? catRes.data ?? [];
     categories.value = Array.isArray(rawCats) ? rawCats : [];
 
     const rawEqs = eqRes.data?.data ?? eqRes.data ?? [];
     parentEquipmentOptions.value = Array.isArray(rawEqs) ? rawEqs : [];
+
+    const rawErrs = errRes.data?.data ?? errRes.data ?? [];
+    errorsList.value = Array.isArray(rawErrs) ? rawErrs : [];
   } catch {
     // Silently handle option load failure
   }
@@ -116,6 +128,7 @@ async function loadEquipmentDetail() {
       is_active: true,
       maintenance_interval_hours: undefined,
       parent_id: undefined,
+      equipment_error_ids: [],
     };
     return;
   }
@@ -134,6 +147,7 @@ async function loadEquipmentDetail() {
       is_active: data.is_active !== undefined ? !!data.is_active : true,
       maintenance_interval_hours: data.maintenance_interval_hours ?? undefined,
       parent_id: data.parent_id || undefined,
+      equipment_error_ids: data.equipment_errors?.map((err: { id: string }) => err.id) || [],
     };
   } catch (err: unknown) {
     const error = err as { response?: { data?: { message?: string } } };
@@ -158,6 +172,7 @@ async function handleSave() {
       is_active: formState.value.is_active,
       maintenance_interval_hours: formState.value.maintenance_interval_hours ?? null,
       parent_id: formState.value.parent_id || null,
+      equipment_error_ids: formState.value.equipment_error_ids || [],
     };
 
     if (props.equipmentId) {
@@ -352,6 +367,20 @@ watch(
                     class="w-full"
                     :placeholder="$t('page.equipment.placeholderHours')"
                   />
+                </FormItem>
+
+                <FormItem :label="$t('page.equipment.colErrors')" name="equipment_error_ids" class="col-span-1">
+                  <Select
+                    v-model:value="formState.equipment_error_ids"
+                    mode="multiple"
+                    option-filter-prop="label"
+                    :placeholder="$t('page.equipment.placeholderErrors')"
+                    allow-clear
+                  >
+                    <Select.Option v-for="err in errorsList" :key="err.id" :value="err.id" :label="err.name">
+                      {{ err.name }}
+                    </Select.Option>
+                  </Select>
                 </FormItem>
 
                 <FormItem :label="$t('page.equipment.colActive')">
