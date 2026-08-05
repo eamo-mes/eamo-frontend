@@ -71,7 +71,7 @@ const floatMenuOpen = ref(false);
 
 const floatMenuItems = computed(() => [
   {
-    title: t("page.portal.title") || "Trang chủ",
+    title: t("page.portal.title") || "Không gian làm việc",
     path: "/portal",
     icon: "lucide:home",
     color: "bg-slate-600 text-white hover:bg-slate-700 shadow-slate-500/25",
@@ -82,6 +82,13 @@ const floatMenuItems = computed(() => [
     path: "/portal/equipment",
     icon: "lucide:wrench",
     color: "bg-blue-600 text-white hover:bg-blue-700 shadow-blue-500/25",
+    exact: false,
+  },
+  {
+    title: t("page.portal.errorHandling") || "Xử lý lỗi",
+    path: "/portal/error-handling",
+    icon: "lucide:qr-code",
+    color: "bg-purple-600 text-white hover:bg-purple-700 shadow-purple-500/25",
     exact: false,
   },
 ]);
@@ -313,7 +320,7 @@ const searchItems = computed(() => {
     category: string;
   }[] = [
     {
-      title: t("page.portal.homeTitle") || "Trang chủ Mobile Portal",
+      title: t("page.portal.homeTitle") || "Không gian làm việc Mobile Portal",
       path: "/portal",
       icon: "lucide:smartphone",
       category: "Mobile",

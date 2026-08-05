@@ -14,7 +14,7 @@ import type {
   ScheduleRow,
 } from "#/views/dashboard/workspace/types";
 
-defineOptions({ name: "MobilePortalHome" });
+defineOptions({ name: "MobilePortalWorkspace" });
 
 const router = useRouter();
 const { t } = useI18n();

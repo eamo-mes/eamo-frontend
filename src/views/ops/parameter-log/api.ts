@@ -19,6 +19,14 @@ function getAuthHeaders() {
   };
 }
 
+function getAuthHeadersForUpload() {
+  const accessStore = useAccessStore();
+  return {
+    Authorization: `Bearer ${accessStore.accessToken}`,
+    Accept: 'application/json',
+  };
+}
+
 /**
  * GET /api/v1/equipment/equipment-parameter/logs
  * Route: equipment-parameter-logs.index
@@ -190,3 +198,23 @@ export async function fetchUnitsApi(): Promise<UnitOption[]> {
   }
   return res.data?.data ?? [];
 }
+
+/**
+ * POST /api/v1/equipment/equipment-parameter/logs/import
+ */
+export async function importParameterLogApi(file: File): Promise<{ status?: string; message: string }> {
+  const formData = new FormData();
+  formData.append('file', file, file.name);
+  const res = await axios.post<{ status?: string; message: string }>(
+    `${API_BASE_URL}/v1/equipment/equipment-parameter/logs/import`,
+    formData,
+    {
+      headers: {
+        ...getAuthHeadersForUpload(),
+        'Content-Type': 'multipart/form-data',
+      },
+    }
+  );
+  return res.data;
+}
+

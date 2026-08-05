@@ -230,6 +230,37 @@ function handleTableChange(pagination: any) {
   loadEquipments(pagination.current, pagination.pageSize);
 }
 
+function hasEquipmentError(record: EquipmentItem): boolean {
+  if (!record) return false;
+
+  if (Array.isArray(record.equipment_errors) && record.equipment_errors.length > 0) {
+    return true;
+  }
+
+  const recAny = record as Record<string, any>;
+  if (recAny.has_error || recAny.is_error || recAny.status === 'error' || recAny.error_status === 'error') {
+    return true;
+  }
+  if (typeof recAny.error_count === 'number' && recAny.error_count > 0) {
+    return true;
+  }
+  if (typeof recAny.error_logs_count === 'number' && recAny.error_logs_count > 0) {
+    return true;
+  }
+
+  return false;
+}
+
+function getEquipmentRowClassName(record: EquipmentItem) {
+  if (isSoftDeleted(record)) {
+    return softDeletedRowClass(record);
+  }
+  if (hasEquipmentError(record)) {
+    return 'bg-red-50/90 dark:bg-red-950/40 text-red-900 dark:text-red-200 font-medium';
+  }
+  return '';
+}
+
 const filteredEquipments = computed(() => sortBySoftDeleted(equipments.value));
 
 const columns = computed(() => [
@@ -361,7 +392,7 @@ onMounted(() => {
           :columns="columns"
           :data-source="filteredEquipments"
           row-key="id"
-          :row-class-name="softDeletedRowClass"
+          :row-class-name="(record) => getEquipmentRowClassName(record as EquipmentItem)"
           :scroll="{ x: 'max-content' }"
           :pagination="{
             current: currentPage,
@@ -374,7 +405,16 @@ onMounted(() => {
           @change="handleTableChange"
         >
           <template #bodyCell="{ column, record }">
-            <template v-if="column.key === 'equipment_category'">
+            <template v-if="column.key === 'code'">
+              <div class="flex items-center gap-1.5 font-semibold">
+                <span>{{ record.code }}</span>
+                <Tag v-if="hasEquipmentError(record as EquipmentItem)" color="error" class="m-0 text-[11px] font-bold">
+                  {{ $t('page.equipment.colErrors') }}
+                </Tag>
+              </div>
+            </template>
+
+            <template v-else-if="column.key === 'equipment_category'">
                <span>{{ record.equipment_category?.name || '—' }}</span>
             </template>
 

@@ -11,19 +11,15 @@ import {
 import type { UploadFile } from 'ant-design-vue';
 import axios from 'axios';
 import { useI18n } from '@vben/locales';
-import { API_BASE_URL } from '#/api/config';
 import { $t } from '#/locales';
-import type { OperatingTimeItem, EquipmentOption } from '../types';
-import { parseFileContent, exportToExcelBlob, generateTemplateBlob } from '../import-helper';
+import { importParameterLogApi } from '../api';
+import { generateParameterTemplateBlob } from '../parameter-template-helper';
 
 const UploadDragger = Upload.Dragger;
 const { locale } = useI18n();
 
 const props = defineProps<{
   open: boolean;
-  getAuthHeaders: () => Record<string, string>;
-  getEquipmentName: (id: string) => string;
-  equipments: EquipmentOption[];
 }>();
 
 const emit = defineEmits<{
@@ -38,18 +34,18 @@ const showModal = computed({
 
 const importing = ref(false);
 const importFileList = ref<UploadFile[]>([]);
-const previewData = ref<OperatingTimeItem[]>([]);
+const selectedFile = ref<File | null>(null);
 const importErrors = ref<string[]>([]);
 
 function handleDownloadTemplate() {
   const currentLocale = locale.value || 'en-US';
-  const blob = generateTemplateBlob(currentLocale);
+  const blob = generateParameterTemplateBlob(currentLocale);
   const url = URL.createObjectURL(blob);
   const a = document.createElement('a');
   a.href = url;
   a.download = currentLocale === 'zh-CN'
-    ? 'mau-nhap-thoi-gian-van-hanh.xlsx'
-    : 'operating-times-template.xlsx';
+    ? 'mau-nhap-nhat-ky-thong-so.xlsx'
+    : 'parameter-log-template.xlsx';
   a.click();
   URL.revokeObjectURL(url);
 }
@@ -58,83 +54,39 @@ function handleBeforeUpload(file: File) {
   const ext = file.name.split('.').pop()?.toLowerCase();
   const allowed = ['xlsx', 'xls', 'csv', 'txt'];
   if (!ext || !allowed.includes(ext)) {
-    message.error($t('page.ops.importHint'));
+    message.error($t('page.ops.paramImportHint'));
     return false;
   }
 
   if (file.size > 10 * 1024 * 1024) {
-    message.error($t('page.ops.importHint'));
+    message.error($t('page.ops.paramImportHint'));
     return false;
   }
 
+  selectedFile.value = file;
   importFileList.value = [file as unknown as UploadFile];
   importErrors.value = [];
-
-  const reader = new FileReader();
-  const isExcel = file.name.endsWith('.xlsx') || file.name.endsWith('.xls');
-
-  reader.onload = async (e) => {
-    try {
-      const data = e.target?.result;
-      if (!data) throw new Error('File is empty');
-
-      const parsed = await parseFileContent(data, isExcel, props.equipments);
-      previewData.value = parsed.parsedItems;
-      if (parsed.errors.length > 0) {
-        importErrors.value = parsed.errors;
-      }
-    } catch (err: unknown) {
-      importErrors.value = [err instanceof Error ? err.message : 'Failed to parse file'];
-    }
-  };
-
-  if (isExcel) {
-    reader.readAsArrayBuffer(file);
-  } else {
-    reader.readAsText(file);
-  }
-
   return false;
 }
 
 function resetImport() {
   importFileList.value = [];
-  previewData.value = [];
+  selectedFile.value = null;
   importErrors.value = [];
 }
 
 async function handleImportUpload() {
-  if (previewData.value.length === 0) {
-    message.error($t('page.ops.importFileRequired'));
-    return;
-  }
-
-  if (importErrors.value.length > 0) {
-    message.error('Please fix validation errors before importing.');
+  if (!selectedFile.value) {
+    message.error($t('page.ops.paramImportFileRequired'));
     return;
   }
 
   importing.value = true;
+  importErrors.value = [];
 
   try {
-    const fileBlob = exportToExcelBlob(previewData.value);
-    const filename = importFileList.value[0]?.name || 'import.xlsx';
-
-    const formData = new FormData();
-    formData.append('file', fileBlob, filename);
-
-    const response = await axios.post(
-      `${API_BASE_URL}/v1/equipment/error-monitoring/operating-times/import`,
-      formData,
-      {
-        headers: {
-          ...props.getAuthHeaders(),
-          'Content-Type': 'multipart/form-data',
-        }
-      }
-    );
-
-    const successMsg = response.data?.message || $t('page.ops.importSuccess');
+    const res = await importParameterLogApi(selectedFile.value);
+    const successMsg = res.message || $t('page.ops.paramImportSuccess');
     message.success(successMsg);
 
     showModal.value = false;
@@ -159,7 +111,7 @@ async function handleImportUpload() {
 <template>
   <Modal
     v-model:open="showModal"
-    :title="$t('page.ops.importTitle')"
+    :title="$t('page.ops.paramImportTitle')"
     width="800px"
     @cancel="resetImport"
   >
@@ -177,28 +129,28 @@ async function handleImportUpload() {
             </svg>
           </p>
           <p class="ant-upload-text text-sm font-medium text-gray-700 mt-2">
-            {{ $t('page.ops.importDragDropText') }}
+            {{ $t('page.ops.paramImportDragDropText') }}
           </p>
           <p class="ant-upload-hint text-xs text-gray-400 mb-4">
-            {{ $t('page.ops.importHint') }}
+            {{ $t('page.ops.paramImportHint') }}
           </p>
         </UploadDragger>
 
-        <div v-if="importFileList.length > 0 && previewData.length > 0 && importErrors.length === 0" class="text-xs text-green-600 dark:text-green-400 flex items-center gap-1.5">
+        <div v-if="importFileList.length > 0 && importErrors.length === 0" class="text-xs text-green-600 dark:text-green-400 flex items-center gap-1.5">
           <svg class="w-3.5 h-3.5 shrink-0" fill="currentColor" viewBox="0 0 20 20">
             <path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd" />
           </svg>
-          {{ previewData.length }} records ready — {{ importFileList[0]?.name }}
+          {{ importFileList[0]?.name }}
         </div>
 
         <Alert
           v-if="importErrors.length > 0"
-          :message="$t('page.ops.importErrorsTitle')"
+          :message="$t('page.ops.paramImportErrorsTitle')"
           type="error"
           show-icon
         >
           <template #description>
-            <div class="max-h-[120px] overflow-y-auto mt-1 space-y-0.5">
+            <div class="max-h-[150px] overflow-y-auto mt-1 space-y-0.5">
               <div v-for="(err, idx) in importErrors" :key="idx" class="text-xs">
                 • {{ err }}
               </div>
@@ -214,17 +166,17 @@ async function handleImportUpload() {
           <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
           </svg>
-          {{ $t('page.ops.importDownloadTemplate') }}
+          {{ $t('page.ops.paramImportDownloadTemplate') }}
         </Button>
         <div class="space-x-2">
           <Button @click="resetImport(); showModal = false">{{ $t('page.ops.btnCancel') }}</Button>
           <Button
             type="primary"
             :loading="importing"
-            :disabled="importErrors.length > 0 || previewData.length === 0"
+            :disabled="importFileList.length === 0"
             @click="handleImportUpload"
           >
-            {{ $t('page.ops.importConfirm') }}
+            {{ $t('page.ops.paramImportConfirm') }}
           </Button>
         </div>
       </div>

@@ -9,7 +9,8 @@ import {
   Spin,
   Empty,
   Progress,
-  Result
+  Result,
+  Modal
 } from 'ant-design-vue';
 import axios from 'axios';
 import { useAccessStore } from '@vben/stores';
@@ -32,6 +33,9 @@ interface CategoryOption {
 interface ErrorOption {
   id: string;
   name: string;
+  reason?: string | null;
+  fix?: string | null;
+  protection_measures?: string | null;
 }
 
 interface ParameterItem {
@@ -98,6 +102,29 @@ const fetchError = ref('');
 const errorStatus = ref<number | null>(null);
 
 const activeTabKey = ref<'info' | 'hierarchy'>('info');
+
+const showErrorModal = ref(false);
+const selectedError = ref<ErrorOption | null>(null);
+const errorDetailLoading = ref(false);
+
+async function handleOpenErrorDetail(err: ErrorOption) {
+  selectedError.value = err;
+  showErrorModal.value = true;
+  errorDetailLoading.value = true;
+  try {
+    const res = await axios.get(`${API_BASE_URL}/v1/equipment-errors/${err.id}`, {
+      headers: getAuthHeaders(),
+    });
+    const data = res.data?.data ?? res.data;
+    if (data) {
+      selectedError.value = data;
+    }
+  } catch (e) {
+    console.error('Failed to fetch error details', e);
+  } finally {
+    errorDetailLoading.value = false;
+  }
+}
 
 // Touch gesture swipe handling between Tab 1 (info) and Tab 2 (hierarchy)
 const touchStartX = ref(0);
@@ -441,7 +468,8 @@ onMounted(() => {
                   v-for="err in activeEquipment?.equipment_errors"
                   :key="err.id"
                   color="red"
-                  class="text-[10px] px-1.5 py-0.5 rounded-md"
+                  class="text-[10px] px-1.5 py-0.5 rounded-md cursor-pointer hover:opacity-80 transition-opacity"
+                  @click="handleOpenErrorDetail(err)"
                 >
                   {{ err.name }}
                 </Tag>
@@ -552,8 +580,55 @@ onMounted(() => {
           :read-only="true"
         />
       </div>
-    </div>
+    <!-- Error Detail Modal -->
+    <Modal
+      v-model:open="showErrorModal"
+      :title="t('page.portal.errorDetailTitle')"
+      :footer="null"
+      width="600px"
+    >
+      <Spin :spinning="errorDetailLoading">
+        <div v-if="selectedError" class="space-y-4 py-2">
+          <div>
+            <span class="text-slate-400 dark:text-zinc-500 block uppercase tracking-wider text-[10px] font-bold">
+              {{ t('page.equipment.colName') }}
+            </span>
+            <p class="text-sm font-bold text-slate-800 dark:text-zinc-200 mt-1">
+              {{ selectedError.name }}
+            </p>
+          </div>
+
+          <div>
+            <span class="text-slate-400 dark:text-zinc-500 block uppercase tracking-wider text-[10px] font-bold">
+              {{ t('page.equipment.colReason') }}
+            </span>
+            <div class="text-xs text-slate-700 dark:text-zinc-300 mt-1 bg-slate-50 dark:bg-zinc-800/40 p-2.5 rounded-lg border border-slate-100 dark:border-zinc-850 whitespace-pre-wrap">
+              {{ selectedError.reason || '—' }}
+            </div>
+          </div>
+
+          <div>
+            <span class="text-slate-400 dark:text-zinc-500 block uppercase tracking-wider text-[10px] font-bold">
+              {{ t('page.equipment.colFix') }}
+            </span>
+            <div class="text-xs text-slate-700 dark:text-zinc-300 mt-1 bg-slate-50 dark:bg-zinc-800/40 p-2.5 rounded-lg border border-slate-100 dark:border-zinc-850 whitespace-pre-wrap">
+              {{ selectedError.fix || '—' }}
+            </div>
+          </div>
+
+          <div>
+            <span class="text-slate-400 dark:text-zinc-500 block uppercase tracking-wider text-[10px] font-bold">
+              {{ t('page.equipment.colProtection') }}
+            </span>
+            <div class="text-xs text-slate-700 dark:text-zinc-300 mt-1 bg-slate-50 dark:bg-zinc-800/40 p-2.5 rounded-lg border border-slate-100 dark:border-zinc-850 whitespace-pre-wrap">
+              {{ selectedError.protection_measures || '—' }}
+            </div>
+          </div>
+        </div>
+      </Spin>
+    </Modal>
   </div>
+</div>
 </template>
 
 <style scoped>

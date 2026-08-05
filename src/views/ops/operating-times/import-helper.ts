@@ -200,3 +200,55 @@ export function exportToExcelBlob(items: OperatingTimeItem[]): Blob {
   const wbout = XLSX.write(workbook, wopts);
   return new Blob([wbout], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
 }
+
+export function generateTemplateBlob(locale: string): Blob {
+  const isVi = locale === 'zh-CN';
+
+  const headers = isVi
+    ? {
+        equip_code: 'mã thiết bị',
+        equip_name: 'tên thiết bị',
+        planned_stop: 'thời gian dừng kế hoạch',
+        unplanned_stop: 'thời gian dừng không kế hoạch',
+        start_time: 'thời gian bắt đầu',
+        end_time: 'thời gian kết thúc',
+      }
+    : {
+        equip_code: 'code',
+        equip_name: 'equipment_name',
+        planned_stop: 'planned_stop_time',
+        unplanned_stop: 'unplanned_stop_time',
+        start_time: 'start_time',
+        end_time: 'end_time',
+      };
+
+  const sampleRows = [
+    {
+      [headers.equip_code]: 'EQ-001',
+      [headers.equip_name]: isVi ? 'Máy phay CNC 01' : 'CNC Milling Machine 01',
+      [headers.planned_stop]: 0.5,
+      [headers.unplanned_stop]: 0,
+      [headers.start_time]: '2026-08-01 08:00:00',
+      [headers.end_time]: '2026-08-01 17:00:00',
+    },
+    {
+      [headers.equip_code]: 'EQ-002',
+      [headers.equip_name]: isVi ? 'Máy tiện CNC 02' : 'CNC Lathe Machine 02',
+      [headers.planned_stop]: 1.0,
+      [headers.unplanned_stop]: 0.5,
+      [headers.start_time]: '2026-08-01 08:00:00',
+      [headers.end_time]: '2026-08-01 17:00:00',
+    },
+  ];
+
+  const worksheet = XLSX.utils.json_to_sheet(sampleRows);
+  const workbook = XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(workbook, worksheet, 'Template');
+
+  const wopts: XLSX.WritingOptions = { bookType: 'xlsx', type: 'array' };
+  const wbout = XLSX.write(workbook, wopts);
+  return new Blob([wbout], {
+    type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+  });
+}
+

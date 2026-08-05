@@ -29,6 +29,7 @@ import {
 } from './api';
 
 import ParameterBatchSaveModal from './components/ParameterBatchSaveModal.vue';
+import ParameterImportModal from './components/ParameterImportModal.vue';
 import ParameterLineChart from './components/ParameterLineChart.vue';
 
 const RangePicker = DatePicker.RangePicker;
@@ -48,6 +49,7 @@ const isEditing = ref(false);
 const editId = ref<string | null>(null);
 
 const showBatchSaveModal = ref(false);
+const showImportModal = ref(false);
 const showBarChart = ref(true);
 
 // Filter & search state
@@ -569,6 +571,14 @@ const columns = computed(() => [
         <Button
           type="default"
           class="border-slate-300 text-slate-700 hover:bg-slate-50 dark:border-gray-700 dark:text-gray-300 dark:hover:bg-gray-800 font-medium"
+          @click="showImportModal = true"
+        >
+          {{ $t('page.ops.btnImportParameters') }}
+        </Button>
+
+        <Button
+          type="default"
+          class="border-slate-300 text-slate-700 hover:bg-slate-50 dark:border-gray-700 dark:text-gray-300 dark:hover:bg-gray-800 font-medium"
           @click="openBatchSaveModal"
         >
           {{ $t('page.ops.btnBatchSave') }}
@@ -738,6 +748,12 @@ const columns = computed(() => [
       v-model:open="showBatchSaveModal"
       :equipments="equipments"
       :units="units"
+      @success="loadItems"
+    />
+
+    <!-- Import Equipment Parameters Modal (POST /import) -->
+    <ParameterImportModal
+      v-model:open="showImportModal"
       @success="loadItems"
     />
   </div>
