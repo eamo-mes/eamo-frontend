@@ -85,6 +85,34 @@ const floatMenuItems = computed(() => [
     exact: false,
   },
   {
+    title: t("page.portal.notifications") || "Thông báo",
+    path: "/portal/dashboard",
+    icon: "lucide:bell",
+    color: "bg-amber-600 text-white hover:bg-amber-700 shadow-amber-500/25",
+    exact: false,
+  },
+  {
+    title: t("page.portal.checklist") || "Checklist",
+    path: "/portal/checklist",
+    icon: "lucide:clipboard-check",
+    color: "bg-teal-600 text-white hover:bg-teal-700 shadow-teal-500/25",
+    exact: false,
+  },
+  {
+    title: t("page.portal.mPlans") || "Kế hoạch bảo trì",
+    path: "/portal/maintain-plan",
+    icon: "lucide:calendar-clock",
+    color: "bg-indigo-600 text-white hover:bg-indigo-700 shadow-indigo-500/25",
+    exact: false,
+  },
+  {
+    title: t("page.portal.equipmentLogTitle") || "Ghi nhận thông số",
+    path: "/portal/equipment-log",
+    icon: "lucide:file-input",
+    color: "bg-emerald-600 text-white hover:bg-emerald-700 shadow-emerald-500/25",
+    exact: false,
+  },
+  {
     title: t("page.portal.errorHandling") || "Xử lý lỗi",
     path: "/portal/error-handling",
     icon: "lucide:qr-code",
@@ -554,6 +582,25 @@ async function handleMakeAll() {
             />
             <span class="flex-1 truncate">{{
               t("page.portal.mPlans") || "Kế hoạch bảo trì"
+            }}</span>
+          </button>
+
+          <!-- 5.5 Ghi nhận thông số -->
+          <button
+            @click="handleNavigate('/portal/equipment-log')"
+            :class="[
+              route.path.startsWith('/portal/equipment-log')
+                ? 'bg-indigo-600 text-white font-bold shadow-xs'
+                : 'text-slate-300 hover:bg-slate-800/80',
+            ]"
+            class="w-full flex items-center gap-3 px-3.5 py-2.5 rounded-xl text-xs transition-all cursor-pointer border-0 text-left"
+          >
+            <IconifyIcon
+              icon="lucide:file-input"
+              class="text-base flex-shrink-0"
+            />
+            <span class="flex-1 truncate">{{
+              t("page.portal.equipmentLogTitle") || "Ghi nhận thông số"
             }}</span>
           </button>
 

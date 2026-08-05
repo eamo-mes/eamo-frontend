@@ -1074,6 +1074,19 @@
     "noMatchingError": "No matching errors found",
     "handleErrorInstruction": "Tap an error from the list above to confirm it is resolved. The resolution time and handler will be recorded automatically.",
     "btnConfirmHandleError": "Confirm Error Handled",
-    "noEquipFound": "Equipment not found"
+    "noEquipFound": "Equipment not found",
+    "equipmentLogTitle": "Record Equipment Parameters",
+    "inputParameterTitle": "Input Measurement Parameters",
+    "parameterListLabel": "Measurement Parameters List",
+    "filledCountLabel": "Entered",
+    "searchParamPlaceholder": "Search parameter...",
+    "inputParamPlaceholder": "Enter measured value...",
+    "noMatchingParam": "No matching parameter found",
+    "skipEmptyParamNote": "Blank parameters will be automatically skipped and will not create a log record.",
+    "btnConfirmSaveParams": "Confirm Save Parameters",
+    "msgEnterAtLeastOneParam": "Please enter a value for at least 1 parameter before saving!",
+    "msgSaveParamsSuccess": "Successfully saved parameter logs!",
+    "msgSaveParamsFailed": "Failed to save parameters, please try again!",
+    "scanTimeLabel": "Scan time:"
   }
 }

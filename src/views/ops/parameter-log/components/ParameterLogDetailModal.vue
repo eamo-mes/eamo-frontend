@@ -10,6 +10,7 @@ import {
   message
 } from 'ant-design-vue';
 import dayjs from 'dayjs';
+import { $t } from '#/locales';
 import { fetchParameterLogDetailApi, fetchEquipmentOverviewApi, fetchParameterLogsApi } from '../api';
 import type { EquipmentOption, UnitOption, ParameterLogItem } from '../types';
 

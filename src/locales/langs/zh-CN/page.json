@@ -1067,6 +1067,19 @@
     "noMatchingError": "Không có loại lỗi nào phù hợp",
     "handleErrorInstruction": "Chạm vào 1 loại lỗi trong danh sách trên để xác nhận đã xử lý xong. Thời điểm khắc phục và người xử lý sẽ tự động được ghi nhận.",
     "btnConfirmHandleError": "Xác Nhận Đã Xử Lý Lỗi",
-    "noEquipFound": "Không tìm thấy thiết bị"
+    "noEquipFound": "Không tìm thấy thiết bị",
+    "equipmentLogTitle": "Ghi nhận thông số thiết bị",
+    "inputParameterTitle": "Nhập thông số đo đạc",
+    "parameterListLabel": "Danh sách thông số đo",
+    "filledCountLabel": "Đã nhập",
+    "searchParamPlaceholder": "Tìm kiếm thông số...",
+    "inputParamPlaceholder": "Nhập chỉ số đo đạc...",
+    "noMatchingParam": "Không tìm thấy thông số phù hợp",
+    "skipEmptyParamNote": "Các thông số để trống sẽ tự động được bỏ qua, không khởi tạo bản ghi log.",
+    "btnConfirmSaveParams": "Xác nhận lưu thông số",
+    "msgEnterAtLeastOneParam": "Vui lòng nhập giá trị cho ít nhất 1 thông số trước khi lưu!",
+    "msgSaveParamsSuccess": "Đã lưu thành công thông số đo đạc!",
+    "msgSaveParamsFailed": "Lưu thông số thất bại, vui lòng thử lại!",
+    "scanTimeLabel": "Thời gian quét:"
   }
 }

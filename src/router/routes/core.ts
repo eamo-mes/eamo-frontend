@@ -228,6 +228,28 @@ const coreRoutes: RouteRecordRaw[] = [
         },
       },
       {
+        name: 'MobilePortalEquipmentLogIndex',
+        path: '/portal/equipment-log',
+        component: () => import('#/views/mobile/portal/equipment-log/index.vue'),
+        meta: {
+          title: 'Ghi nhận thông số thiết bị',
+          ignoreAccess: true,
+          hideInMenu: true,
+          hideInTab: true,
+        },
+      },
+      {
+        name: 'MobilePortalEquipmentLogHandle',
+        path: '/portal/equipment-log/:equipmentId',
+        component: () => import('#/views/mobile/portal/equipment-log/handle.vue'),
+        meta: {
+          title: 'Nhập thông số đo đạc',
+          ignoreAccess: true,
+          hideInMenu: true,
+          hideInTab: true,
+        },
+      },
+      {
         name: 'MobilePortalEmergencyStop',
         path: '/portal/emergency-stop',
         component: () => import('#/views/mobile/portal/emergency-stop/index.vue'),
