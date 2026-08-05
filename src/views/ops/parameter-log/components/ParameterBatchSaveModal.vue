@@ -172,7 +172,7 @@ function handleCancel(): void {
   <Modal
     :open="props.open"
     :title="$t('page.ops.batchSaveTitle')"
-    width="1000px"
+    width="800px"
     :confirm-loading="submitting"
     :ok-text="$t('page.ops.btnOk')"
     :cancel-text="$t('page.ops.btnCancel')"
@@ -224,10 +224,8 @@ function handleCancel(): void {
 
         <div class="flex items-center gap-2">
           <span class="text-xs text-slate-500 font-medium">{{ $t('page.ops.unitLabel') }}:</span>
-          <Tag class="m-0 font-semibold bg-slate-100 text-slate-700 border-slate-200 dark:bg-gray-700 dark:text-gray-300 dark:border-gray-600">
             {{ unitName || '-' }}
-          </Tag>
-        </div>
+          </div>
       </div>
 
       <!-- Nested Time-based Records Section -->

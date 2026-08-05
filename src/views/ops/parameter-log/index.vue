@@ -28,9 +28,10 @@ import {
   fetchUnitsApi
 } from './api';
 
-import ParameterLogDetailModal from './components/ParameterLogDetailModal.vue';
 import ParameterBatchSaveModal from './components/ParameterBatchSaveModal.vue';
-import WeeklyParameterChart from './components/WeeklyParameterChart.vue';
+import ParameterLineChart from './components/ParameterLineChart.vue';
+
+const RangePicker = DatePicker.RangePicker;
 
 const loading = ref(false);
 const submitting = ref(false);
@@ -46,15 +47,54 @@ const showAddEditModal = ref(false);
 const isEditing = ref(false);
 const editId = ref<string | null>(null);
 
-const showDetailDrawer = ref(false);
-const selectedDetailId = ref<string | null>(null);
-
 const showBatchSaveModal = ref(false);
+const showBarChart = ref(true);
 
 // Filter & search state
 const searchVal = ref('');
 const activeSearch = ref('');
 const selectedEquipmentFilter = ref<string | undefined>(undefined);
+const selectedParameterFilter = ref<string | undefined>(undefined);
+const dateRangeFilter = ref<[Dayjs, Dayjs] | undefined>(undefined);
+
+// Dynamic parameters list for parameter filter select
+const filterParameters = computed(() => {
+  if (selectedEquipmentFilter.value) {
+    const equip = equipments.value.find((e) => e.id === selectedEquipmentFilter.value);
+    return (equip?.equipment_parameters ?? []).map((p) => ({
+      id: p.id,
+      name: p.name ? (p.code ? `${p.name} (${p.code})` : p.name) : p.id,
+    }));
+  }
+
+  const allParams: { id: string; name: string }[] = [];
+  const seenIds = new Set<string>();
+  for (const equip of equipments.value) {
+    if (equip.equipment_parameters) {
+      for (const p of equip.equipment_parameters) {
+        if (!seenIds.has(p.id)) {
+          seenIds.add(p.id);
+          const pName = p.name ? (p.code ? `${p.name} (${p.code})` : p.name) : p.id;
+          allParams.push({
+            id: p.id,
+            name: `${equip.name} - ${pName}`,
+          });
+        }
+      }
+    }
+  }
+  return allParams;
+});
+
+// Watch selected equipment to reset parameter filter if selected parameter is not valid
+watch(selectedEquipmentFilter, () => {
+  if (selectedParameterFilter.value) {
+    const exists = filterParameters.value.some((p) => p.id === selectedParameterFilter.value);
+    if (!exists) {
+      selectedParameterFilter.value = undefined;
+    }
+  }
+});
 
 // Computed equipment for embedded chart
 const chartEquipmentId = computed(() => {
@@ -84,14 +124,26 @@ const rules = computed(() => ({
 const availableParameters = computed(() => {
   if (!formState.value.equipment_id) return [];
   const equip = equipments.value.find((e) => e.id === formState.value.equipment_id);
-  return equip?.equipment_parameters ?? [];
+  const params = equip?.equipment_parameters ?? [];
+  return params.map((p) => ({
+    ...p,
+    displayName: p.name
+      ? (p.code && !p.name.includes(`(${p.code})`) ? `${p.name} (${p.code})` : p.name)
+      : p.code || p.id,
+  }));
 });
 
-// Watch selected equipment to reset parameter selection
+// Watch selected equipment to reset parameter selection only if newly selected equipment does not have the current parameter
 watch(
   () => formState.value.equipment_id,
-  () => {
-    formState.value.equipment_parameter_id = undefined;
+  (newVal, oldVal) => {
+    if (oldVal !== undefined && newVal !== oldVal) {
+      const equip = equipments.value.find((e) => e.id === newVal);
+      const exists = equip?.equipment_parameters?.some((p) => p.id === formState.value.equipment_parameter_id);
+      if (!exists) {
+        formState.value.equipment_parameter_id = undefined;
+      }
+    }
   }
 );
 
@@ -179,6 +231,8 @@ function handleReset() {
   searchVal.value = '';
   activeSearch.value = '';
   selectedEquipmentFilter.value = undefined;
+  selectedParameterFilter.value = undefined;
+  dateRangeFilter.value = undefined;
 }
 
 const filteredItems = computed(() => {
@@ -186,6 +240,21 @@ const filteredItems = computed(() => {
 
   if (selectedEquipmentFilter.value) {
     result = result.filter((item) => item.equipment_id === selectedEquipmentFilter.value);
+  }
+
+  if (selectedParameterFilter.value) {
+    result = result.filter((item) => item.equipment_parameter_id === selectedParameterFilter.value);
+  }
+
+  if (dateRangeFilter.value && dateRangeFilter.value[0] && dateRangeFilter.value[1]) {
+    const start = dateRangeFilter.value[0].startOf('day');
+    const end = dateRangeFilter.value[1].endOf('day');
+    result = result.filter((item) => {
+      const recDateStr = item.recorded_at || item.created_at;
+      if (!recDateStr) return false;
+      const recDate = dayjs(recDateStr);
+      return (recDate.isAfter(start) || recDate.isSame(start)) && (recDate.isBefore(end) || recDate.isSame(end));
+    });
   }
 
   if (activeSearch.value) {
@@ -218,25 +287,47 @@ function openEditModal(record: ParameterLogItem) {
   isEditing.value = true;
   editId.value = record.id;
   recordedAtForm.value = record.recorded_at ? dayjs(record.recorded_at) : (record.created_at ? dayjs(record.created_at) : dayjs());
+
+  const equipId = record.equipment_id || record.equipment?.id;
+  const paramId = record.equipment_parameter_id || record.equipment_parameter?.id || record.parameter?.id;
+
+  // Ensure equipment option exists in equipments list so Select displays name properly
+  if (equipId && !equipments.value.some((e) => e.id === equipId)) {
+    const equipObj = record.equipment;
+    equipments.value.push({
+      id: equipId,
+      code: equipObj?.code || '',
+      name: equipObj?.name ? (equipObj.code ? `${equipObj.name} (${equipObj.code})` : equipObj.name) : (equipObj?.code || equipId),
+      equipment_parameters: [],
+    });
+  }
+
+  // Ensure parameter option exists in equipment's equipment_parameters list
+  if (equipId && paramId) {
+    const equip = equipments.value.find((e) => e.id === equipId);
+    if (equip) {
+      if (!equip.equipment_parameters) {
+        equip.equipment_parameters = [];
+      }
+      if (!equip.equipment_parameters.some((p) => p.id === paramId)) {
+        const pObj = record.parameter || record.equipment_parameter;
+        equip.equipment_parameters.push({
+          id: paramId,
+          code: pObj?.code || '',
+          name: pObj?.name || pObj?.code || paramId,
+          unit_id: record.unit_id || null,
+        });
+      }
+    }
+  }
+
   formState.value = {
-    equipment_id: record.equipment_id,
-    equipment_parameter_id: record.equipment_parameter_id,
+    equipment_id: equipId,
+    equipment_parameter_id: paramId,
     unit_id: record.unit_id || undefined,
     value: record.value,
   };
   showAddEditModal.value = true;
-}
-
-function openDetailDrawer(record: ParameterLogItem) {
-  selectedDetailId.value = record.id;
-  showDetailDrawer.value = true;
-}
-
-function openWeeklyChart(equipmentId?: string) {
-  if (equipmentId) {
-    selectedEquipmentFilter.value = equipmentId;
-  }
-  showEmbeddedChart.value = true;
 }
 
 function openBatchSaveModal() {
@@ -288,6 +379,55 @@ async function handleAddEditOk() {
   }
 }
 
+function isOutOfRange(record: ParameterLogItem): boolean {
+  if (!record || record.value === undefined || record.value === null || record.value === '') return false;
+  const numVal = Number(record.value);
+  if (isNaN(numVal)) return false;
+
+  const paramObj = record.parameter || record.equipment_parameter;
+  let minLimit: number | null = null;
+  let maxLimit: number | null = null;
+
+  if (paramObj) {
+    if (paramObj.standard_min !== undefined && paramObj.standard_min !== null) minLimit = Number(paramObj.standard_min);
+    else if (paramObj.min_value !== undefined && paramObj.min_value !== null) minLimit = Number(paramObj.min_value);
+    else if (paramObj.lower_limit !== undefined && paramObj.lower_limit !== null) minLimit = Number(paramObj.lower_limit);
+
+    if (paramObj.standard_max !== undefined && paramObj.standard_max !== null) maxLimit = Number(paramObj.standard_max);
+    else if (paramObj.max_value !== undefined && paramObj.max_value !== null) maxLimit = Number(paramObj.max_value);
+    else if (paramObj.upper_limit !== undefined && paramObj.upper_limit !== null) maxLimit = Number(paramObj.upper_limit);
+  }
+
+  if (minLimit === null && maxLimit === null) {
+    const equip = equipments.value.find((e) => e.id === record.equipment_id);
+    const param = equip?.equipment_parameters?.find((p) => p.id === record.equipment_parameter_id);
+    if (param) {
+      if (param.standard_min !== undefined && param.standard_min !== null) minLimit = Number(param.standard_min);
+      else if (param.min_value !== undefined && param.min_value !== null) minLimit = Number(param.min_value);
+      else if (param.lower_limit !== undefined && param.lower_limit !== null) minLimit = Number(param.lower_limit);
+
+      if (param.standard_max !== undefined && param.standard_max !== null) maxLimit = Number(param.standard_max);
+      else if (param.max_value !== undefined && param.max_value !== null) maxLimit = Number(param.max_value);
+      else if (param.upper_limit !== undefined && param.upper_limit !== null) maxLimit = Number(param.upper_limit);
+    }
+  }
+
+  if (minLimit !== null && !isNaN(minLimit) && numVal < minLimit) return true;
+  if (maxLimit !== null && !isNaN(maxLimit) && numVal > maxLimit) return true;
+
+  return false;
+}
+
+function getTableRowClassName(record: ParameterLogItem) {
+  if (isSoftDeleted(record)) {
+    return softDeletedRowClass(record);
+  }
+  if (isOutOfRange(record)) {
+    return 'bg-red-50/90 dark:bg-red-950/40 text-red-900 dark:text-red-200 font-medium';
+  }
+  return '';
+}
+
 const columns = computed(() => [
   {
     title: $t('page.ops.colEquipment'),
@@ -313,7 +453,7 @@ const columns = computed(() => [
     title: $t('page.ops.colActions'),
     key: 'actions',
     align: 'center' as const,
-    width: 340,
+    width: 140,
     fixed: 'right' as const,
   },
 ]);
@@ -364,12 +504,22 @@ const columns = computed(() => [
         :units="units"
       />
     </div>
+    <!-- Inline Parameter Line Chart Component (shown when parameter is selected) -->
+    <ParameterLineChart
+      v-if="selectedParameterFilter && showBarChart"
+      :items="filteredItems"
+      :units="units"
+      :parameter-id="selectedParameterFilter"
+      :equipment-id="selectedEquipmentFilter"
+      :equipments="equipments"
+    />
+
     <!-- Filter and Action Bar -->
     <div class="action-bar bg-card border border-border rounded-xl p-4 shadow-sm flex flex-wrap items-center gap-3 w-full">
       <Input
         v-model:value="searchVal"
         :placeholder="$t('page.equipment.placeholderName')"
-        class="max-w-[240px]"
+        class="max-w-[200px]"
         allow-clear
         @press-enter="handleSearch"
       />
@@ -379,13 +529,40 @@ const columns = computed(() => [
         :field-names="{ label: 'name', value: 'id' }"
         :placeholder="$t('page.ops.selectEquipment')"
         allow-clear
+        show-search
+        option-filter-prop="name"
         class="w-[200px]"
+      />
+      <Select
+        v-model:value="selectedParameterFilter"
+        :options="filterParameters"
+        :field-names="{ label: 'name', value: 'id' }"
+        :placeholder="$t('page.ops.selectParameter')"
+        allow-clear
+        show-search
+        option-filter-prop="name"
+        class="w-[220px]"
+      />
+      <RangePicker
+        v-model:value="dateRangeFilter"
+        format="YYYY-MM-DD"
+        :placeholder="[$t('page.ops.startDate'), $t('page.ops.endDate')]"
+        allow-clear
+        class="w-[260px]"
       />
       <Button type="default" @click="handleSearch">
         {{ $t('page.company.btnFilter') }}
       </Button>
       <Button type="default" @click="handleReset">
         {{ $t('page.company.btnReset') }}
+      </Button>
+      <Button
+        type="primary"
+        :disabled="!selectedParameterFilter"
+        class="bg-blue-600 hover:bg-blue-700 disabled:bg-gray-200 disabled:text-gray-400 text-white font-medium border-blue-600"
+        @click="showBarChart = !showBarChart"
+      >
+        {{ showBarChart ? $t('page.ops.btnHideCharts') : $t('page.ops.btnShowBarChart') }}
       </Button>
 
       <div class="ml-auto flex items-center gap-2">
@@ -413,7 +590,7 @@ const columns = computed(() => [
           :columns="columns"
           :data-source="filteredItems"
           row-key="id"
-          :row-class-name="softDeletedRowClass"
+          :row-class-name="(record) => getTableRowClassName(record as ParameterLogItem)"
           :scroll="{ x: 'max-content' }"
           :pagination="{
             pageSize: 10,
@@ -425,7 +602,7 @@ const columns = computed(() => [
           <template #bodyCell="{ column, record }">
             <template v-if="column.key === 'equipment_id'">
               <div class="flex items-center gap-1.5">
-                <span class="font-medium text-gray-900 dark:text-gray-100">
+                <span class="dark:text-gray-100">
                   {{ record.equipment?.name || getEquipmentName(record.equipment_id) }}
                 </span>
                 <Tooltip title="View Overview">
@@ -453,22 +630,6 @@ const columns = computed(() => [
 
             <template v-else-if="column.key === 'actions'">
               <div class="flex items-center justify-center space-x-2">
-                <Button
-                  size="small"
-                  class="rounded border-blue-400 text-blue-600 hover:bg-blue-50 dark:border-blue-600 dark:text-blue-400 font-medium"
-                  @click="openWeeklyChart(record.equipment_id)"
-                >
-                  {{ $t('page.ops.btnWeeklyChart') }}
-                </Button>
-
-                <Button
-                  size="small"
-                  class="rounded hover:border-info hover:text-info"
-                  @click="openDetailDrawer(record as ParameterLogItem)"
-                >
-                  {{ $t('page.ops.btnViewDetail') }}
-                </Button>
-
                 <Button
                   size="small"
                   :disabled="isSoftDeleted(record as ParameterLogItem)"
@@ -507,7 +668,7 @@ const columns = computed(() => [
       :confirm-loading="submitting"
       :ok-text="$t('page.ops.btnOk')"
       :cancel-text="$t('page.ops.btnCancel')"
-      width="1000px"
+      width="800px"
       @ok="handleAddEditOk"
       @cancel="showAddEditModal = false"
     >
@@ -535,12 +696,12 @@ const columns = computed(() => [
             <Select
               v-model:value="formState.equipment_parameter_id"
               :options="availableParameters"
-              :field-names="{ label: 'name', value: 'id' }"
+              :field-names="{ label: 'displayName', value: 'id' }"
               :placeholder="$t('page.ops.selectParameter')"
               :disabled="!formState.equipment_id"
               class="w-full"
               show-search
-              option-filter-prop="name"
+              option-filter-prop="displayName"
             />
           </FormItem>
         </div>
@@ -555,7 +716,7 @@ const columns = computed(() => [
               :options="units"
               :field-names="{ label: 'name', value: 'id' }"
               :placeholder="$t('page.ops.selectUnit')"
-              allow-clear
+              disabled
               class="w-full"
             />
           </FormItem>
@@ -571,14 +732,6 @@ const columns = computed(() => [
         </FormItem>
       </Form>
     </Modal>
-
-    <!-- Detail Modal (GET /{id}) -->
-    <ParameterLogDetailModal
-      v-model:open="showDetailDrawer"
-      :log-id="selectedDetailId"
-      :equipments="equipments"
-      :units="units"
-    />
 
     <!-- Batch Save Parameters Modal (POST /save) -->
     <ParameterBatchSaveModal

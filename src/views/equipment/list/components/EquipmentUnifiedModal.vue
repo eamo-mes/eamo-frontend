@@ -33,12 +33,6 @@ interface ErrorOption {
   name: string;
 }
 
-interface EquipmentListItem {
-  id: string;
-  code: string;
-  name: string | null;
-}
-
 interface EquipmentData {
   id: string;
   code: string;
@@ -73,7 +67,6 @@ const saving = ref(false);
 
 const categories = ref<CategoryOption[]>([]);
 const errorsList = ref<ErrorOption[]>([]);
-const parentEquipmentOptions = ref<EquipmentListItem[]>([]);
 
 const equipmentData = ref<EquipmentData | null>(null);
 
@@ -100,16 +93,12 @@ function getAuthHeaders() {
 
 async function loadOptions() {
   try {
-    const [catRes, eqRes, errRes] = await Promise.all([
+    const [catRes, errRes] = await Promise.all([
       axios.get(`${API_BASE_URL}/v1/equipment-categories`, { headers: getAuthHeaders(), params: { per_page: 1000 } }),
-      axios.get(`${API_BASE_URL}/v1/equipment`, { headers: getAuthHeaders(), params: { per_page: 1000 } }),
       axios.get(`${API_BASE_URL}/v1/equipment-errors`, { headers: getAuthHeaders(), params: { per_page: 1000 } }),
     ]);
     const rawCats = catRes.data?.data ?? catRes.data ?? [];
     categories.value = Array.isArray(rawCats) ? rawCats : [];
-
-    const rawEqs = eqRes.data?.data ?? eqRes.data ?? [];
-    parentEquipmentOptions.value = Array.isArray(rawEqs) ? rawEqs : [];
 
     const rawErrs = errRes.data?.data ?? errRes.data ?? [];
     errorsList.value = Array.isArray(rawErrs) ? rawErrs : [];
@@ -339,22 +328,6 @@ watch(
                   >
                     <Select.Option v-for="c in categories" :key="c.id" :value="c.id">
                       {{ c.name }}
-                    </Select.Option>
-                  </Select>
-                </FormItem>
-
-                <FormItem :label="$t('page.equipment.colParent')">
-                  <Select
-                    v-model:value="formState.parent_id"
-                    :placeholder="$t('page.equipment.placeholderParent')"
-                    allow-clear
-                  >
-                    <Select.Option
-                      v-for="e in parentEquipmentOptions.filter(item => item.id !== props.equipmentId)"
-                      :key="e.id"
-                      :value="e.id"
-                    >
-                      {{ e.code }} - {{ e.name || '—' }}
                     </Select.Option>
                   </Select>
                 </FormItem>

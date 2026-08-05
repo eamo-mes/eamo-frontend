@@ -273,31 +273,14 @@ onMounted(() => {
       </div>
 
       <template v-else-if="equipment">
-        <!-- Card Thông Tin Thiết Bị Đã Quét -->
-        <div class="bg-white dark:bg-indigo-950/60 border border-slate-200/80 dark:border-indigo-700/60 rounded-2xl p-4 shadow-3xs space-y-2">
-          <div class="flex items-center justify-between">
-            <span class="text-[10px] font-bold uppercase text-indigo-500 dark:text-indigo-300 tracking-wider">{{ t('page.portal.scannedEquipmentCardTitle') }}</span>
-            <Button
-              type="link"
-              size="small"
-              class="p-0 h-auto text-xs text-slate-400 hover:text-indigo-600 dark:text-indigo-400 dark:hover:text-indigo-300"
-              @click="handleBack"
-            >
-              {{ t('page.portal.btnRescanQR') }}
-            </Button>
-          </div>
-
-          <div>
-            <h2 class="text-base font-bold text-slate-800 dark:text-indigo-100 m-0 leading-snug">
-              {{ equipment.name }}
-            </h2>
-            <div class="flex flex-wrap items-center gap-2 mt-1">
-              <span class="text-xs font-mono bg-slate-100 dark:bg-indigo-900/50 px-2 py-0.5 rounded-md text-slate-600 dark:text-indigo-200 font-semibold">
-                {{ t('page.portal.equipCodeLabel') }}{{ equipment.code }}
-              </span>
-              <span v-if="equipment.equipment_category?.name" class="text-xs bg-indigo-50 dark:bg-indigo-800/50 px-2 py-0.5 rounded-md text-indigo-600 dark:text-indigo-300">
-                {{ equipment.equipment_category.name }}
-              </span>
+        <!-- Card hiển thị Duy nhất Tên Thiết Bị đã quét -->
+        <div class="bg-white dark:bg-indigo-950/50 border border-slate-200/80 dark:border-indigo-800/60 rounded-2xl p-4 flex items-center justify-between shadow-3xs">
+          <div class="flex items-center gap-3 min-w-0">
+            <div class="min-w-0">
+              <span class="text-[10px] font-bold uppercase text-indigo-500 tracking-wider">{{ t('page.portal.scannedEquipment') || 'Thiết Bị Đã Quét:' }}</span>
+              <h2 class="text-base font-bold text-slate-800 dark:text-zinc-100 truncate m-0 leading-tight">
+                {{ equipment?.name }}
+              </h2>
             </div>
           </div>
         </div>
