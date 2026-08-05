@@ -1,98 +1,222 @@
 <script lang="ts" setup>
-import type { EchartsUIType } from '@vben/plugins/echarts';
+import { ref, watch, nextTick } from 'vue';
+import { Empty, Spin } from 'ant-design-vue';
+import dayjs from 'dayjs';
+import { $t } from '#/locales';
+import { usePreferences } from '@vben/preferences';
+import { EchartsUI, useEcharts, type EchartsUIType } from '@vben/plugins/echarts';
+import type { ParameterLogItem, ParameterOption } from '#/views/ops/parameter-log/types';
 
-import { onMounted, ref } from 'vue';
+const props = withDefaults(
+  defineProps<{
+    items: ParameterLogItem[];
+    parameterInfo?: ParameterOption | null;
+    unitName?: string;
+    loading?: boolean;
+    showLimits?: boolean;
+  }>(),
+  {
+    showLimits: false,
+    loading: false,
+  }
+);
 
-import { EchartsUI, useEcharts } from '@vben/plugins/echarts';
-
+const { isDark } = usePreferences();
 const chartRef = ref<EchartsUIType>();
 const { renderEcharts } = useEcharts(chartRef);
 
-onMounted(() => {
+async function updateChart() {
+  await nextTick();
+  if (!chartRef.value || props.items.length === 0) return;
+
+  const dates = props.items.map((item) =>
+    item.recorded_at
+      ? dayjs(item.recorded_at).format('YYYY-MM-DD HH:mm')
+      : dayjs(item.created_at).format('YYYY-MM-DD HH:mm')
+  );
+
+  const values = props.items.map((item) => {
+    const num = Number(item.value);
+    return isNaN(num) ? 0 : num;
+  });
+
+  const axisTextColor = isDark.value ? '#cbd5e1' : '#4b5563';
+  const textColor = isDark.value ? '#f8fafc' : '#1e293b';
+  const splitLineColor = isDark.value ? 'rgba(255,255,255,0.1)' : '#e2e8f0';
+
+  const unitLabel = props.unitName ? ` (${props.unitName})` : '';
+
+  const markLineData: Record<string, unknown>[] = [];
+  const pInfo = props.parameterInfo;
+
+  if (pInfo && props.showLimits) {
+    if (pInfo.standard_max !== null && pInfo.standard_max !== undefined) {
+      const maxVal = Number(pInfo.standard_max);
+      if (!isNaN(maxVal)) {
+        markLineData.push({
+          name: 'Standard Max',
+          yAxis: maxVal,
+          label: {
+            show: true,
+            formatter: `Max: ${maxVal}${props.unitName ? ' ' + props.unitName : ''}`,
+            position: 'end',
+            color: '#ef4444',
+            fontSize: 10,
+            fontWeight: 'bold',
+          },
+          lineStyle: {
+            color: '#ef4444',
+            type: 'dashed',
+            width: 1.5,
+          },
+        });
+      }
+    }
+
+    if (pInfo.standard !== null && pInfo.standard !== undefined) {
+      const stdVal = Number(pInfo.standard);
+      if (!isNaN(stdVal)) {
+        markLineData.push({
+          name: 'Standard',
+          yAxis: stdVal,
+          label: {
+            show: true,
+            formatter: `Std: ${stdVal}${props.unitName ? ' ' + props.unitName : ''}`,
+            position: 'end',
+            color: '#10b981',
+            fontSize: 10,
+            fontWeight: 'bold',
+          },
+          lineStyle: {
+            color: '#10b981',
+            type: 'dashed',
+            width: 1.5,
+          },
+        });
+      }
+    }
+
+    if (pInfo.standard_min !== null && pInfo.standard_min !== undefined) {
+      const minVal = Number(pInfo.standard_min);
+      if (!isNaN(minVal)) {
+        markLineData.push({
+          name: 'Standard Min',
+          yAxis: minVal,
+          label: {
+            show: true,
+            formatter: `Min: ${minVal}${props.unitName ? ' ' + props.unitName : ''}`,
+            position: 'end',
+            color: '#ef4444',
+            fontSize: 10,
+            fontWeight: 'bold',
+          },
+          lineStyle: {
+            color: '#ef4444',
+            type: 'dashed',
+            width: 1.5,
+          },
+        });
+      }
+    }
+  }
+
   renderEcharts({
     grid: {
-      bottom: 0,
+      left: '1.5%',
+      right: '6%',
+      bottom: '8%',
+      top: '7%',
       containLabel: true,
-      left: '1%',
-      right: '1%',
-      top: '2 %',
+    },
+    tooltip: {
+      trigger: 'axis',
+      axisPointer: { type: 'line' },
+      formatter: (params: unknown) => {
+        const list = params as { name: string; value: number }[];
+        if (!Array.isArray(list) || list.length === 0) return '';
+        const item = list[0];
+        if (!item) return '';
+        const pName = props.parameterInfo?.name || $t('page.ops.value');
+        return `<strong>${item.name}</strong><br/>${pName}: <strong>${item.value}${props.unitName ? ' ' + props.unitName : ''}</strong>`;
+      },
+    },
+    xAxis: {
+      type: 'category',
+      boundaryGap: false,
+      data: dates,
+      axisLabel: {
+        show: true,
+        color: axisTextColor,
+        fontSize: 9,
+        rotate: dates.length > 8 ? 25 : 0,
+        hideOverlap: true,
+      },
+      axisTick: { show: true, alignWithLabel: true },
+      axisLine: { show: true },
+    },
+    yAxis: {
+      type: 'value',
+      name: `${$t('page.ops.value')}${unitLabel}`,
+      nameTextStyle: { color: axisTextColor, fontSize: 11 },
+      axisLabel: { color: axisTextColor, fontSize: 11 },
+      splitLine: {
+        lineStyle: { type: 'dashed', color: splitLineColor, opacity: 0.7 },
+      },
     },
     series: [
       {
-        areaStyle: {},
-        data: [
-          111, 2000, 6000, 16_000, 33_333, 55_555, 64_000, 33_333, 18_000,
-          36_000, 70_000, 42_444, 23_222, 13_000, 8000, 4000, 1200, 333, 222,
-          111,
-        ],
-        itemStyle: {
-          color: '#5ab1ef',
-        },
-        smooth: true,
+        name: props.parameterInfo?.name || $t('page.ops.value'),
         type: 'line',
-      },
-      {
-        areaStyle: {},
-        data: [
-          33, 66, 88, 333, 3333, 6200, 20_000, 3000, 1200, 13_000, 22_000,
-          11_000, 2221, 1201, 390, 198, 60, 30, 22, 11,
-        ],
-        itemStyle: {
-          color: '#b6a2de',
-        },
         smooth: true,
-        type: 'line',
+        showSymbol: true,
+        symbolSize: 6,
+        itemStyle: {
+          color: '#1890ff',
+        },
+        lineStyle: {
+          width: 2.5,
+          color: '#1890ff',
+        },
+        areaStyle: {
+          color: {
+            type: 'linear',
+            x: 0,
+            y: 0,
+            x2: 0,
+            y2: 1,
+            colorStops: [
+              { offset: 0, color: 'rgba(24, 144, 255, 0.25)' },
+              { offset: 1, color: 'rgba(24, 144, 255, 0.02)' },
+            ],
+          },
+        },
+        markLine: markLineData.length > 0 ? { symbol: ['none', 'none'], data: markLineData } : undefined,
+        data: values,
       },
     ],
-    tooltip: {
-      axisPointer: {
-        lineStyle: {
-          color: '#b6a2de',
-          width: 1,
-        },
-      },
-      trigger: 'axis',
+    textStyle: {
+      fontFamily: 'system-ui, -apple-system, sans-serif',
+      color: textColor,
     },
-    // xAxis: {
-    //   axisTick: {
-    //     show: false,
-    //   },
-    //   boundaryGap: false,
-    //   data: Array.from({ length: 18 }).map((_item, index) => `${index + 6}:00`),
-    //   type: 'category',
-    // },
-    xAxis: {
-      axisTick: {
-        show: false,
-      },
-      boundaryGap: false,
-      data: Array.from({ length: 18 }).map((_item, index) => `${index + 6}:00`),
-      splitLine: {
-        lineStyle: {
-          type: 'solid',
-          width: 1,
-        },
-        show: true,
-      },
-      type: 'category',
-    },
-    yAxis: [
-      {
-        axisTick: {
-          show: false,
-        },
-        max: 80_000,
-        splitArea: {
-          show: true,
-        },
-        splitNumber: 4,
-        type: 'value',
-      },
-    ],
   });
-});
+}
+
+watch(
+  [() => props.items, () => props.parameterInfo, () => props.showLimits, () => isDark.value],
+  () => {
+    updateChart();
+  },
+  { deep: true, immediate: true }
+);
 </script>
 
 <template>
-  <EchartsUI ref="chartRef" />
+  <Spin :spinning="props.loading || false">
+    <div v-if="props.items && props.items.length > 0" class="h-[340px]">
+      <EchartsUI ref="chartRef" height="340px" />
+    </div>
+    <div v-else class="py-8 flex justify-center">
+      <Empty :description="$t('page.ops.chartNoData')" />
+    </div>
+  </Spin>
 </template>

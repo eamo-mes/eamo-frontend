@@ -8,10 +8,13 @@ import { usePreferences } from '@vben/preferences';
 import { EchartsUI, useEcharts } from '@vben/plugins/echarts';
 import { Empty, Spin } from 'ant-design-vue';
 
-const props = defineProps<{
+const props = withDefaults(defineProps<{
   avgValue: number;
+  compact?: boolean;
   loading?: boolean;
-}>();
+}>(), {
+  compact: false,
+});
 
 const { isDark } = usePreferences();
 const chartRef = ref<EchartsUIType>();
@@ -83,15 +86,15 @@ watch(
 </script>
 
 <template>
-  <div class="border border-border rounded-xl p-4 bg-white dark:bg-gray-900 flex flex-col h-[360px]">
+  <div :class="['border border-border rounded-xl p-4 bg-white dark:bg-gray-900 flex flex-col', props.compact ? 'h-[240px]' : 'h-[360px]']">
     <div class="mb-2">
       <h5 class="text-xs font-bold text-foreground uppercase tracking-wider m-0">
         {{ $t('page.ops.chartAvgAvailabilityTitle') }}
       </h5>
     </div>
     <Spin :spinning="props.loading">
-      <div v-if="props.avgValue !== undefined && props.avgValue !== null" class="h-[290px]">
-        <EchartsUI ref="chartRef" height="290px" />
+      <div v-if="props.avgValue !== undefined && props.avgValue !== null" :class="props.compact ? 'h-[180px]' : 'h-[290px]'">
+        <EchartsUI ref="chartRef" :height="props.compact ? '180px' : '290px'" />
       </div>
       <div v-else class="py-12 flex justify-center">
         <Empty :description="$t('page.ops.noChartData')" />

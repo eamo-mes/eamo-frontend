@@ -19,7 +19,6 @@ import { API_BASE_URL } from '#/api/config';
 import { useAccessStore } from '@vben/stores';
 import { $t } from '#/locales';
 import { isSoftDeleted, softDeletedRowClass } from '#/utils/soft-delete';
-import { IconifyIcon } from '@vben/icons';
 
 import type { OperatingTimeItem, EquipmentOption } from './types';
 import OperatingTimesCharts from './components/OperatingTimesCharts.vue';
@@ -47,17 +46,7 @@ const filterTimeRange = ref<any>(null);
 const activeEquipmentId = ref<string | undefined>(undefined);
 const activeTimeRange = ref<any>(null);
 
-// Stop Time column toggle: 'planned' | 'unplanned'
-const stopTimeMode = ref<'planned' | 'unplanned'>('planned');
-const stopTimeModes = ['planned', 'unplanned'] as const;
-function cycleStopTimeMode() {
-  const idx = stopTimeModes.indexOf(stopTimeMode.value);
-  stopTimeMode.value = stopTimeModes[(idx + 1) % stopTimeModes.length];
-}
-const stopTimeModeLabel = computed(() => {
-  if (stopTimeMode.value === 'planned') return $t('page.ops.plannedStopTime') || 'Planned Stop';
-  return $t('page.ops.unplannedStopTime') || 'Unplanned Stop';
-});
+
 
 function getAuthHeaders() {
   const accessStore = useAccessStore();
@@ -216,36 +205,53 @@ const columns = computed(() => [
     title: $t('page.ops.colEquipment'),
     dataIndex: 'equipment_name',
     key: 'equipment_name',
+    sorter: (a: OperatingTimeItem, b: OperatingTimeItem) => {
+      const nameA = a.equipment ? `${a.equipment.name} (${a.equipment.code})` : getEquipmentName(a.equipment_id);
+      const nameB = b.equipment ? `${b.equipment.name} (${b.equipment.code})` : getEquipmentName(b.equipment_id);
+      return nameA.localeCompare(nameB);
+    },
   },
   {
     title: $t('page.ops.date'),
     dataIndex: 'date',
     key: 'date',
+    sorter: (a: OperatingTimeItem, b: OperatingTimeItem) => {
+      const valA = a.date ? dayjs(a.date).valueOf() : (a.start_time ? dayjs(a.start_time).valueOf() : 0);
+      const valB = b.date ? dayjs(b.date).valueOf() : (b.start_time ? dayjs(b.start_time).valueOf() : 0);
+      return valA - valB;
+    },
   },
   {
     title: $t('page.ops.workingTime'),
     dataIndex: 'working_time',
     key: 'working_time',
-    align: 'right' as const
+    align: 'right' as const,
+    sorter: (a: OperatingTimeItem, b: OperatingTimeItem) => (Number(a.working_time) || 0) - (Number(b.working_time) || 0),
   },
   {
-    title: stopTimeModeLabel.value,
+    title: $t('page.ops.stopTime'),
     key: 'stop_time',
     align: 'right' as const,
-    customTitle: true,
-    width: 280, // Increased width to fit long Vietnamese translation without shifting
+    width: 220,
+    sorter: (a: OperatingTimeItem, b: OperatingTimeItem) => {
+      const totalStopA = (Number(a.planned_stop_time) || 0) + (Number(a.unplanned_stop_time) || 0);
+      const totalStopB = (Number(b.planned_stop_time) || 0) + (Number(b.unplanned_stop_time) || 0);
+      return totalStopA - totalStopB;
+    },
   },
   {
     title: $t('page.ops.plannedOperatingTime'),
     dataIndex: 'planned_operating_time',
     key: 'planned_operating_time',
-    align: 'right' as const
+    align: 'right' as const,
+    sorter: (a: OperatingTimeItem, b: OperatingTimeItem) => (Number(a.planned_operating_time) || 0) - (Number(b.planned_operating_time) || 0),
   },
   {
     title: $t('page.ops.actualOperatingTime'),
     dataIndex: 'actual_operating_time',
     key: 'actual_operating_time',
-    align: 'right' as const
+    align: 'right' as const,
+    sorter: (a: OperatingTimeItem, b: OperatingTimeItem) => (Number(a.actual_operating_time) || 0) - (Number(b.actual_operating_time) || 0),
   },
   {
     title: $t('page.ops.availabilityFactor'),
@@ -254,6 +260,7 @@ const columns = computed(() => [
     align: 'center' as const,
     width: 150,
     fixed: 'right' as const,
+    sorter: (a: OperatingTimeItem, b: OperatingTimeItem) => calculateRowAvailabilityFactor(a) - calculateRowAvailabilityFactor(b),
   },
   {
     title: $t('page.ops.colActions'),
@@ -348,24 +355,11 @@ const columns = computed(() => [
               <Tooltip placement="top">
                 <template #title>
                   <div class="text-xs">
-                    {{ stopTimeMode === 'planned' ? $t('page.ops.plannedStopTime') : $t('page.ops.unplannedStopTime') }}
+                    {{ $t('page.ops.plannedStopTime') }} ({{ $t('page.ops.unplannedStopTime') }})
                   </div>
                 </template>
-                <span
-                  class="cursor-pointer flex items-center justify-end select-none text-slate-800 dark:text-zinc-200 hover:text-primary transition-colors group whitespace-nowrap"
-                  @click.stop="cycleStopTimeMode"
-                >
-                  <span class="w-[200px] text-right truncate" :title="stopTimeModeLabel">{{ stopTimeModeLabel }}</span>
-                  <div class="flex flex-col ml-2 opacity-50 group-hover:opacity-100 transition-opacity flex-shrink-0">
-                    <!-- Caret Up -->
-                    <svg viewBox="0 0 1024 1024" width="11" height="11" fill="currentColor" style="margin-bottom: -2px;">
-                      <path d="M858.9 689L530.5 308.2c-9.4-10.9-27.5-10.9-37 0L165.1 689c-12.2 14.2-1.2 35 18.5 35h656.8c19.7 0 30.7-20.8 18.5-35z"></path>
-                    </svg>
-                    <!-- Caret Down -->
-                    <svg viewBox="0 0 1024 1024" width="11" height="11" fill="currentColor" style="margin-top: -2px;">
-                      <path d="M858.9 335H165.1c-19.7 0-30.7 20.8-18.5 35l328.4 380.8c9.4 10.9 27.5 10.9 37 0L840.4 370c12.2-14.2 1.2-35-18.5-35z"></path>
-                    </svg>
-                  </div>
+                <span class="cursor-help inline-flex items-center select-none text-slate-800 dark:text-zinc-200">
+                  {{ $t('page.ops.stopTime') }}
                 </span>
               </Tooltip>
             </template>
@@ -400,12 +394,28 @@ const columns = computed(() => [
               <span>{{ formatCellHours(record[column.key as keyof OperatingTimeItem]) }}</span>
             </template>
             <template v-else-if="column.key === 'stop_time'">
-              <span v-if="stopTimeMode === 'planned'">
-                {{ formatCellHours((record as OperatingTimeItem).planned_stop_time) }}
-              </span>
-              <span v-else class="text-red-500">
-                {{ formatCellHours((record as OperatingTimeItem).unplanned_stop_time) }}
-              </span>
+              <Tooltip placement="top">
+                <template #title>
+                  <div class="space-y-1 text-xs py-0.5">
+                    <div>
+                      <span class="text-slate-300">{{ $t('page.ops.plannedStopTime') }}:</span>
+                      <span class="font-semibold ml-1 text-white">{{ formatCellHours((record as OperatingTimeItem).planned_stop_time) }}</span>
+                    </div>
+                    <div>
+                      <span class="text-red-300">{{ $t('page.ops.unplannedStopTime') }}:</span>
+                      <span class="font-semibold ml-1 text-red-200">{{ formatCellHours((record as OperatingTimeItem).unplanned_stop_time) }}</span>
+                    </div>
+                  </div>
+                </template>
+                <div class="inline-flex items-center gap-1 justify-end cursor-pointer">
+                  <span class="text-slate-700 dark:text-zinc-200">
+                    {{ formatCellHours((record as OperatingTimeItem).planned_stop_time) }}
+                  </span>
+                  <span class="text-red-500 dark:text-red-400 font-medium">
+                    ({{ formatCellHours((record as OperatingTimeItem).unplanned_stop_time) }})
+                  </span>
+                </div>
+              </Tooltip>
             </template>
             <template v-else-if="column.key === 'actions'">
               <div class="space-x-2">
