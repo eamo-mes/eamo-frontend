@@ -118,9 +118,11 @@ export const useAuthStore = defineStore('auth', () => {
     const userInfo = await getUserInfoApi();
     const token = accessStore.accessToken;
     if (token) {
-      const roles = getRolesFromToken(token);
-      userInfo.roles = roles;
-      console.log('Detected roles from JWT:', roles);
+      const jwtRoles = getRolesFromToken(token);
+      if (jwtRoles.length > 0) {
+        userInfo.roles = jwtRoles;
+      }
+      console.log('Detected user roles:', userInfo.roles);
     }
     userStore.setUserInfo(userInfo);
     return userInfo;

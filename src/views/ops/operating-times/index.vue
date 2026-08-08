@@ -19,6 +19,9 @@ import { API_BASE_URL } from '#/api/config';
 import { useAccessStore } from '@vben/stores';
 import { $t } from '#/locales';
 import { isSoftDeleted, softDeletedRowClass } from '#/utils/soft-delete';
+import { useRoleAccess } from '#/utils/useRoleAccess';
+
+const { isManager } = useRoleAccess();
 
 import type { OperatingTimeItem, EquipmentOption } from './types';
 import OperatingTimesCharts from './components/OperatingTimesCharts.vue';
@@ -318,6 +321,7 @@ const columns = computed(() => [
       </Button>
       <div class="ml-auto flex-shrink-0 flex items-center gap-2">
         <Button
+          v-if="isManager"
           type="default"
           class="border-[#5c3e35] text-[#5c3e35] dark:text-zinc-100 dark:border-zinc-700 dark:hover:text-white dark:hover:border-zinc-500 rounded-md font-medium h-full"
           @click="showImportModal = true"
@@ -325,6 +329,7 @@ const columns = computed(() => [
           {{ $t('page.ops.btnImport') }}
         </Button>
         <Button
+          v-if="isManager"
           type="primary"
           class="bg-[#5c3e35] hover:bg-[#4b332b] dark:bg-indigo-600 dark:hover:bg-indigo-500 dark:border-indigo-600 rounded-md font-medium text-white h-full"
           @click="openAddModal"
@@ -420,6 +425,7 @@ const columns = computed(() => [
             <template v-else-if="column.key === 'actions'">
               <div class="space-x-2">
                 <Button
+                  v-if="isManager"
                   size="small"
                   class="rounded hover:border-primary hover:text-primary"
                   @click="openEditModal(record as OperatingTimeItem)"
@@ -427,6 +433,7 @@ const columns = computed(() => [
                   {{ $t('page.company.btnEdit') }}
                 </Button>
                 <Popconfirm
+                  v-if="isManager"
                   :title="$t('page.company.deleteConfirm')"
                   :ok-text="$t('page.ops.btnOk')"
                   :cancel-text="$t('page.ops.btnCancel')"

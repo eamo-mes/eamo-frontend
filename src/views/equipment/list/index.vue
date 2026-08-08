@@ -16,9 +16,12 @@ import axios from 'axios';
 import { useAccessStore } from '@vben/stores';
 import { API_BASE_URL } from '#/api/config';
 import { isSoftDeleted, softDeletedRowClass, sortBySoftDeleted } from '#/utils/soft-delete';
+import { useRoleAccess } from '#/utils/useRoleAccess';
 import ExpandableContainer from '#/components/ExpandableContainer.vue';
 import EquipmentChecklistSessionsModal from './components/EquipmentChecklistSessionsModal.vue';
 import EquipmentUnifiedModal from './components/EquipmentUnifiedModal.vue';
+
+const { isManager } = useRoleAccess();
 
 interface CategoryOption {
   id: string;
@@ -376,6 +379,7 @@ onMounted(() => {
       </Button>
       <div class="ml-auto flex items-center gap-2">
         <Button
+          v-if="isManager"
           type="primary"
           class="bg-[#5c3e35] hover:bg-[#4b332b] border-[#5c3e35] rounded-md font-medium text-white h-full"
           @click="openAddModal"
@@ -427,19 +431,14 @@ onMounted(() => {
               <span>{{ record.maintenance_interval_hours !== null && record.maintenance_interval_hours !== undefined ? `${record.maintenance_interval_hours} hrs` : '—' }}</span>
             </template>
             <template v-else-if="column.key === 'equipment_parameters'">
-               <div class="flex flex-col gap-1 max-w-[260px]">
-                 <ExpandableContainer :items="record.equipment_parameters">
-                   <Tag
-                     v-for="param in record.equipment_parameters"
-                     :key="param.id"
-                     color="blue"
-                     class="transition-all duration-200 hover:bg-[#1890ff] hover:text-white hover:border-[#1890ff] hover:shadow-sm max-w-full truncate"
-                   >
-                     {{ param.code }}<span v-if="param.unit"> ({{ param.unit.name }})</span>
-                   </Tag>
+               <div class="max-w-[280px]">
+                 <ExpandableContainer :threshold="2">
+                   <div v-for="param in record.equipment_parameters" :key="param.id" class="text-xs text-foreground/90 py-0.5">
+                     <span class="font-medium text-foreground">{{ param.code }}:</span> {{ param.name }}
+                   </div>
                  </ExpandableContainer>
                </div>
-              </template>
+            </template>
             <template v-else-if="column.key === 'actions'">
               <div class="flex items-center justify-end gap-2 whitespace-nowrap">
                 <Button
@@ -460,6 +459,7 @@ onMounted(() => {
                   {{ $t('page.equipment.btnDetail') }}
                 </Button>
                 <Button
+                  v-if="isManager"
                   size="small"
                   :disabled="isSoftDeleted(record as EquipmentItem)"
                   class="rounded hover:border-primary hover:text-primary"
@@ -468,6 +468,7 @@ onMounted(() => {
                   {{ $t('page.company.btnEdit') }}
                 </Button>
                 <Popconfirm
+                  v-if="isManager"
                   :title="$t('page.company.deleteConfirm')"
                   :ok-text="$t('page.equipment.modalConfirm')"
                   :cancel-text="$t('page.equipment.modalCancel')"

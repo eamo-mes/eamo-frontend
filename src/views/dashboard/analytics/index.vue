@@ -1,8 +1,8 @@
 <script lang="ts" setup>
 import { onMounted, ref, computed, watch } from 'vue';
 import axios from 'axios';
-import { Select, DatePicker, Switch } from 'ant-design-vue';
-import dayjs, { type Dayjs } from 'dayjs';
+import { Select, Switch } from 'ant-design-vue';
+import dayjs from 'dayjs';
 import { useAccessStore } from '@vben/stores';
 import { API_BASE_URL } from '#/api/config';
 import { $t } from '#/locales';
@@ -27,8 +27,6 @@ import type {
 } from '#/views/ops/parameter-log/types';
 
 import AnalyticsTrends from './analytics-trends.vue';
-
-const RangePicker = DatePicker.RangePicker;
 
 interface SummaryItem {
   active?: number;
@@ -64,12 +62,6 @@ const paramLogsLoading = ref(false);
 const selectedEquipmentId = ref<string | undefined>(undefined);
 const selectedParameterId = ref<string | undefined>(undefined);
 const showLimits = ref<boolean>(false);
-
-// Mặc định khoảng thời gian 1 tháng gần nhất
-const dateRange = ref<[Dayjs, Dayjs]>([
-  dayjs().subtract(1, 'month').startOf('day'),
-  dayjs().endOf('day'),
-]);
 
 function getAuthHeaders(): Record<string, string> {
   const accessStore = useAccessStore();
@@ -212,22 +204,21 @@ const selectedUnitName = computed<string>(() => {
 const chartFilteredLogs = computed(() => {
   if (!selectedEquipmentId.value || !selectedParameterId.value) return [];
 
-  let result = paramLogs.value.filter(
-    (item) =>
-      item.equipment_id === selectedEquipmentId.value &&
-      item.equipment_parameter_id === selectedParameterId.value
-  );
+  const start = dayjs().subtract(1, 'month').startOf('day');
+  const end = dayjs().endOf('day');
 
-  if (dateRange.value && dateRange.value[0] && dateRange.value[1]) {
-    const start = dateRange.value[0].startOf('day');
-    const end = dateRange.value[1].endOf('day');
-    result = result.filter((item) => {
-      const dateStr = item.recorded_at || item.created_at;
-      if (!dateStr) return false;
-      const recDate = dayjs(dateStr);
-      return (recDate.isAfter(start) || recDate.isSame(start)) && (recDate.isBefore(end) || recDate.isSame(end));
-    });
-  }
+  const result = paramLogs.value.filter((item) => {
+    if (
+      item.equipment_id !== selectedEquipmentId.value ||
+      item.equipment_parameter_id !== selectedParameterId.value
+    ) {
+      return false;
+    }
+    const dateStr = item.recorded_at || item.created_at;
+    if (!dateStr) return false;
+    const recDate = dayjs(dateStr);
+    return (recDate.isAfter(start) || recDate.isSame(start)) && (recDate.isBefore(end) || recDate.isSame(end));
+  });
 
   return [...result].sort((a, b) => {
     const timeA = dayjs(a.recorded_at || a.created_at).valueOf();
@@ -291,18 +282,6 @@ onMounted(() => {
 
         <div class="flex flex-wrap items-center gap-3">
           <div class="flex items-center gap-2">
-            <span class="text-xs font-semibold text-muted-foreground whitespace-nowrap">
-              {{ $t('page.ops.timeRangeLabel') }}:
-            </span>
-            <RangePicker
-              v-model:value="dateRange"
-              format="YYYY-MM-DD"
-              allow-clear
-              class="w-[260px]"
-            />
-          </div>
-
-          <div class="flex items-center gap-2 border-l border-border pl-3">
             <span class="text-xs font-semibold text-muted-foreground whitespace-nowrap">
               {{ $t('page.ops.showLimits') }}:
             </span>

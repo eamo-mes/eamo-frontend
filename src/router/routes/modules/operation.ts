@@ -5,6 +5,7 @@ import { $t } from '#/locales';
 const routes: RouteRecordRaw[] = [
   {
     meta: {
+      authority: ['admin', 'manager', 'engineer'],
       icon: 'lucide:activity',
       order: 30,
       title: $t('page.ops.operationTitle'),
@@ -17,6 +18,7 @@ const routes: RouteRecordRaw[] = [
         path: 'operating-times',
         component: () => import('#/views/ops/operating-times/index.vue'),
         meta: {
+          authority: ['admin', 'manager', 'engineer'],
           icon: 'lucide:clock',
           title: $t('page.ops.operatingTimes'),
         },
@@ -26,6 +28,7 @@ const routes: RouteRecordRaw[] = [
         path: 'parameter-log',
         component: () => import('#/views/ops/parameter-log/index.vue'),
         meta: {
+          authority: ['admin', 'manager', 'engineer'],
           icon: 'lucide:database',
           title: $t('page.ops.parameterLog'),
         },

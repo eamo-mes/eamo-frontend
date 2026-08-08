@@ -23,6 +23,9 @@ import {
 } from '#/api/core/users';
 import axios from 'axios';
 import { useAccessStore } from '@vben/stores';
+import { useRoleAccess } from '#/utils/useRoleAccess';
+
+const { isAdmin } = useRoleAccess();
 import { API_BASE_URL } from '#/api/config';
 import ExpandableContainer from '#/components/ExpandableContainer.vue';
 
@@ -441,6 +444,7 @@ onMounted(() => {
       </Button>
       <div class="ml-auto">
         <Button
+          v-if="isAdmin"
           type="primary"
           class="bg-[#5c3e35] hover:bg-[#4b332b] border-[#5c3e35] rounded-md font-medium text-white h-full"
           @click="openAddModal"
@@ -493,6 +497,7 @@ onMounted(() => {
             <template v-else-if="column.key === 'actions'">
               <div class="space-x-2">
                 <Button
+                  v-if="isAdmin"
                   size="small"
                   class="rounded hover:border-primary hover:text-primary"
                   @click="openEditModal(record as UserItem)"

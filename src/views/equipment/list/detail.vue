@@ -23,8 +23,11 @@ import type { UploadFile, UploadProps } from 'ant-design-vue';
 import axios from 'axios';
 import { useAccessStore } from '@vben/stores';
 import { API_BASE_URL } from '#/api/config';
+import { useRoleAccess } from '#/utils/useRoleAccess';
 import EquipmentUnifiedModal from './components/EquipmentUnifiedModal.vue';
 import EquipmentHierarchyFlow from './components/EquipmentHierarchyFlow.vue';
+
+const { isManager } = useRoleAccess();
 
 const UploadOutlined = createIconifyIcon('ant-design:upload-outlined');
 
@@ -529,7 +532,7 @@ onMounted(() => {
         <Button type="default" @click="goBack" :disabled="submitting">
           {{ $t('page.equipment.btnCancel') }}
         </Button>
-        <Button type="primary" class="bg-[#5c3e35] hover:bg-[#4b332b] border-[#5c3e35]" :loading="submitting" @click="handleSubmit">
+        <Button v-if="isManager" type="primary" class="bg-[#5c3e35] hover:bg-[#4b332b] border-[#5c3e35]" :loading="submitting" @click="handleSubmit">
           {{ $t('page.equipment.btnSave') }}
         </Button>
       </div>
@@ -544,6 +547,7 @@ onMounted(() => {
             ref="formRef"
             :model="formState"
             :rules="rules"
+            :disabled="!isManager"
             layout="vertical"
             class="space-y-6"
           >

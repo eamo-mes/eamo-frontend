@@ -837,7 +837,7 @@
     "checklistDrawer": {
       "title": "Quản lý phiên Checklist",
       "selectedDate": "Ngày đã chọn",
-      "btnCreateSession": "Thêm phiên Checklist",
+      "btnCreateSession": "Phiên Checklist",
       "btnBackToList": "Quay lại danh sách",
       "checklistSessionList": "Danh sách phiên Checklist",
       "sessionText": "Phiên kiểm tra",
@@ -1081,5 +1081,19 @@
     "msgSaveParamsSuccess": "Đã lưu thành công thông số đo đạc!",
     "msgSaveParamsFailed": "Lưu thông số thất bại, vui lòng thử lại!",
     "scanTimeLabel": "Thời gian quét:"
+  },
+  "error": {
+    "ERR_FORBIDDEN_ADMIN": "Truy cập bị từ chối. Yêu cầu quyền Quản trị viên.",
+    "ERR_FORBIDDEN_MANAGER": "Truy cập bị từ chối. Yêu cầu quyền Quản lý trở lên.",
+    "ERR_FORBIDDEN_ENGINEER": "Truy cập bị từ chối. Yêu cầu quyền Kỹ sư trở lên.",
+    "ERR_FORBIDDEN_OWN_USER": "Truy cập bị từ chối. Bạn chỉ có thể quản lý tài khoản cá nhân của chính mình.",
+    "ERR_FORBIDDEN_OWN_NOTIFICATIONS": "Truy cập bị từ chối. Bạn chỉ có thể quản lý thông báo của chính mình.",
+    "Unauthenticated.": "Chưa xác thực. Vui lòng đăng nhập lại.",
+    "Unauthorized.": "Truy cập bị từ chối. Yêu cầu không hợp lệ.",
+    "Server Error": "Lỗi máy chủ nội bộ. Vui lòng thử lại sau.",
+    "Internal Server Error": "Lỗi máy chủ nội bộ. Vui lòng thử lại sau.",
+    "Resource not found.": "Không tìm thấy dữ liệu yêu cầu.",
+    "The given data was invalid.": "Dữ liệu nhập vào không hợp lệ. Vui lòng kiểm tra lại.",
+    "Too Many Requests": "Quá nhiều yêu cầu. Vui lòng thử lại sau."
   }
 }

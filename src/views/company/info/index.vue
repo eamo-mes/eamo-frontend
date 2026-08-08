@@ -17,6 +17,10 @@ import {
   Spin
 } from 'ant-design-vue';
 
+import { useRoleAccess } from '#/utils/useRoleAccess';
+
+const { isAdmin } = useRoleAccess();
+
 interface CompanyItem {
   id: string;
   name: string;
@@ -227,7 +231,7 @@ async function handleOk() {
         {{ $t('page.company.btnReset') }}
       </Button>
       <div class="ml-auto">
-        <Button type="primary" class="bg-[#5c3e35] hover:bg-[#4b332b] border-[#5c3e35] rounded-md font-medium text-white h-full" @click="openAddModal">
+        <Button v-if="isAdmin" type="primary" class="bg-[#5c3e35] hover:bg-[#4b332b] border-[#5c3e35] rounded-md font-medium text-white h-full" @click="openAddModal">
           {{ $t('page.company.btnAddCompany') }}
         </Button>
       </div>
@@ -254,10 +258,11 @@ async function handleOk() {
           <template #bodyCell="{ column, record }">
             <template v-if="column.key === 'actions'">
               <div class="space-x-2">
-                <Button size="small" class="rounded hover:border-primary hover:text-primary" @click="openEditModal(record)">
+                <Button v-if="isAdmin" size="small" class="rounded hover:border-primary hover:text-primary" @click="openEditModal(record as CompanyItem)">
                   {{ $t('page.company.btnEdit') }}
                 </Button>
                 <Popconfirm
+                  v-if="isAdmin"
                   :title="$t('page.company.deleteConfirm')"
                   :ok-text="$t('page.company.btnOk')"
                   :cancel-text="$t('page.company.btnCancel')"

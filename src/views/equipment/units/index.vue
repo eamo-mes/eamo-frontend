@@ -15,6 +15,9 @@ import {
 import axios from 'axios';
 import { useAccessStore } from '@vben/stores';
 import { API_BASE_URL } from '#/api/config';
+import { useRoleAccess } from '#/utils/useRoleAccess';
+
+const { isManager } = useRoleAccess();
 
 interface UnitItem {
   id: string;
@@ -239,6 +242,7 @@ onMounted(() => {
       </Button>
       <div class="ml-auto">
         <Button
+          v-if="isManager"
           type="primary"
           class="bg-[#5c3e35] hover:bg-[#4b332b] border-[#5c3e35] rounded-md font-medium text-white h-full"
           @click="openAddModal"
@@ -273,6 +277,7 @@ onMounted(() => {
             <template v-else-if="column.key === 'actions'">
               <div class="space-x-2">
                 <Button
+                  v-if="isManager"
                   size="small"
                   class="rounded hover:border-primary hover:text-primary"
                   @click="openEditModal(record as UnitItem)"
@@ -280,6 +285,7 @@ onMounted(() => {
                   {{ $t('page.company.btnEdit') }}
                 </Button>
                 <Popconfirm
+                  v-if="isManager"
                   :title="$t('page.company.deleteConfirm')"
                   :ok-text="$t('page.equipment.modalConfirm')"
                   :cancel-text="$t('page.equipment.modalCancel')"

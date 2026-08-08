@@ -19,8 +19,11 @@ import axios from 'axios';
 import { useAccessStore } from '@vben/stores';
 import { API_BASE_URL } from '#/api/config';
 import { isSoftDeleted, softDeletedRowClass, sortBySoftDeleted } from '#/utils/soft-delete';
+import { useRoleAccess } from '#/utils/useRoleAccess';
 import ExpandableContainer from '#/components/ExpandableContainer.vue';
 import TopMostFrequentErrors from './top-most-frequent-errors.vue';
+
+const { isManager } = useRoleAccess();
 
 interface EquipmentOption {
   id: string;
@@ -358,8 +361,9 @@ onMounted(async () => {
           {{ showCharts ? $t('page.ops.btnHideCharts') : $t('page.ops.btnShowCharts') }}
         </Button>
         <Button
+          v-if="isManager"
           type="primary"
-          class="bg-[#1890ff] hover:bg-[#40a9ff] dark:bg-indigo-600 dark:hover:bg-indigo-500 border-[#1890ff] dark:border-indigo-600 rounded-md font-medium text-white h-full"
+          class="bg-[#5c3e35] hover:bg-[#4b332b] border-[#5c3e35] rounded-md font-medium text-white h-full"
           @click="openAddModal"
         >
           {{ $t('page.equipment.btnAddError') }}
@@ -405,6 +409,7 @@ onMounted(async () => {
             <template v-else-if="column.key === 'actions'">
               <div class="space-x-2">
                 <Button
+                  v-if="isManager"
                   size="small"
                   :disabled="isSoftDeleted(record as ErrorItem)"
                   class="rounded border-slate-300 dark:border-zinc-700 text-slate-700 dark:text-zinc-100 hover:border-primary hover:text-primary dark:hover:text-indigo-400 dark:hover:border-indigo-500"
@@ -413,6 +418,7 @@ onMounted(async () => {
                   {{ $t('page.company.btnEdit') }}
                 </Button>
                 <Popconfirm
+                  v-if="isManager"
                   :title="$t('page.company.deleteConfirm')"
                   :ok-text="$t('page.equipment.modalConfirm')"
                   :cancel-text="$t('page.equipment.modalCancel')"

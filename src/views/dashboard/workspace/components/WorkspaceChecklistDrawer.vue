@@ -292,8 +292,11 @@ async function handleSaveSession() {
     activeMode.value = 'list';
     emit('refresh');
   } catch (err: unknown) {
-    const apiMsg = (err as { response?: { data?: { message?: string } } })?.response?.data?.message;
-    message.error(apiMsg || $t('page.ops.checklistDrawer.msgSaveError'));
+    const status = (err as { response?: { status?: number } })?.response?.status;
+    if (status !== 403 && status !== 401) {
+      const apiMsg = (err as { response?: { data?: { message?: string } } })?.response?.data?.message;
+      message.error(apiMsg || $t('page.ops.checklistDrawer.msgSaveError'));
+    }
   } finally {
     submitting.value = false;
   }

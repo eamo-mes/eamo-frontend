@@ -844,7 +844,7 @@
     "checklistDrawer": {
       "title": "Manage Checklist Sessions",
       "selectedDate": "Selected Date",
-      "btnCreateSession": "Add Checklist Session",
+      "btnCreateSession": "Checklist Session",
       "btnBackToList": "Back to List",
       "checklistSessionList": "Checklist Sessions",
       "sessionText": "Checklist Session",
@@ -1088,5 +1088,19 @@
     "msgSaveParamsSuccess": "Successfully saved parameter logs!",
     "msgSaveParamsFailed": "Failed to save parameters, please try again!",
     "scanTimeLabel": "Scan time:"
+  },
+  "error": {
+    "ERR_FORBIDDEN_ADMIN": "Access denied. Administrator privileges required.",
+    "ERR_FORBIDDEN_MANAGER": "Access denied. Manager privileges or higher required.",
+    "ERR_FORBIDDEN_ENGINEER": "Access denied. Engineer privileges or higher required.",
+    "ERR_FORBIDDEN_OWN_USER": "Access denied. You can only manage your own user account.",
+    "ERR_FORBIDDEN_OWN_NOTIFICATIONS": "Access denied. You can only manage your own notifications.",
+    "Unauthenticated.": "Unauthenticated. Please log in again.",
+    "Unauthorized.": "Access denied. Unauthorized request.",
+    "Server Error": "Internal server error. Please try again later.",
+    "Internal Server Error": "Internal server error. Please try again later.",
+    "Resource not found.": "Requested resource was not found.",
+    "The given data was invalid.": "Validation error. Please check your input fields.",
+    "Too Many Requests": "Too many requests. Please try again later."
   }
 }

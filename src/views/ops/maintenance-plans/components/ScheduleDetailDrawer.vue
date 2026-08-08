@@ -280,8 +280,11 @@ async function handleSaveDrawer(): Promise<void> {
     emit('update:open', false);
     message.success($t('page.ops.drawerSaveSuccess') || 'Đã ghi nhận kết quả đánh giá bảo trì');
   } catch (err: unknown) {
-    const apiError = (err as { response?: { data?: { message?: string } } })?.response?.data?.message;
-    message.error(apiError || $t('page.ops.logSaveError') || 'Không thể lưu nhật ký đánh giá');
+    const status = (err as { response?: { status?: number } })?.response?.status;
+    if (status !== 403 && status !== 401) {
+      const apiError = (err as { response?: { data?: { message?: string } } })?.response?.data?.message;
+      message.error(apiError || $t('page.ops.logSaveError') || 'Không thể lưu nhật ký đánh giá');
+    }
   } finally {
     submitting.value = false;
   }
@@ -308,8 +311,11 @@ async function handleDeleteSchedule(): Promise<void> {
     emit('update:open', false);
     message.success($t('page.ops.deleteScheduleSuccess') || 'Đã xóa lịch bảo trì thành công');
   } catch (err: unknown) {
-    const apiError = (err as { response?: { data?: { message?: string } } })?.response?.data?.message;
-    message.error(apiError || $t('page.ops.deleteScheduleError') || 'Không thể xóa lịch bảo trì');
+    const status = (err as { response?: { status?: number } })?.response?.status;
+    if (status !== 403 && status !== 401) {
+      const apiError = (err as { response?: { data?: { message?: string } } })?.response?.data?.message;
+      message.error(apiError || $t('page.ops.deleteScheduleError') || 'Không thể xóa lịch bảo trì');
+    }
   } finally {
     deleting.value = false;
   }
@@ -331,8 +337,11 @@ async function handleDeleteItemSchedule(sched: ScheduleRow): Promise<void> {
       emit('update:open', false);
     }
   } catch (err: unknown) {
-    const apiError = (err as { response?: { data?: { message?: string } } })?.response?.data?.message;
-    message.error(apiError || $t('page.ops.deleteScheduleError') || 'Không thể xóa lịch bảo trì');
+    const status = (err as { response?: { status?: number } })?.response?.status;
+    if (status !== 403 && status !== 401) {
+      const apiError = (err as { response?: { data?: { message?: string } } })?.response?.data?.message;
+      message.error(apiError || $t('page.ops.deleteScheduleError') || 'Không thể xóa lịch bảo trì');
+    }
   } finally {
     deleting.value = false;
   }

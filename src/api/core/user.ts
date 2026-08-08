@@ -26,7 +26,11 @@ export async function getUserInfoApi() {
       avatar: rawUser.avatar || '/avatar.png',
       desc: 'Administrator',
       homePath: '/dashboard',
-      roles: rawUser.roles || [],
+      roles: Array.isArray(rawUser.roles) && rawUser.roles.length > 0
+        ? rawUser.roles
+        : rawUser.role
+          ? [rawUser.role]
+          : [],
       token: token || '',
     };
     return mappedUser;

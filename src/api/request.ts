@@ -14,9 +14,8 @@ import { useAccessStore } from '@vben/stores';
 
 import { message } from 'ant-design-vue';
 
+import { $t } from '#/locales';
 import { useAuthStore } from '#/store';
-
-
 
 const { apiURL } = useAppConfig(import.meta.env, import.meta.env.PROD);
 
@@ -107,6 +106,41 @@ function createRequestClient(baseURL: string, options?: RequestClientOptions) {
     }),
   );
 
+  // Interceptor to translate error code strings in error.response.data BEFORE handlers run
+  client.addResponseInterceptor({
+    rejected: (error) => {
+      if (error?.response?.data) {
+        const responseData = error.response.data;
+        let rawMessage = responseData.error ?? responseData.message ?? '';
+
+        if (!rawMessage && responseData.errors && typeof responseData.errors === 'object') {
+          const firstKey = Object.keys(responseData.errors)[0];
+          if (firstKey && Array.isArray(responseData.errors[firstKey])) {
+            rawMessage = responseData.errors[firstKey][0] ?? '';
+          }
+        }
+
+        if (typeof rawMessage === 'string' && rawMessage.trim()) {
+          const candidateKeys = [
+            `page.error.${rawMessage}`,
+            `error.${rawMessage}`,
+            `page.${rawMessage}`,
+            rawMessage,
+          ];
+          for (const k of candidateKeys) {
+            const translated = $t(k);
+            if (translated && translated !== k) {
+              responseData.message = translated;
+              responseData.error = translated;
+              break;
+            }
+          }
+        }
+      }
+      return Promise.reject(error);
+    },
+  });
+
   // 通用的错误处理,如果没有进入上面的错误处理逻辑，就会进入这里
   client.addResponseInterceptor(
     errorMessageResponseInterceptor((msg: string, error) => {
@@ -115,8 +149,9 @@ function createRequestClient(baseURL: string, options?: RequestClientOptions) {
         return;
       }
       const responseData = error?.response?.data ?? {};
-      const errorMessage = responseData?.error ?? responseData?.message ?? '';
-      message.error(errorMessage || msg);
+      const rawMessage = responseData?.error ?? responseData?.message ?? '';
+
+      message.error(rawMessage || msg);
     }),
   );
 

@@ -29,16 +29,31 @@ async function updateChart() {
   await nextTick();
   if (!chartRef.value || props.items.length === 0) return;
 
-  const dates = props.items.map((item) =>
-    item.recorded_at
-      ? dayjs(item.recorded_at).format('YYYY-MM-DD HH:mm')
-      : dayjs(item.created_at).format('YYYY-MM-DD HH:mm')
-  );
+  const doubledDates: string[] = [];
+  const doubledValues: number[] = [];
 
-  const values = props.items.map((item) => {
-    const num = Number(item.value);
-    return isNaN(num) ? 0 : num;
-  });
+  for (let i = 0; i < props.items.length; i++) {
+    const currItem = props.items[i]!;
+    const currTime = currItem.recorded_at || currItem.created_at;
+    const currVal = isNaN(Number(currItem.value)) ? 0 : Number(currItem.value);
+
+    const currDayjs = dayjs(currTime);
+    doubledDates.push(currDayjs.format('YYYY-MM-DD'));
+    doubledValues.push(currVal);
+
+    if (i < props.items.length - 1) {
+      const nextItem = props.items[i + 1]!;
+      const nextTime = nextItem.recorded_at || nextItem.created_at;
+      const nextVal = isNaN(Number(nextItem.value)) ? 0 : Number(nextItem.value);
+      const nextDayjs = dayjs(nextTime);
+
+      const midTimeMs = Math.round((currDayjs.valueOf() + nextDayjs.valueOf()) / 2);
+      const midVal = Number(((currVal + nextVal) / 2).toFixed(2));
+
+      doubledDates.push(dayjs(midTimeMs).format('YYYY-MM-DD'));
+      doubledValues.push(midVal);
+    }
+  }
 
   const axisTextColor = isDark.value ? '#cbd5e1' : '#4b5563';
   const textColor = isDark.value ? '#f8fafc' : '#1e293b';
@@ -143,12 +158,12 @@ async function updateChart() {
     xAxis: {
       type: 'category',
       boundaryGap: false,
-      data: dates,
+      data: doubledDates,
       axisLabel: {
         show: true,
         color: axisTextColor,
         fontSize: 9,
-        rotate: dates.length > 8 ? 25 : 0,
+        rotate: doubledDates.length > 8 ? 25 : 0,
         hideOverlap: true,
       },
       axisTick: { show: true, alignWithLabel: true },
@@ -168,8 +183,8 @@ async function updateChart() {
         name: props.parameterInfo?.name || $t('page.ops.value'),
         type: 'line',
         smooth: true,
-        showSymbol: true,
-        symbolSize: 6,
+        showSymbol: false,
+        symbol: 'none',
         itemStyle: {
           color: '#1890ff',
         },
@@ -191,7 +206,7 @@ async function updateChart() {
           },
         },
         markLine: markLineData.length > 0 ? { symbol: ['none', 'none'], data: markLineData } : undefined,
-        data: values,
+        data: doubledValues,
       },
     ],
     textStyle: {

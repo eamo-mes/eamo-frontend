@@ -17,6 +17,9 @@ import {
 import dayjs, { type Dayjs } from 'dayjs';
 import { $t } from '#/locales';
 import { isSoftDeleted, softDeletedRowClass, sortBySoftDeleted } from '#/utils/soft-delete';
+import { useRoleAccess } from '#/utils/useRoleAccess';
+
+const { isManager } = useRoleAccess();
 
 import type { ParameterLogItem, EquipmentOption, UnitOption, ParameterLogFormState } from './types';
 import {
@@ -569,6 +572,7 @@ const columns = computed(() => [
 
       <div class="ml-auto flex items-center gap-2">
         <Button
+          v-if="isManager"
           type="default"
           class="border-slate-300 text-slate-700 hover:bg-slate-50 dark:border-gray-700 dark:text-gray-300 dark:hover:bg-gray-800 font-medium"
           @click="showImportModal = true"
@@ -577,6 +581,7 @@ const columns = computed(() => [
         </Button>
 
         <Button
+          v-if="isManager"
           type="default"
           class="border-slate-300 text-slate-700 hover:bg-slate-50 dark:border-gray-700 dark:text-gray-300 dark:hover:bg-gray-800 font-medium"
           @click="openBatchSaveModal"
@@ -585,6 +590,7 @@ const columns = computed(() => [
         </Button>
 
         <Button
+          v-if="isManager"
           type="primary"
           class="bg-[#5c3e35] hover:bg-[#4b332b] border-[#5c3e35] rounded-md font-medium text-white"
           @click="openAddModal"
@@ -641,6 +647,7 @@ const columns = computed(() => [
             <template v-else-if="column.key === 'actions'">
               <div class="flex items-center justify-center space-x-2">
                 <Button
+                  v-if="isManager"
                   size="small"
                   :disabled="isSoftDeleted(record as ParameterLogItem)"
                   class="rounded hover:border-primary hover:text-primary"
@@ -650,6 +657,7 @@ const columns = computed(() => [
                 </Button>
 
                 <Popconfirm
+                  v-if="isManager"
                   :title="$t('page.company.deleteConfirm')"
                   :ok-text="$t('page.ops.btnOk')"
                   :cancel-text="$t('page.ops.btnCancel')"
