@@ -110,3 +110,25 @@ async function fetchUserInfo() {
 ```
 
 Từ đây, Router Guard của Frontend (`guard.ts`) sẽ đọc `userInfo.roles` đã được gán để tạo lập bảng phân quyền truy cập menu tương ứng.
+
+---
+
+## 4. Cơ chế Tự động Hẹn giờ Refresh Token (Proactive & Silent Token Refresh)
+
+Để đảm bảo người dùng không bao giờ gặp lỗi `HTTP 401 Unauthorized` hay gián đoạn khi đang sử dụng hệ thống, ứng dụng triển khai cơ chế làm mới Token thầm lặng tự động (Proactive Background Refresh).
+
+### 4.1. Hẹn giờ chủ động (Timer Scheduler)
+- **Vị trí cấu hình**: Tệp [pkce.ts](file:///C:/Users/khanh/Projects/eamo/frontend/src/api/core/pkce.ts) với hàm `scheduleProactiveTokenRefresh(expiresInSeconds)`.
+- **Cơ chế hoạt động**:
+  - Khi đăng nhập thành công (`handleCallback`) hoặc sau mỗi lần refresh thầm lặng (`refreshAccessToken`), hệ thống trích xuất `expires_in` từ phản hồi của Backend OAuth 2.0.
+  - Tính toán khoảng thời gian an toàn: Hẹn giờ refresh trước khi Token hết hạn **5 phút (300 giây)** hoặc 20% thời lượng Token.
+  - Sử dụng `setTimeout` chạy ngầm để chủ động xin `accessToken` mới và cập nhật lại vào `accessStore`.
+
+### 4.2. Khôi phục Token khi quay lại Tab (`visibilitychange` Listener)
+- **Cơ chế hoạt động**:
+  - Khi trình duyệt bị ẩn (Inactive/Sleep) hoặc người dùng chuyển tab lâu, các bộ đếm `setTimeout` có thể bị trình duyệt trì hoãn.
+  - Hàm lắng nghe sự kiện `document.addEventListener('visibilitychange')` kiểm tra ngay khi tab hiển thị lại (`document.visibilityState === 'visible'`).
+  - Nếu thời gian đã trôi qua vượt mốc an toàn, hệ thống tự động làm mới Token ngay lập tức trước khi người dùng thực hiện bất kỳ thao tác nào.
+
+### 4.3. Quản lý vòng đời Timer (Cleanup Lifecycle)
+- Khi người dùng đăng xuất (`logout()`), hàm `clearProactiveRefreshTimer()` được gọi để hủy bỏ toàn bộ bộ đếm timer đang chạy ngầm, tránh rò rỉ bộ nhớ (Memory Leak).

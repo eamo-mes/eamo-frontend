@@ -54,6 +54,12 @@ These rules apply to all AI agents working on this project.
 * **Deletion Confirmations**: Item delete actions MUST be wrapped in Ant Design Vue `<Popconfirm>` with clear confirmation titles.
 * **Reference Sample Component**: Reference [checklist/detail.vue](file:///c:/Users/khanh/Projects/eamo/frontend/src/views/ops/checklist/detail.vue) for the benchmark implementation of this nested item list style.
 
+## 9. Token Management & Proactive Silent Refresh Rules
+* **Proactive Refresh Schedule**: Always maintain background token refresh timers via `scheduleProactiveTokenRefresh(expiresInSeconds)` inside `handleCallback()` and `refreshAccessToken()`.
+* **Zero 401 Disruption**: Do not rely solely on reactive HTTP 401 error interceptors. Proactive timer refresh MUST renew the `accessToken` 5 minutes prior to expiration.
+* **Tab Visibility Resilience**: Ensure `visibilitychange` listener in `pkce.ts` checks token freshness when returning to active tab.
+* **Timer Memory Safety**: Whenever modifying authentication/logout flow, ALWAYS invoke `clearProactiveRefreshTimer()` during logout or session invalidation to prevent memory leaks.
+
 
 
 

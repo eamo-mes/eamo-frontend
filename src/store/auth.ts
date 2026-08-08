@@ -79,9 +79,10 @@ export const useAuthStore = defineStore('auth', () => {
 
   async function logout(_redirect: boolean = true) {
     const token = accessStore.accessToken;
+    const { clearProactiveRefreshTimer, revokeTokenBackend } = await import('#/api/core/pkce');
+    clearProactiveRefreshTimer();
     if (token) {
       try {
-        const { revokeTokenBackend } = await import('#/api/core/pkce');
         await revokeTokenBackend(token);
       } catch (err) {
         console.error('Error logging out:', err);

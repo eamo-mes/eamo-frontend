@@ -115,11 +115,13 @@ export async function handleCallback(code: string): Promise<TokenResponse> {
       });
 
       const { access_token, refresh_token, expires_in } = response.data;
-      return {
+      const result: TokenResponse = {
         accessToken: access_token,
         refreshToken: refresh_token ?? null,
         expiresIn: expires_in,
       };
+      scheduleProactiveTokenRefresh(result.expiresIn || 3600);
+      return result;
     } finally {
       exchangePromise = null;
     }
@@ -145,14 +147,17 @@ export async function refreshAccessToken(refreshToken: string): Promise<TokenRes
   });
 
   const { access_token, refresh_token: new_refresh_token, expires_in } = response.data;
-  return {
+  const result: TokenResponse = {
     accessToken: access_token,
     refreshToken: new_refresh_token ?? refreshToken, // fallback to old if server doesn't rotate
     expiresIn: expires_in,
   };
+  scheduleProactiveTokenRefresh(result.expiresIn || 3600);
+  return result;
 }
 
 export async function revokeTokenBackend(token: string) {
+  clearProactiveRefreshTimer();
   try {
     await axios.post(API_LOGOUT_URL, {}, {
       headers: {
@@ -163,4 +168,65 @@ export async function revokeTokenBackend(token: string) {
   } catch (err) {
     console.error('Error revoking token on backend:', err);
   }
+}
+
+let proactiveRefreshTimer: ReturnType<typeof setTimeout> | null = null;
+let tokenIssuedAtMs = 0;
+let tokenExpiresInSeconds = 3600;
+
+export function clearProactiveRefreshTimer(): void {
+  if (proactiveRefreshTimer) {
+    clearTimeout(proactiveRefreshTimer);
+    proactiveRefreshTimer = null;
+  }
+}
+
+export function scheduleProactiveTokenRefresh(expiresInSeconds = 3600): void {
+  clearProactiveRefreshTimer();
+
+  tokenIssuedAtMs = Date.now();
+  tokenExpiresInSeconds = expiresInSeconds;
+
+  const bufferSeconds = Math.min(300, Math.floor(expiresInSeconds * 0.2));
+  const delayMs = Math.max((expiresInSeconds - bufferSeconds) * 1000, 10000);
+
+  proactiveRefreshTimer = setTimeout(async () => {
+    try {
+      const { useAccessStore } = await import('@vben/stores');
+      const accessStore = useAccessStore();
+      if (accessStore.refreshToken) {
+        const result = await refreshAccessToken(accessStore.refreshToken);
+        accessStore.setAccessToken(result.accessToken);
+        if (result.refreshToken) {
+          accessStore.setRefreshToken(result.refreshToken);
+        }
+      }
+    } catch (err) {
+      console.warn('[pkce] Proactive token refresh attempt failed:', err);
+    }
+  }, delayMs);
+}
+
+if (typeof window !== 'undefined') {
+  document.addEventListener('visibilitychange', async () => {
+    if (document.visibilityState === 'visible' && tokenIssuedAtMs > 0) {
+      const elapsedSeconds = (Date.now() - tokenIssuedAtMs) / 1000;
+      const bufferSeconds = Math.min(300, Math.floor(tokenExpiresInSeconds * 0.2));
+      if (elapsedSeconds >= tokenExpiresInSeconds - bufferSeconds) {
+        try {
+          const { useAccessStore } = await import('@vben/stores');
+          const accessStore = useAccessStore();
+          if (accessStore.refreshToken) {
+            const result = await refreshAccessToken(accessStore.refreshToken);
+            accessStore.setAccessToken(result.accessToken);
+            if (result.refreshToken) {
+              accessStore.setRefreshToken(result.refreshToken);
+            }
+          }
+        } catch (err) {
+          console.warn('[pkce] Visibility change token refresh failed:', err);
+        }
+      }
+    }
+  });
 }
