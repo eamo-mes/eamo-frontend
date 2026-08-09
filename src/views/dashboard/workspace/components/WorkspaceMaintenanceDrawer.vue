@@ -866,6 +866,7 @@ function goToPlanDetail(): void {
             <FormItem :label="$t('page.ops.colNotes') || 'Ghi chú'" name="notes" class="mb-2">
               <Input.TextArea
                 v-model:value="planForm.notes"
+                :disabled="!isManager"
                 :placeholder="$t('page.ops.placeholderPlanNotes') || 'Nhập ghi chú...'"
                 :rows="2"
               />

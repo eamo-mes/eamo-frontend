@@ -448,6 +448,7 @@ function goToPlan(): void {
               <!-- Notes TextArea -->
               <Input.TextArea
                 v-model:value="getItemEvalState(sched).notes"
+                :disabled="!isManager"
                 :rows="2"
                 :placeholder="$t('page.ops.judgeNotesPlaceholder') || 'Ghi chú hoặc nguyên nhân không đạt...'"
                 class="w-full text-xs resize-none"
