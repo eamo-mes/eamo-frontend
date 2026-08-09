@@ -6,6 +6,7 @@ import {
   Popconfirm, Spin, message, InputNumber, DatePicker, Table,
 } from 'ant-design-vue';
 import dayjs, { type Dayjs } from 'dayjs';
+import { useUserStore } from '@vben/stores';
 import { $t } from '#/locales';
 import {
   createChecklistSessionApi,
@@ -51,6 +52,13 @@ const emit = defineEmits<{
 }>();
 
 const router = useRouter();
+const userStore = useUserStore();
+
+const isManager = computed(() => {
+  const roles = userStore.userInfo?.roles || [];
+  const singleRole = (userStore.userInfo as any)?.role;
+  return roles.includes('manager') || roles.includes('admin') || singleRole === 'manager' || singleRole === 'admin';
+});
 
 const visible = computed({
   get: () => props.open,
@@ -405,6 +413,7 @@ function goToChecklistDetail(): void {
           </div>
 
           <Button
+            v-if="isManager"
             type="primary"
             block
             class="mt-4 bg-[#5c3e35] hover:bg-[#4b332b] border-[#5c3e35] rounded-md text-white font-medium h-10 text-sm"
@@ -427,12 +436,13 @@ function goToChecklistDetail(): void {
 
           <Form ref="formRef" :model="sessionForm" :rules="rules" layout="vertical" class="space-y-3">
             <FormItem :label="$t('page.ops.checklistDrawer.fieldName')" name="name" class="mb-2">
-              <Input v-model:value="sessionForm.name" :placeholder="$t('page.ops.checklistDrawer.placeholderName')" />
+              <Input v-model:value="sessionForm.name" :disabled="!isManager" :placeholder="$t('page.ops.checklistDrawer.placeholderName')" />
             </FormItem>
 
             <FormItem :label="$t('page.ops.checklistDrawer.fieldEquipment')" name="equipment_id" class="mb-2">
               <Select
                 v-model:value="sessionForm.equipment_id"
+                :disabled="!isManager"
                 :placeholder="$t('page.ops.checklistDrawer.placeholderEquipment')"
                 :options="equipmentSelectOptions"
                 show-search
@@ -444,6 +454,7 @@ function goToChecklistDetail(): void {
             <FormItem :label="$t('page.ops.colDate')" name="session_date" class="mb-2">
               <DatePicker
                 v-model:value="sessionForm.session_date"
+                :disabled="!isManager"
                 show-time
                 value-format="YYYY-MM-DD HH:mm"
                 format="YYYY-MM-DD HH:mm"
@@ -455,7 +466,7 @@ function goToChecklistDetail(): void {
 
             <div class="grid grid-cols-2 gap-3">
               <FormItem :label="$t('page.ops.colCycleType')" name="cycle_type" class="col-span-1 mb-2">
-                <Select v-model:value="sessionForm.cycle_type" :placeholder="$t('page.ops.placeholderCycleType')">
+                <Select v-model:value="sessionForm.cycle_type" :disabled="!isManager" :placeholder="$t('page.ops.placeholderCycleType')">
                   <Select.Option value="daily">{{ $t('page.ops.cycleDaily') }}</Select.Option>
                   <Select.Option value="weekly">{{ $t('page.ops.cycleWeekly') }}</Select.Option>
                   <Select.Option value="monthly">{{ $t('page.ops.cycleMonthly') }}</Select.Option>
@@ -466,6 +477,7 @@ function goToChecklistDetail(): void {
               <FormItem :label="$t('page.ops.colCycleInterval')" name="cycle_interval" class="col-span-1 mb-2">
                 <InputNumber
                   v-model:value="sessionForm.cycle_interval"
+                  :disabled="!isManager"
                   :min="1"
                   class="w-full !w-full"
                   style="width: 100%"
@@ -477,6 +489,7 @@ function goToChecklistDetail(): void {
             <FormItem :label="$t('page.ops.checklistDrawer.fieldUsers')" name="user_ids" class="mb-2">
               <Select
                 v-model:value="sessionForm.user_ids"
+                :disabled="!isManager"
                 mode="multiple"
                 :placeholder="$t('page.ops.checklistDrawer.placeholderUsers')"
                 :options="userSelectOptions"
@@ -505,14 +518,17 @@ function goToChecklistDetail(): void {
                 >
                   <Input
                     v-model:value="item.description"
+                    :disabled="!isManager"
                     class="flex-1"
                     :placeholder="$t('page.ops.checklistDrawer.placeholderItemDesc')"
                   />
+                  <!-- Engineers CAN modify item.result (pass/fail)! -->
                   <Select v-model:value="item.result" class="w-28 shrink-0">
                     <Select.Option value="pass">{{ $t('page.ops.checklistDrawer.statusPass') }}</Select.Option>
                     <Select.Option value="fail">{{ $t('page.ops.checklistDrawer.statusFail') }}</Select.Option>
                   </Select>
                   <Popconfirm
+                    v-if="isManager"
                     :title="$t('page.ops.checklistDrawer.deleteConfirm')"
                     :ok-text="$t('page.ops.checklistDrawer.btnDelete')"
                     :cancel-text="$t('page.ops.checklistDrawer.btnCancel')"
@@ -525,7 +541,7 @@ function goToChecklistDetail(): void {
                 </div>
               </div>
 
-              <Button type="dashed" block class="mt-3" @click="addDetailRow">
+              <Button v-if="isManager" type="dashed" block class="mt-3" @click="addDetailRow">
                 {{ $t('page.ops.checklistDrawer.btnAddItem') }}
               </Button>
             </div>

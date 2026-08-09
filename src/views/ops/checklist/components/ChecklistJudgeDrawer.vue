@@ -13,7 +13,7 @@ import {
 import { useRouter } from 'vue-router';
 import axios from 'axios';
 import dayjs from 'dayjs';
-import { useAccessStore } from '@vben/stores';
+import { useAccessStore, useUserStore } from '@vben/stores';
 import { API_BASE_URL } from '#/api/config';
 import { $t } from '#/locales';
 import type {
@@ -36,6 +36,13 @@ const emit = defineEmits<{
 }>();
 
 const router = useRouter();
+const userStore = useUserStore();
+
+const isManager = computed(() => {
+  const roles = userStore.userInfo?.roles || [];
+  const singleRole = (userStore.userInfo as any)?.role;
+  return roles.includes('manager') || roles.includes('admin') || singleRole === 'manager' || singleRole === 'admin';
+});
 
 const submitting = ref(false);
 const deletingSchedule = ref(false);
@@ -304,6 +311,7 @@ function goToChecklistDetail(): void {
         </label>
         <Select
           v-model:value="selectedUserIds"
+          :disabled="!isManager"
           :placeholder="$t('page.ops.placeholderSelectChecker')"
           :options="userOptions"
           mode="multiple"
@@ -321,6 +329,7 @@ function goToChecklistDetail(): void {
         </label>
         <DatePicker
           v-model:value="selectedExecutionDate"
+          :disabled="!isManager"
           value-format="YYYY-MM-DD"
           format="YYYY-MM-DD"
           class="w-full"
@@ -333,6 +342,7 @@ function goToChecklistDetail(): void {
       <div class="flex items-center justify-between gap-2 py-1">
         <div class="flex items-center gap-2">
           <Popconfirm
+            v-if="isManager"
             :title="$t('page.ops.confirmDeleteSchedule', { name: props.session?.equipment?.name || props.session?.name || '', date: props.session?.session_date?.slice(0, 10) || '' })"
             @confirm="handleDeleteSchedule"
           >
