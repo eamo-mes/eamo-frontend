@@ -116,27 +116,11 @@ function isUuid(val?: string | null): boolean {
   return /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(val);
 }
 
-const DYNAMIC_ITEM_TRANSLATIONS: Record<string, string> = {
-  'Vệ sinh bụi bẩn tủ điện & quạt tản nhiệt': 'page.ops.itemCleanCabinetFan',
-  'Hạng mục kiểm tra định kỳ cho Bảo trì Hệ thống Điện & Cảm biến': 'page.ops.itemPeriodicElectricalSensor',
-  'Kiểm tra cảm biến hành trình & công tắc hành trình': 'page.ops.itemCheckLimitSensors',
-  'Đo điện áp nguồn & kiểm tra tiếp địa': 'page.ops.itemMeasureVoltageGrounding',
-  'Kiểm tra áp suất dầu động cơ': 'page.ops.itemCheckEngineOilPressure',
-  'Kiểm tra van an toàn & hệ thống điện': 'page.ops.itemCheckSafetyValves',
-  'Kiểm Tra Đầu Ca Sáng (Morning Inspection)': 'page.ops.itemMorningInspection',
-  'Daily Morning Inspection': 'page.ops.itemDailyMorningInspection',
-};
-
-function formatDynamicTranslation(text: string | null | undefined): string {
+function translateItemText(text: string | null | undefined): string {
   if (!text) return '';
-  const key = DYNAMIC_ITEM_TRANSLATIONS[text];
-  if (key) {
-    const translated = $t(key);
-    if (translated && translated !== key) {
-      return translated;
-    }
-  }
-  return text;
+  const key = `page.ops.items.${text}`;
+  const translated = $t(key);
+  return translated && translated !== key ? translated : text;
 }
 
 function getItemName(schedule: ScheduleRow): string {
@@ -149,7 +133,7 @@ function getItemName(schedule: ScheduleRow): string {
     else if (schedule.item_name && !isUuid(schedule.item_name)) name = schedule.item_name;
     else name = $t('page.ops.unidentified') || 'Chưa xác định';
   }
-  return formatDynamicTranslation(name) || name;
+  return translateItemText(name);
 }
 
 function getItemDescription(schedule: ScheduleRow): string | null {
@@ -159,7 +143,7 @@ function getItemDescription(schedule: ScheduleRow): string | null {
     desc = item?.description || null;
   }
   if (!desc) return null;
-  return formatDynamicTranslation(desc) || desc;
+  return translateItemText(desc);
 }
 
 function getEquipmentName(schedule: ScheduleRow): string {

@@ -855,14 +855,16 @@
       "validationName": "Vui lòng nhập tên phiên kiểm tra",
       "validationEquipment": "Vui lòng chọn thiết bị"
     },
-    "itemCleanCabinetFan": "Vệ sinh bụi bẩn tủ điện & quạt tản nhiệt",
-    "itemPeriodicElectricalSensor": "Hạng mục kiểm tra định kỳ cho Bảo trì Hệ thống Điện & Cảm biến",
-    "itemCheckLimitSensors": "Kiểm tra cảm biến hành trình & công tắc hành trình",
-    "itemMeasureVoltageGrounding": "Đo điện áp nguồn & kiểm tra tiếp địa",
-    "itemCheckEngineOilPressure": "Kiểm tra áp suất dầu động cơ",
-    "itemCheckSafetyValves": "Kiểm tra van an toàn & hệ thống điện",
-    "itemMorningInspection": "Kiểm Tra Đầu Ca Sáng (Morning Inspection)",
-    "itemDailyMorningInspection": "Kiểm Tra Đầu Ca Sáng"
+    "items": {
+      "Vệ sinh bụi bẩn tủ điện & quạt tản nhiệt": "Vệ sinh bụi bẩn tủ điện & quạt tản nhiệt",
+      "Hạng mục kiểm tra định kỳ cho Bảo trì Hệ thống Điện & Cảm biến": "Hạng mục kiểm tra định kỳ cho Bảo trì Hệ thống Điện & Cảm biến",
+      "Kiểm tra cảm biến hành trình & công tắc hành trình": "Kiểm tra cảm biến hành trình & công tắc hành trình",
+      "Đo điện áp nguồn & kiểm tra tiếp địa": "Đo điện áp nguồn & kiểm tra tiếp địa",
+      "Kiểm tra áp suất dầu động cơ": "Kiểm tra áp suất dầu động cơ",
+      "Kiểm tra van an toàn & hệ thống điện": "Kiểm tra van an toàn & hệ thống điện",
+      "Kiểm Tra Đầu Ca Sáng (Morning Inspection)": "Kiểm Tra Đầu Ca Sáng (Morning Inspection)",
+      "Daily Morning Inspection": "Kiểm Tra Đầu Ca Sáng"
+    }
   },
   "notification": {
     "title": "Danh sách thông báo",
