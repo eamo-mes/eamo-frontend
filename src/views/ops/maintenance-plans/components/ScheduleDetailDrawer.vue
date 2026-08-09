@@ -192,7 +192,7 @@ async function fetchLogsForPlanSchedules(): Promise<void> {
         if (firstLog) {
           evalMap[key].log_id = firstLog.id;
           evalMap[key].result = firstLog.result === 'Completed' ? 'Completed' : 'Pending';
-          evalMap[key].notes = firstLog.notes || '';
+          evalMap[key].notes = (firstLog as any).note || firstLog.notes || '';
         }
       } catch {
         // ignore
@@ -252,12 +252,14 @@ async function handleSaveDrawer(): Promise<void> {
           await requestClient.put<MaintenanceLog>(`/v1/maintenance-logs/${evalState.log_id}`, {
             result: logResult,
             note: logNote,
+            notes: logNote,
           });
         } else {
           const newLog = await createMaintenanceLogApi({
             maintenance_schedule_id: s.id,
             result: logResult,
             note: logNote,
+            notes: logNote,
           });
           evalState.log_id = newLog.id;
         }
