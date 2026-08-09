@@ -35,7 +35,10 @@ const emit = defineEmits<{
   (e: 'submitted'): void;
 }>();
 
+import { useRoleAccess } from '#/utils/useRoleAccess';
+
 const router = useRouter();
+const { isManager, isEngineer, isAdmin } = useRoleAccess();
 
 const submitting = ref(false);
 const deletingSchedule = ref(false);
@@ -114,25 +117,30 @@ async function handleJudgeOk(): Promise<void> {
   submitting.value = true;
 
   try {
-    const scheduleIds = props.session.details
-      ?.map((detail) => detail.schedule_id)
-      .filter((id): id is string => Boolean(id));
+    try {
+      const scheduleIds = props.session.details
+        ?.map((detail) => detail.schedule_id)
+        .filter((id): id is string => Boolean(id));
 
-    await axios.put(
-      `${API_BASE_URL}/v1/checklist-sessions/${props.session.id}`,
-      {
-        user_ids: selectedUserIds.value,
-        schedules:
-          scheduleIds && scheduleIds.length > 0
-            ? scheduleIds.map((id) => ({
-                id,
-                date: selectedExecutionDate.value,
-                user_ids: selectedUserIds.value,
-              }))
-            : undefined,
-      },
-      { headers: getAuthHeaders() },
-    );
+      await axios.put(
+        `${API_BASE_URL}/v1/checklist-sessions/${props.session.id}`,
+        {
+          user_ids: selectedUserIds.value,
+          schedules:
+            scheduleIds && scheduleIds.length > 0
+              ? scheduleIds.map((id) => ({
+                  id,
+                  date: selectedExecutionDate.value,
+                  user_ids: selectedUserIds.value,
+                }))
+              : undefined,
+        },
+        { headers: getAuthHeaders() },
+      );
+    } catch (putErr) {
+      // Non-managers may get 403 on session PUT, continue to judge POST
+      console.warn('Session structure update skipped or unauthorized:', putErr);
+    }
 
     const payload = {
       session_id: props.session.id,
@@ -299,6 +307,7 @@ function goToChecklistDetail(): void {
         </label>
         <Select
           v-model:value="selectedUserIds"
+          :disabled="!isManager"
           :placeholder="$t('page.ops.placeholderSelectChecker')"
           :options="userOptions"
           mode="multiple"
@@ -316,6 +325,7 @@ function goToChecklistDetail(): void {
         </label>
         <DatePicker
           v-model:value="selectedExecutionDate"
+          :disabled="!isManager"
           value-format="YYYY-MM-DD"
           format="YYYY-MM-DD"
           class="w-full"
@@ -328,6 +338,7 @@ function goToChecklistDetail(): void {
       <div class="flex items-center justify-between gap-2 py-1">
         <div class="flex items-center gap-2">
           <Popconfirm
+            v-if="isManager"
             :title="$t('page.ops.confirmDeleteSchedule', { name: props.session?.equipment?.name || props.session?.name || '', date: props.session?.session_date?.slice(0, 10) || '' })"
             @confirm="handleDeleteSchedule"
           >

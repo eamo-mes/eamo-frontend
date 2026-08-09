@@ -36,6 +36,7 @@ const equipmentBannerInfo = computed(() => {
 import dayjs from 'dayjs';
 import { $t } from '#/locales';
 import { requestClient } from '#/api/request';
+import { useRoleAccess } from '#/utils/useRoleAccess';
 import {
   createMaintenanceLogApi,
   deleteMaintenanceScheduleApi,
@@ -75,6 +76,7 @@ const emit = defineEmits<{
 }>();
 
 const router = useRouter();
+const { isManager, isAdmin } = useRoleAccess();
 
 const drawerSchedule = ref<{ date: string; user_ids: string[] }>({
   date: dayjs().format('YYYY-MM-DD'),
@@ -190,7 +192,7 @@ async function fetchLogsForPlanSchedules(): Promise<void> {
         if (firstLog) {
           evalMap[key].log_id = firstLog.id;
           evalMap[key].result = firstLog.result === 'Completed' ? 'Completed' : 'Pending';
-          evalMap[key].notes = firstLog.notes || '';
+          evalMap[key].notes = (firstLog as any).note || firstLog.notes || '';
         }
       } catch {
         // ignore
@@ -250,12 +252,14 @@ async function handleSaveDrawer(): Promise<void> {
           await requestClient.put<MaintenanceLog>(`/v1/maintenance-logs/${evalState.log_id}`, {
             result: logResult,
             note: logNote,
+            notes: logNote,
           });
         } else {
           const newLog = await createMaintenanceLogApi({
             maintenance_schedule_id: s.id,
             result: logResult,
             note: logNote,
+            notes: logNote,
           });
           evalState.log_id = newLog.id;
         }
@@ -390,6 +394,7 @@ function goToPlan(): void {
             </label>
             <DatePicker
               v-model:value="drawerSchedule.date"
+              :disabled="!isManager"
               value-format="YYYY-MM-DD"
               format="YYYY-MM-DD"
               :placeholder="$t('page.ops.placeholderScheduleDate')"
@@ -403,6 +408,7 @@ function goToPlan(): void {
             </label>
             <Select
               v-model:value="drawerSchedule.user_ids"
+              :disabled="!isManager"
               :options="props.userOptions"
               :placeholder="$t('page.ops.placeholderAssignedUsers')"
               mode="multiple"
@@ -444,6 +450,7 @@ function goToPlan(): void {
               <!-- Notes TextArea -->
               <Input.TextArea
                 v-model:value="getItemEvalState(sched).notes"
+                :disabled="!isManager"
                 :rows="2"
                 :placeholder="$t('page.ops.judgeNotesPlaceholder') || 'Ghi chú hoặc nguyên nhân không đạt...'"
                 class="w-full text-xs resize-none"
@@ -496,6 +503,7 @@ function goToPlan(): void {
       <div class="flex items-center justify-between gap-2 py-1">
         <div class="flex items-center gap-2">
           <Popconfirm
+            v-if="isManager"
             :title="$t('page.ops.deleteScheduleConfirm') || 'Bạn có chắc chắn muốn xóa lịch bảo trì này không?'"
             :ok-text="$t('page.ops.btnConfirm') || 'Xóa'"
             :cancel-text="$t('page.ops.btnCancel') || 'Hủy'"

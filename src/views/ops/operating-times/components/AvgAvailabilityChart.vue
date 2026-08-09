@@ -86,7 +86,7 @@ watch(
 </script>
 
 <template>
-  <div :class="['border border-border rounded-xl p-4 bg-white dark:bg-gray-900 flex flex-col', props.compact ? 'h-[240px]' : 'h-[360px]']">
+  <div :class="['border border-border rounded-xl p-4 bg-card flex flex-col', props.compact ? 'h-[240px]' : 'h-[360px]']">
     <div class="mb-2">
       <h5 class="text-xs font-bold text-foreground uppercase tracking-wider m-0">
         {{ $t('page.ops.chartAvgAvailabilityTitle') }}
