@@ -854,6 +854,16 @@
       "msgSaveError": "Không thể lưu phiên kiểm tra",
       "validationName": "Vui lòng nhập tên phiên kiểm tra",
       "validationEquipment": "Vui lòng chọn thiết bị"
+    },
+    "items": {
+      "Vệ sinh bụi bẩn tủ điện & quạt tản nhiệt": "Vệ sinh bụi bẩn tủ điện & quạt tản nhiệt",
+      "Hạng mục kiểm tra định kỳ cho Bảo trì Hệ thống Điện & Cảm biến": "Hạng mục kiểm tra định kỳ cho Bảo trì Hệ thống Điện & Cảm biến",
+      "Kiểm tra cảm biến hành trình & công tắc hành trình": "Kiểm tra cảm biến hành trình & công tắc hành trình",
+      "Đo điện áp nguồn & kiểm tra tiếp địa": "Đo điện áp nguồn & kiểm tra tiếp địa",
+      "Kiểm tra áp suất dầu động cơ": "Kiểm tra áp suất dầu động cơ",
+      "Kiểm tra van an toàn & hệ thống điện": "Kiểm tra van an toàn & hệ thống điện",
+      "Kiểm Tra Đầu Ca Sáng (Morning Inspection)": "Kiểm Tra Đầu Ca Sáng (Morning Inspection)",
+      "Daily Morning Inspection": "Kiểm Tra Đầu Ca Sáng"
     }
   },
   "notification": {
