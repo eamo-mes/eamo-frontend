@@ -13,7 +13,7 @@ import {
 import { useRouter } from 'vue-router';
 import axios from 'axios';
 import dayjs from 'dayjs';
-import { useAccessStore, useUserStore } from '@vben/stores';
+import { useAccessStore } from '@vben/stores';
 import { API_BASE_URL } from '#/api/config';
 import { $t } from '#/locales';
 import type {
@@ -35,14 +35,10 @@ const emit = defineEmits<{
   (e: 'submitted'): void;
 }>();
 
-const router = useRouter();
-const userStore = useUserStore();
+import { useRoleAccess } from '#/utils/useRoleAccess';
 
-const isManager = computed(() => {
-  const roles = userStore.userInfo?.roles || [];
-  const singleRole = (userStore.userInfo as any)?.role;
-  return roles.includes('manager') || roles.includes('admin') || singleRole === 'manager' || singleRole === 'admin';
-});
+const router = useRouter();
+const { isManager, isEngineer, isAdmin } = useRoleAccess();
 
 const submitting = ref(false);
 const deletingSchedule = ref(false);

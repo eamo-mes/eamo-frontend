@@ -6,8 +6,8 @@ import {
   Popconfirm, Spin, message, InputNumber, DatePicker, Table,
 } from 'ant-design-vue';
 import dayjs, { type Dayjs } from 'dayjs';
-import { useUserStore } from '@vben/stores';
 import { $t } from '#/locales';
+import { useRoleAccess } from '#/utils/useRoleAccess';
 import {
   createChecklistSessionApi,
   updateChecklistSessionApi,
@@ -52,13 +52,7 @@ const emit = defineEmits<{
 }>();
 
 const router = useRouter();
-const userStore = useUserStore();
-
-const isManager = computed(() => {
-  const roles = userStore.userInfo?.roles || [];
-  const singleRole = (userStore.userInfo as any)?.role;
-  return roles.includes('manager') || roles.includes('admin') || singleRole === 'manager' || singleRole === 'admin';
-});
+const { isManager, isEngineer, isAdmin } = useRoleAccess();
 
 const visible = computed({
   get: () => props.open,
