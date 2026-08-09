@@ -254,25 +254,30 @@ async function handleSaveSession() {
       });
       message.success($t('page.ops.checklistDrawer.msgCreateSuccess'));
     } else if (activeMode.value === 'edit' && sessionForm.value.id) {
-      // 2. Update eamo_checklist_session + eamo_checklist_details
-      await updateChecklistSessionApi(sessionForm.value.id, {
-        name: sessionForm.value.name,
-        equipment_id: sessionForm.value.equipment_id,
-        session_date: sessionDateStr,
-        cycle_type: sessionForm.value.cycle_type,
-        cycle_interval: sessionForm.value.cycle_interval,
-        user_ids: sessionForm.value.user_ids,
-      });
+      // 2. Update eamo_checklist_session + eamo_checklist_details (Manager only)
+      try {
+        await updateChecklistSessionApi(sessionForm.value.id, {
+          name: sessionForm.value.name,
+          equipment_id: sessionForm.value.equipment_id,
+          session_date: sessionDateStr,
+          cycle_type: sessionForm.value.cycle_type,
+          cycle_interval: sessionForm.value.cycle_interval,
+          user_ids: sessionForm.value.user_ids,
+        });
 
-      await updateChecklistDetailsApi({
-        session_id: sessionForm.value.id,
-        date: sessionDateStr,
-        checklists: validDetails.map((item) => ({
-          id: item.id,
-          checklist_id: item.checklist_id,
-          description: item.description,
-        })),
-      });
+        await updateChecklistDetailsApi({
+          session_id: sessionForm.value.id,
+          date: sessionDateStr,
+          checklists: validDetails.map((item) => ({
+            id: item.id,
+            checklist_id: item.checklist_id,
+            description: item.description,
+          })),
+        });
+      } catch (structureErr: unknown) {
+        // Non-manager engineers might get 403 on structure updates, ignore & allow judge API to proceed
+        console.warn('Session structure update skipped or unauthorized:', structureErr);
+      }
 
       // Submit judge results
       await judgeChecklistSessionApi({

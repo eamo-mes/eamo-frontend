@@ -114,25 +114,30 @@ async function handleJudgeOk(): Promise<void> {
   submitting.value = true;
 
   try {
-    const scheduleIds = props.session.details
-      ?.map((detail) => detail.schedule_id)
-      .filter((id): id is string => Boolean(id));
+    try {
+      const scheduleIds = props.session.details
+        ?.map((detail) => detail.schedule_id)
+        .filter((id): id is string => Boolean(id));
 
-    await axios.put(
-      `${API_BASE_URL}/v1/checklist-sessions/${props.session.id}`,
-      {
-        user_ids: selectedUserIds.value,
-        schedules:
-          scheduleIds && scheduleIds.length > 0
-            ? scheduleIds.map((id) => ({
-                id,
-                date: selectedExecutionDate.value,
-                user_ids: selectedUserIds.value,
-              }))
-            : undefined,
-      },
-      { headers: getAuthHeaders() },
-    );
+      await axios.put(
+        `${API_BASE_URL}/v1/checklist-sessions/${props.session.id}`,
+        {
+          user_ids: selectedUserIds.value,
+          schedules:
+            scheduleIds && scheduleIds.length > 0
+              ? scheduleIds.map((id) => ({
+                  id,
+                  date: selectedExecutionDate.value,
+                  user_ids: selectedUserIds.value,
+                }))
+              : undefined,
+        },
+        { headers: getAuthHeaders() },
+      );
+    } catch (putErr) {
+      // Non-managers may get 403 on session PUT, continue to judge POST
+      console.warn('Session structure update skipped or unauthorized:', putErr);
+    }
 
     const payload = {
       session_id: props.session.id,
