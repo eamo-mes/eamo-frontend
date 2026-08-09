@@ -5,6 +5,7 @@ import {
   Drawer, Tag, Button, Select, Form, FormItem, Input, InputNumber, Popconfirm, Spin, Divider, Empty, DatePicker, Table, message,
 } from 'ant-design-vue';
 import dayjs, { type Dayjs } from 'dayjs';
+import { useRoleAccess } from '#/utils/useRoleAccess';
 import { $t } from '#/locales';
 import {
   listCategoriesApi,
@@ -63,6 +64,7 @@ const emit = defineEmits<{
 }>();
 
 const router = useRouter();
+const { isManager, isAdmin } = useRoleAccess();
 
 const visible = computed({
   get: () => props.open,
@@ -753,9 +755,6 @@ function goToPlanDetail(): void {
         <!-- MODE 2 & 3: FORM FOR CREATING / EDITING MAINTENANCE PLANS & SCHEDULES -->
         <div v-else class="space-y-4">
           <div class="flex items-center justify-between mb-2">
-            <div class="text-xs font-bold text-foreground uppercase tracking-wider">
-              {{ activeMode === 'create' ? ($t('page.ops.createTitle') || 'Tạo kế hoạch bảo trì') : ($t('page.ops.editTitle') || 'Chỉnh sửa kế hoạch bảo trì') }}
-            </div>
             <Button size="small" @click="activeMode = 'list'">
               &larr; {{ $t('page.ops.checklistDrawer.btnBackToList') || 'Quay lại danh sách' }}
             </Button>
@@ -765,13 +764,14 @@ function goToPlanDetail(): void {
             <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
               <!-- Mã kế hoạch -->
               <FormItem :label="$t('page.ops.colPlanCode') || 'Mã kế hoạch'" name="plan_code" class="mb-2">
-                <Input v-model:value="planForm.plan_code" :placeholder="$t('page.ops.placeholderPlanCode') || 'Nhập mã kế hoạch...'" />
+                <Input v-model:value="planForm.plan_code" :disabled="!isManager" :placeholder="$t('page.ops.placeholderPlanCode') || 'Nhập mã kế hoạch...'" />
               </FormItem>
 
               <!-- Thiết bị -->
               <FormItem :label="$t('page.ops.placeholderEquipment') || 'Thiết bị'" name="equipment_id" class="mb-2">
                 <Select
                   v-model:value="planForm.equipment_id"
+                  :disabled="!isManager"
                   :options="equipmentSelectOptions"
                   :placeholder="$t('page.ops.placeholderEquipment') || 'Chọn thiết bị...'"
                   show-search
@@ -784,6 +784,7 @@ function goToPlanDetail(): void {
               <FormItem :label="$t('page.ops.maintenanceCategories') || 'Danh mục bảo trì'" name="maintenance_category_id" class="mb-2">
                 <Select
                   v-model:value="planForm.maintenance_category_id"
+                  :disabled="!isManager"
                   :options="categorySelectOptions"
                   :placeholder="$t('page.ops.maintenanceCategories') || 'Chọn danh mục...'"
                   show-search
@@ -797,6 +798,7 @@ function goToPlanDetail(): void {
               <FormItem :label="$t('page.ops.colMaintenanceType') || 'Loại bảo trì'" name="maintenance_type" class="mb-2">
                 <Select
                   v-model:value="planForm.maintenance_type"
+                  :disabled="!isManager"
                   :options="maintenanceTypeOptions"
                   :placeholder="$t('page.ops.placeholderMaintenanceType') || 'Chọn loại...'"
                   allow-clear
@@ -808,6 +810,7 @@ function goToPlanDetail(): void {
               <FormItem :label="$t('page.ops.startDate') || 'Ngày kế hoạch'" name="date" class="mb-2">
                 <Input
                   v-model:value="planForm.date"
+                  :disabled="!isManager"
                   type="date"
                   class="w-full"
                 />
@@ -817,6 +820,7 @@ function goToPlanDetail(): void {
               <FormItem :label="$t('page.ops.colCycleType') || 'Chu kỳ lặp'" name="cycle_type" class="mb-2">
                 <Select
                   v-model:value="planForm.cycle_type"
+                  :disabled="!isManager"
                   :options="cycleTypeOptions"
                   :placeholder="$t('page.ops.placeholderCycleType') || 'Chọn chu kỳ...'"
                   allow-clear
@@ -833,6 +837,7 @@ function goToPlanDetail(): void {
               >
                 <InputNumber
                   v-model:value="planForm.cycle_interval"
+                  :disabled="!isManager"
                   :min="1"
                   class="w-full"
                   style="width: 100%"
@@ -848,6 +853,7 @@ function goToPlanDetail(): void {
               >
                 <InputNumber
                   v-model:value="planForm.occurrences"
+                  :disabled="!isManager"
                   :min="1"
                   :max="100"
                   class="w-full"
@@ -891,6 +897,7 @@ function goToPlanDetail(): void {
                       <span class="text-xs text-gray-500 block mb-1 font-medium">{{ $t('page.ops.colItemName') || 'Tên hạng mục' }}</span>
                       <Input
                         v-model:value="item.name"
+                        :disabled="!isManager"
                         :placeholder="$t('page.ops.placeholderItemName') || 'Nhập tên hạng mục...'"
                         @press-enter="saveCategoryItem(item)"
                       />
@@ -900,6 +907,7 @@ function goToPlanDetail(): void {
                       <span class="text-xs text-gray-500 block mb-1 font-medium">{{ $t('page.ops.colItemDesc') || 'Mô tả' }}</span>
                       <Input
                         :value="item.description ?? ''"
+                        :disabled="!isManager"
                         @update:value="(val) => item.description = val || null"
                         :placeholder="$t('page.ops.placeholderItemDesc') || 'Nhập mô tả...'"
                         @press-enter="saveCategoryItem(item)"
@@ -910,6 +918,7 @@ function goToPlanDetail(): void {
                       <span class="text-xs text-gray-500 block mb-1 font-medium">{{ $t('page.ops.assignedTechnicians') || 'Người thực hiện' }}</span>
                       <Select
                         :value="item.user_ids"
+                        :disabled="!isManager"
                         @update:value="(val: unknown) => { const userIds = Array.isArray(val) ? (val as string[]) : []; item.user_ids = userIds; setItemUserIds(item.id, userIds); }"
                         :options="userSelectOptions"
                         :placeholder="$t('page.ops.placeholderAssignedUsers') || 'Chọn người...'"
@@ -921,7 +930,7 @@ function goToPlanDetail(): void {
                       />
                     </div>
 
-                    <div class="flex gap-2 h-[32px] items-center shrink-0">
+                    <div v-if="isManager" class="flex gap-2 h-[32px] items-center shrink-0">
                       <Button
                         type="default"
                         class="h-[32px]"

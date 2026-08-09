@@ -36,6 +36,7 @@ const equipmentBannerInfo = computed(() => {
 import dayjs from 'dayjs';
 import { $t } from '#/locales';
 import { requestClient } from '#/api/request';
+import { useRoleAccess } from '#/utils/useRoleAccess';
 import {
   createMaintenanceLogApi,
   deleteMaintenanceScheduleApi,
@@ -75,6 +76,7 @@ const emit = defineEmits<{
 }>();
 
 const router = useRouter();
+const { isManager, isAdmin } = useRoleAccess();
 
 const drawerSchedule = ref<{ date: string; user_ids: string[] }>({
   date: dayjs().format('YYYY-MM-DD'),
@@ -390,6 +392,7 @@ function goToPlan(): void {
             </label>
             <DatePicker
               v-model:value="drawerSchedule.date"
+              :disabled="!isManager"
               value-format="YYYY-MM-DD"
               format="YYYY-MM-DD"
               :placeholder="$t('page.ops.placeholderScheduleDate')"
@@ -403,6 +406,7 @@ function goToPlan(): void {
             </label>
             <Select
               v-model:value="drawerSchedule.user_ids"
+              :disabled="!isManager"
               :options="props.userOptions"
               :placeholder="$t('page.ops.placeholderAssignedUsers')"
               mode="multiple"
@@ -496,6 +500,7 @@ function goToPlan(): void {
       <div class="flex items-center justify-between gap-2 py-1">
         <div class="flex items-center gap-2">
           <Popconfirm
+            v-if="isManager"
             :title="$t('page.ops.deleteScheduleConfirm') || 'Bạn có chắc chắn muốn xóa lịch bảo trì này không?'"
             :ok-text="$t('page.ops.btnConfirm') || 'Xóa'"
             :cancel-text="$t('page.ops.btnCancel') || 'Hủy'"
