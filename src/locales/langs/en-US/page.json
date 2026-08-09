@@ -863,16 +863,6 @@
       "msgSaveError": "Failed to save checklist session",
       "validationName": "Please enter checklist session name",
       "validationEquipment": "Please select equipment"
-    },
-    "items": {
-      "Vệ sinh bụi bẩn tủ điện & quạt tản nhiệt": "Clean electrical cabinet dust & cooling fan",
-      "Hạng mục kiểm tra định kỳ cho Bảo trì Hệ thống Điện & Cảm biến": "Periodic inspection item for Electrical System & Sensor Maintenance",
-      "Kiểm tra cảm biến hành trình & công tắc hành trình": "Check limit sensors & limit switches",
-      "Đo điện áp nguồn & kiểm tra tiếp địa": "Measure supply voltage & check grounding",
-      "Kiểm tra áp suất dầu động cơ": "Check engine oil pressure",
-      "Kiểm tra van an toàn & hệ thống điện": "Check safety valves & electrical system",
-      "Kiểm Tra Đầu Ca Sáng (Morning Inspection)": "Morning Inspection",
-      "Daily Morning Inspection": "Daily Morning Inspection"
     }
   },
   "notification": {
