@@ -93,9 +93,10 @@ watch(
     if (isOpen && currentSession) {
       judgeDetails.value = (currentSession.details || []).map((d) => {
         const latestLog = getLatestCompletedLog(d);
+        const rawDesc = d.description || '';
         return {
           checklist_id: d.checklist_id || '',
-          description: d.description || '',
+          description: $t(rawDesc) || rawDesc,
           result: latestLog?.result === 'pass' ? 'pass' : 'fail',
         };
       });

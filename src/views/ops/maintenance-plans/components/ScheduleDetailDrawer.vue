@@ -117,18 +117,26 @@ function isUuid(val?: string | null): boolean {
 }
 
 function getItemName(schedule: ScheduleRow): string {
-  if (schedule.maintenance_item?.name) return schedule.maintenance_item.name;
-  if (schedule.item_name && !isUuid(schedule.item_name)) return schedule.item_name;
-  const item = props.maintenanceItems.find((i) => i.id === schedule.maintenance_item_id);
-  if (item?.name) return item.name;
-  if (schedule.item_name && !isUuid(schedule.item_name)) return schedule.item_name;
-  return $t('page.ops.unidentified') || 'Chưa xác định';
+  let name = '';
+  if (schedule.maintenance_item?.name) name = schedule.maintenance_item.name;
+  else if (schedule.item_name && !isUuid(schedule.item_name)) name = schedule.item_name;
+  else {
+    const item = props.maintenanceItems.find((i) => i.id === schedule.maintenance_item_id);
+    if (item?.name) name = item.name;
+    else if (schedule.item_name && !isUuid(schedule.item_name)) name = schedule.item_name;
+    else name = $t('page.ops.unidentified') || 'Chưa xác định';
+  }
+  return $t(name) || name;
 }
 
 function getItemDescription(schedule: ScheduleRow): string | null {
-  if (schedule.item_description) return schedule.item_description;
-  const item = props.maintenanceItems.find((i) => i.id === schedule.maintenance_item_id);
-  return item?.description || null;
+  let desc = schedule.item_description;
+  if (!desc) {
+    const item = props.maintenanceItems.find((i) => i.id === schedule.maintenance_item_id);
+    desc = item?.description || null;
+  }
+  if (!desc) return null;
+  return $t(desc) || desc;
 }
 
 function getEquipmentName(schedule: ScheduleRow): string {
