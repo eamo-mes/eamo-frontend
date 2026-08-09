@@ -87,23 +87,15 @@ function getLatestCompletedLog(detail: ChecklistDetailItem & { schedules?: Array
     .at(-1);
 }
 
-function translateItemText(text: string | null | undefined): string {
-  if (!text) return '';
-  const key = `page.ops.items.${text}`;
-  const translated = $t(key);
-  return translated && translated !== key ? translated : text;
-}
-
 watch(
   () => [props.open, props.session] as const,
   ([isOpen, currentSession]) => {
     if (isOpen && currentSession) {
       judgeDetails.value = (currentSession.details || []).map((d) => {
         const latestLog = getLatestCompletedLog(d);
-        const rawDesc = d.description || '';
         return {
           checklist_id: d.checklist_id || '',
-          description: translateItemText(rawDesc),
+          description: d.description || '',
           result: latestLog?.result === 'pass' ? 'pass' : 'fail',
         };
       });
