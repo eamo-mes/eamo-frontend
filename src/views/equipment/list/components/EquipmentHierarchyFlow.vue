@@ -9,6 +9,7 @@ import axios from 'axios';
 import { Spin, Button, Input, Tooltip, message, Empty, Collapse, CollapsePanel } from 'ant-design-vue';
 import { createIconifyIcon } from '@vben/icons';
 import { useAccessStore } from '@vben/stores';
+import { usePreferences } from '@vben/preferences';
 import { API_BASE_URL } from '#/api/config';
 import { $t } from '#/locales';
 import EquipmentFlowNode from './EquipmentFlowNode.vue';
@@ -73,6 +74,15 @@ interface CustomFitViewOptions {
 
 const vueFlowInstance = useVueFlow();
 const fitView = vueFlowInstance.fitView as (options?: CustomFitViewOptions) => Promise<boolean>;
+
+const { isDark } = usePreferences();
+const patternColor = computed(() => (isDark.value ? '#475569' : '#cbd5e1'));
+const edgeStrokeColor = computed(() => (isDark.value ? '#4b5563' : '#d9d9d9'));
+const markerColor = computed(() => (isDark.value ? '#6b7280' : '#bfbfbf'));
+
+watch(isDark, () => {
+  buildCanvasGraph();
+});
 
 function getAuthHeaders() {
   const accessStore = useAccessStore();
@@ -208,8 +218,8 @@ function buildCanvasGraph() {
         targetHandle: 'parent-target',
         type: 'smoothstep',
         animated: false,
-        style: { stroke: '#d9d9d9', strokeWidth: 1.5 },
-        markerEnd: { type: MarkerType.ArrowClosed, color: '#bfbfbf', width: 12, height: 12 },
+        style: { stroke: edgeStrokeColor.value, strokeWidth: 1.5 },
+        markerEnd: { type: MarkerType.ArrowClosed, color: markerColor.value, width: 12, height: 12 },
       });
     }
   });
@@ -430,7 +440,7 @@ onMounted(() => {
               >
                 <template #header>
                   <div class="flex items-center justify-between w-full pr-1">
-                    <span class="font-semibold text-xs text-slate-700 truncate">
+                    <span class="font-semibold text-xs text-slate-700 dark:text-slate-200 truncate">
                       {{ group.name }}
                     </span>
                     <span class="text-[11px] font-medium text-slate-400 bg-slate-100 dark:bg-slate-800 px-1.5 py-0.5 rounded-full">
@@ -518,7 +528,7 @@ onMounted(() => {
               <EquipmentFlowNode v-bind="nodeProps" />
             </template>
             <Controls />
-            <Background variant="dots" pattern-color="#cbd5e1" :gap="24" :size="1.2" />
+            <Background variant="dots" :pattern-color="patternColor" :gap="24" :size="1.2" />
           </VueFlow>
         </div>
       </div>
@@ -755,5 +765,78 @@ onMounted(() => {
 }
 :deep(.vue-flow__pane:active) {
   cursor: grabbing !important;
+}
+
+/* ── Dark Mode Overrides ── */
+.dark .eqflow-layout {
+  border-color: #374151;
+  background: #111827;
+}
+
+.dark .eqflow-sidebar {
+  border-right-color: #374151;
+  background: #1f2937;
+}
+
+.dark .sb-header {
+  border-bottom-color: #374151;
+  background: #111827;
+}
+
+.dark .sb-title {
+  color: #9ca3af;
+}
+
+.dark .sb-item {
+  border-color: #374151;
+  background: #1f2937;
+}
+.dark .sb-item:hover {
+  border-color: #3b82f6;
+  background: #1e3a8a;
+}
+.dark .sb-item--current {
+  border-color: #3b82f6;
+  background: #172554;
+}
+
+.dark .sb-item-code {
+  color: rgba(255, 255, 255, 0.85);
+}
+.dark .sb-item-name {
+  color: rgba(255, 255, 255, 0.45);
+}
+
+.dark .canvas-toolbar {
+  border-bottom-color: #374151;
+  background: #1f2937;
+}
+
+.dark .canvas-loading {
+  background: rgba(17, 24, 39, 0.75);
+}
+
+.dark :deep(.sb-collapse-panel) {
+  border-bottom-color: #374151 !important;
+}
+.dark :deep(.sb-collapse-panel .ant-collapse-content) {
+  background: transparent !important;
+}
+
+/* VueFlow Controls in Dark Mode */
+.dark :deep(.vue-flow__controls) {
+  background-color: #1f2937;
+  border: 1px solid #374151;
+}
+.dark :deep(.vue-flow__controls-button) {
+  background-color: #1f2937;
+  color: #f3f4f6;
+  border-bottom: 1px solid #374151;
+}
+.dark :deep(.vue-flow__controls-button:hover) {
+  background-color: #374151;
+}
+.dark :deep(.vue-flow__controls-button svg) {
+  fill: #f3f4f6;
 }
 </style>

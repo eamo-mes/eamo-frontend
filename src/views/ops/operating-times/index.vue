@@ -31,7 +31,7 @@ import OperatingTimeImportModal from './components/OperatingTimeImportModal.vue'
 const RangePicker = DatePicker.RangePicker;
 
 const loading = ref(false);
-const showCharts = ref(false);
+const showCharts = ref(true);
 const items = ref<OperatingTimeItem[]>([]);
 const maintenanceStatusData = ref<{ name: string; remaining: number }[]>([]);
 const equipments = ref<EquipmentOption[]>([]);

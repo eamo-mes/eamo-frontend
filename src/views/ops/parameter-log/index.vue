@@ -171,15 +171,17 @@ watch(
 
 async function loadInitialMetadata() {
   try {
-    const rawEquipments = await fetchEquipmentsApi();
+    const [rawEquipments, rawUnits] = await Promise.all([
+      fetchEquipmentsApi(),
+      fetchUnitsApi()
+    ]);
     equipments.value = rawEquipments.map((item) => ({
       id: item.id,
       code: item.code,
       name: item.name || item.code,
       equipment_parameters: item.equipment_parameters || [],
     }));
-
-    units.value = await fetchUnitsApi();
+    units.value = rawUnits;
   } catch (error) {
     console.error('Failed to load initial metadata', error);
   }
@@ -225,8 +227,8 @@ function getUnitSuffix(unitId: string | null | undefined): string {
   return unit ? ` ${unit.name}` : '';
 }
 
-onMounted(async () => {
-  await loadInitialMetadata();
+onMounted(() => {
+  loadInitialMetadata();
   loadItems();
 
   const eqId = route.query.equipment_id;

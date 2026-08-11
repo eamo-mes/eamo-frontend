@@ -178,4 +178,33 @@ function handleRemoveFromCanvas() {
   background: #52c41a !important;
   bottom: -5.5px !important;
 }
+
+/* ── Dark Mode Overrides ── */
+.dark .eq-node {
+  background: #1f2937;
+  border-color: #374151;
+  box-shadow: 0 1px 3px rgba(0,0,0,0.3);
+}
+.dark .eq-node:hover {
+  border-color: #3b82f6;
+  box-shadow: 0 2px 8px rgba(59,130,246,0.25);
+}
+.dark .eq-node--current {
+  border-color: #3b82f6;
+  background: #172554;
+  box-shadow: 0 2px 8px rgba(59,130,246,0.3);
+}
+.dark .eq-node-code {
+  color: rgba(255, 255, 255, 0.85);
+}
+.dark .eq-node-name {
+  color: rgba(255, 255, 255, 0.45);
+}
+.dark .eq-action-btn:hover {
+  background: rgba(255, 255, 255, 0.08);
+}
+.dark .eq-handle {
+  border-color: #1f2937 !important;
+  box-shadow: 0 0 0 1px rgba(255, 255, 255, 0.15) !important;
+}
 </style>

@@ -68,7 +68,14 @@ const rules = computed<Record<string, object[]>>(() => {
 
   return {
     equipment_id: [{ required: true, message: $t('page.ops.validationEquipment') }],
-    planned_stop_time: [{ required: true, message: $t('page.ops.plannedStopTime') }],
+    planned_stop_time: [
+      { required: true, message: $t('page.ops.validationPlannedStopTime'), trigger: 'change' },
+      { type: 'number', min: 0, message: $t('page.ops.validationMinZero'), trigger: 'change' }
+    ],
+    unplanned_stop_time: [
+      { required: true, message: $t('page.ops.validationUnplannedStopTime'), trigger: 'change' },
+      { type: 'number', min: 0, message: $t('page.ops.validationMinZero'), trigger: 'change' }
+    ],
     start_time: [{ required: true, validator: validateStartTime as unknown as (r: unknown, v: unknown) => Promise<void>, trigger: 'change' }],
     end_time: [{ required: true, validator: validateEndTime as unknown as (r: unknown, v: unknown) => Promise<void>, trigger: 'change' }],
   };
@@ -129,8 +136,8 @@ async function handleOk() {
     const payload = {
       equipment_id: formState.value.equipment_id,
       equipment_name: selectedEquipment?.name || '',
-      planned_stop_time: formState.value.planned_stop_time,
-      unplanned_stop_time: formState.value.unplanned_stop_time,
+      planned_stop_time: typeof formState.value.planned_stop_time === 'number' ? formState.value.planned_stop_time : 0,
+      unplanned_stop_time: typeof formState.value.unplanned_stop_time === 'number' ? formState.value.unplanned_stop_time : 0,
       start_time: formState.value.start_time ? formState.value.start_time.format('YYYY-MM-DD HH:mm:ss') : null,
       end_time: formState.value.end_time ? formState.value.end_time.format('YYYY-MM-DD HH:mm:ss') : null,
     };
@@ -149,7 +156,17 @@ async function handleOk() {
     emit('success');
   } catch (err: any) {
     if (!err?.errorFields) {
-      const msg = err?.response?.data?.message || $t('page.ops.saveFailed');
+      let msg = err?.response?.data?.message || $t('page.ops.saveFailed');
+      
+      // Handle PostgreSQL SQLSTATE[23502] not-null constraint violation
+      if (
+        msg.includes('23502') || 
+        msg.toLowerCase().includes('not null violation') || 
+        msg.toLowerCase().includes('violates not-null constraint')
+      ) {
+        msg = `${$t('page.ops.validationUnplannedStopTime')} / ${$t('page.ops.validationPlannedStopTime')}`;
+      }
+      
       message.error(msg);
     }
   } finally {
