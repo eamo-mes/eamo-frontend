@@ -484,7 +484,7 @@ async function updateChart() {
 
     <!-- Multi-Line Chart Container -->
     <Spin :spinning="loading">
-      <div class="border border-border rounded-xl p-4 bg-white dark:bg-gray-900 min-h-[420px] relative">
+      <div class="border border-border rounded-xl p-4 bg-card min-h-[420px] relative">
         <EchartsUI v-if="logs.length > 0" ref="chartRef" height="400px" />
         <Empty
           v-else

@@ -306,7 +306,7 @@ watch(
 </script>
 
 <template>
-  <div class="border border-border rounded-xl p-4 bg-white dark:bg-gray-900 shadow-sm space-y-3">
+  <div class="border border-border rounded-xl p-4 bg-card shadow-sm space-y-3">
     <!-- Chart Top Controls Header -->
     <div class="flex flex-wrap items-center justify-between gap-3 border-b border-border pb-3">
       <div class="flex items-center gap-2">

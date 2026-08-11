@@ -20,6 +20,7 @@ const routes: RouteRecordRaw[] = [
           authority: ['admin', 'manager', 'engineer'],
           icon: 'lucide:box',
           title: $t('page.equipment.navEquipment'),
+          isGroup: true,
         },
         children: [
           {
@@ -71,6 +72,7 @@ const routes: RouteRecordRaw[] = [
           authority: ['admin', 'manager', 'engineer'],
           icon: 'lucide:wrench',
           title: $t('page.ops.maintenance'),
+          isGroup: true,
         },
         children: [
           {
@@ -142,6 +144,7 @@ const routes: RouteRecordRaw[] = [
           authority: ['admin', 'manager', 'engineer'],
           icon: 'lucide:alert-triangle',
           title: $t('page.equipment.navError'),
+          isGroup: true,
         },
         children: [
           {

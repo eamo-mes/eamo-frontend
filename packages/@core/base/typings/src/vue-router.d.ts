@@ -125,6 +125,10 @@ interface RouteMeta {
    * 标题名称
    */
   title: string;
+  /**
+   * 是否作为菜单分组标题显示
+   */
+  isGroup?: boolean;
 }
 
 // 定义递归类型以将 RouteRecordRaw 的 component 属性更改为 string

@@ -119,7 +119,7 @@ async function loadParameterLogsData(): Promise<void> {
     const [equipRes, unitRes, logsRes] = await Promise.all([
       fetchEquipmentsApi(),
       fetchUnitsApi(),
-      fetchParameterLogsApi(true),
+      fetchParameterLogsApi(false),
     ]);
 
     paramEquipments.value = equipRes.map((item) => ({
@@ -129,15 +129,23 @@ async function loadParameterLogsData(): Promise<void> {
       equipment_parameters: item.equipment_parameters || [],
     }));
     paramUnits.value = unitRes;
-    paramLogs.value = logsRes;
+    // Lọc bỏ các log của thiết bị hoặc thông số đã bị xóa mềm (không có trong paramEquipments)
+    const activeEquipMap = new Map(
+      paramEquipments.value.map((e) => [e.id, new Set((e.equipment_parameters || []).map((p) => p.id))])
+    );
+    const activeLogs = logsRes.filter((log) => {
+      const paramSet = activeEquipMap.get(log.equipment_id);
+      return paramSet && paramSet.has(log.equipment_parameter_id);
+    });
+    paramLogs.value = activeLogs;
 
     // Tự động chọn thiết bị và thông số có log mới nhất
-    if (logsRes.length > 0) {
-      let newestItem: ParameterLogItem = logsRes[0]!;
+    if (activeLogs.length > 0) {
+      let newestItem: ParameterLogItem = activeLogs[0]!;
       let newestTime = dayjs(newestItem.recorded_at || newestItem.created_at).valueOf();
 
-      for (let i = 1; i < logsRes.length; i++) {
-        const item = logsRes[i]!;
+      for (let i = 1; i < activeLogs.length; i++) {
+        const item = activeLogs[i]!;
         const itemTime = dayjs(item.recorded_at || item.created_at).valueOf();
         if (itemTime > newestTime) {
           newestTime = itemTime;

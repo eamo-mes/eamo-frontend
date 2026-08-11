@@ -46,6 +46,14 @@ const hasChildren = computed(() => {
       <span>{{ menu.name }}</span>
     </template>
   </MenuItem>
+  <div v-else-if="menu.isGroup" class="contents">
+    <div class="px-6 py-2.5 text-[11px] font-semibold uppercase tracking-wider select-none text-muted-foreground opacity-80">
+      {{ menu.name }}
+    </div>
+    <template v-for="childItem in menu.children || []" :key="childItem.path">
+      <SubMenu :menu="childItem" />
+    </template>
+  </div>
   <SubMenuComp
     v-else
     :key="`${menu.path}_sub`"

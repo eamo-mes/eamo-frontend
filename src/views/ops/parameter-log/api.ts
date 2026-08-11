@@ -175,6 +175,7 @@ export async function fetchEquipmentsApi(): Promise<RawEquipmentItem[]> {
     `${API_BASE_URL}/v1/equipment`,
     {
       headers: getAuthHeaders(),
+      params: { paginate: false },
     }
   );
   if (Array.isArray(res.data)) {

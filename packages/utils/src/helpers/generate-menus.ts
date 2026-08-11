@@ -79,6 +79,7 @@ function generateMenus(
       path: resultPath,
       show: !meta.hideInMenu,
       children: resultChildren,
+      isGroup: meta.isGroup,
     };
   });
 

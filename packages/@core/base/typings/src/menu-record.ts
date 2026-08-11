@@ -77,6 +77,10 @@ interface MenuRecordRaw extends MenuRecordBadgeRaw {
    * @default true
    */
   show?: boolean;
+  /**
+   * 是否作为菜单分组标题显示
+   */
+  isGroup?: boolean;
 }
 
 export type { ExRouteRecordRaw, MenuRecordBadgeRaw, MenuRecordRaw };

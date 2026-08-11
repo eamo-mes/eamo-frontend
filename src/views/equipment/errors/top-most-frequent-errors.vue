@@ -230,7 +230,7 @@ watch(
   <Spin :spinning="props.loading">
     <div v-if="props.errors.length > 0" class="grid grid-cols-1 md:grid-cols-2 gap-5">
       <!-- Bar Chart Card -->
-      <div class="border border-border rounded-xl p-4 bg-white dark:bg-gray-900">
+      <div class="border border-border rounded-xl p-4 bg-card">
         <div class="mb-1">
           <h5 class="text-xs font-bold text-foreground uppercase tracking-wider m-0">
             {{ $t('page.equipment.chartFrequencyTitle') }}
@@ -240,7 +240,7 @@ watch(
       </div>
 
       <!-- Pie Chart Card -->
-      <div class="border border-border rounded-xl p-4 bg-white dark:bg-gray-900">
+      <div class="border border-border rounded-xl p-4 bg-card">
         <div class="mb-1">
           <h5 class="text-xs font-bold text-foreground uppercase tracking-wider m-0">
             {{ $t('page.equipment.chartRatioTitle') }}
