@@ -389,7 +389,18 @@ const columns = computed(() => [
               <span>{{ formatVNTime(record.handled_at) }}</span>
             </template>
             <template v-else-if="column.key === 'handlers'">
-              <span>{{ getHandlersText(record as ErrorLogItem) }}</span>
+              <div class="flex flex-wrap gap-1">
+                <template v-if="record.handlers && record.handlers.length > 0">
+                  <Tag
+                    v-for="h in (record as ErrorLogItem).handlers"
+                    :key="h.id"
+                    color="blue"
+                  >
+                    {{ h.name }}
+                  </Tag>
+                </template>
+                <span v-else>-</span>
+              </div>
             </template>
             <template v-else-if="column.key === 'actions'">
               <div class="flex items-center gap-2 justify-center">

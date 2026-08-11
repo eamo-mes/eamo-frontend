@@ -467,7 +467,7 @@ onMounted(() => {
               </div>
             </template>
             <template v-else-if="column.key === 'last_maintenance'">
-              <span v-if="record.last_maintenance?.datetime" class="font-medium text-foreground text-xs">
+              <span v-if="record.last_maintenance?.datetime">
                 {{ record.last_maintenance.datetime }}
               </span>
               <span v-else class="text-xs text-muted-foreground">—</span>

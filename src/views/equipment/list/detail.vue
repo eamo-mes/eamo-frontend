@@ -636,7 +636,7 @@ onMounted(() => {
                     <span class="text-xs text-gray-500 block mb-1 font-medium">{{ $t('page.equipment.colName') }}</span>
                     <Input v-model:value="param.name" :placeholder="$t('page.equipment.colName')" />
                   </div>
-                  <div class="w-[150px]">
+                  <div class="flex-1 min-w-[150px]">
                     <span class="text-xs text-gray-500 block mb-1 font-medium">{{ $t('page.equipment.parameterCode') }}</span>
                     <Input v-model:value="param.code" :placeholder="$t('page.equipment.parameterCode')" />
                   </div>
