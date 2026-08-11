@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { ref, onMounted, watch, nextTick } from 'vue';
-import { Calendar, Spin, Switch, Select, Radio, Button, Modal, Tag, Badge, Empty, message } from 'ant-design-vue';
+import { Calendar, Spin, Switch, Select, Radio, Button, message } from 'ant-design-vue';
 import dayjs, { type Dayjs } from 'dayjs';
 import { $t } from '#/locales';
 import { listEquipmentsApi, listMaintenanceSchedulesApi, type ScheduleRow } from '#/api/ops/maintenance-plans';
@@ -13,26 +13,8 @@ import type {
 } from '../types';
 import ScheduleDetailDrawer from '#/views/ops/maintenance-plans/components/ScheduleDetailDrawer.vue';
 import WorkspaceMaintenanceDrawer from './WorkspaceMaintenanceDrawer.vue';
-
-interface UserSelectOption {
-  label: string;
-  value: string;
-}
-
-export interface DailyPlanNode {
-  key: string;
-  plan_id: string;
-  plan_code: string;
-  date: string;
-  equipment_code: string;
-  equipment_name: string | null;
-  maintenance_type: string;
-  schedules: ScheduleRow[];
-  total_items: number;
-  completed_items: number;
-  result: 'Completed' | 'Pending';
-}
 import DayPlanNodesModal from './DayPlanNodesModal.vue';
+import MarkMaintenanceModal from './MarkMaintenanceModal.vue';
 
 const props = withDefaults(
   defineProps<{
@@ -76,6 +58,14 @@ const selectedSchedule = ref<ScheduleRow | null>(null);
 const dayNodesModalOpen = ref(false);
 const selectedNodesDate = ref<Dayjs | null>(null);
 const selectedNodes = ref<DailyPlanNode[]>([]);
+
+const markModalOpen = ref(false);
+
+async function handleMarked(): Promise<void> {
+  await fetchLocalEquipments();
+  emitRange(calendarValue.value);
+  await fetchSchedules();
+}
 
 function openDayNodesModal(date: Dayjs): void {
   selectedNodesDate.value = date;
@@ -376,6 +366,17 @@ function onSelect(date: Dayjs | string): void {
               >
                 {{ $t('page.ops.btnAddPlanShort') || 'Add Maintenance Plan' }}
               </Button>
+
+              <Button
+                type="primary"
+                class="flex items-center gap-1.5 font-medium"
+                @click="markModalOpen = true"
+              >
+                <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                </svg>
+                <span>{{ $t('page.ops.lastMaintainBtn') }}</span>
+              </Button>
             </div>
           </div>
         </template>
@@ -395,9 +396,8 @@ function onSelect(date: Dayjs | string): void {
                 <div class="font-semibold text-xs truncate leading-tight flex justify-between items-center">
                   <span>{{ planNode.plan_code }}</span>
                 </div>
-                <div class="text-[10px] opacity-80 mt-0.5 font-medium leading-tight truncate flex items-center gap-1">
+                <div class="text-[10px] opacity-80 mt-0.5 font-medium leading-tight truncate">
                   <span class="font-semibold">{{ planNode.equipment_code }}</span>
-                  <span v-if="planNode.equipment_name" class="opacity-75">— {{ planNode.equipment_name }}</span>
                 </div>
               </div>
             </div>
@@ -454,6 +454,13 @@ function onSelect(date: Dayjs | string): void {
       :read-only="props.readOnly"
       @schedule-added="fetchSchedules"
       @refresh="fetchSchedules"
+    />
+
+    <!-- Mark Maintenance Modal -->
+    <MarkMaintenanceModal
+      v-model:open="markModalOpen"
+      :equipments="props.equipments?.length ? props.equipments : localEquipments"
+      @marked="handleMarked"
     />
   </div>
 </template>

@@ -31,6 +31,9 @@ const activeCount = computed(() => Number(props.summary?.active_inactive.active)
 const errorsCount = computed(() => Number(props.summary?.with_errors.value) || 0);
 const overdueCount = computed(() => Number(props.summary?.maintenance.overdue) || 0);
 const upcomingCount = computed(() => Number(props.summary?.maintenance.upcoming) || 0);
+const maintenanceTotal = computed(
+  () => Number(props.summary?.maintenance.value) || overdueCount.value + upcomingCount.value,
+);
 
 function percentage(value: number, total: number): number {
   if (total <= 0) return 0;
@@ -39,8 +42,8 @@ function percentage(value: number, total: number): number {
 
 const activeRate = computed(() => percentage(activeCount.value, totalAssets.value));
 const errorsRate = computed(() => percentage(errorsCount.value, totalAssets.value));
-const maintenanceTotal = computed(() => overdueCount.value + upcomingCount.value);
-const overdueRate = computed(() => percentage(overdueCount.value, maintenanceTotal.value));
+const overdueRate = computed(() => percentage(overdueCount.value, totalAssets.value));
+const upcomingRate = computed(() => percentage(upcomingCount.value, totalAssets.value));
 
 function titleFor(key: string): string {
   switch (key) {
@@ -121,20 +124,23 @@ function titleFor(key: string): string {
 
         <div class="flex items-end gap-2">
           <Statistic
-            :value="Number(summary?.maintenance.overdue) || 0"
+            :value="maintenanceTotal"
             :value-style="{ fontSize: '2rem', fontWeight: 700, lineHeight: 1.2, color: 'currentColor' }"
           />
           <span class="pb-1.5 text-sm text-muted-foreground">/ {{ totalAssets }}</span>
         </div>
 
         <div class="pt-1 border-t border-border">
-          <!-- thanh progress chia đôi: overdue (đỏ nhạt) + upcoming (xám) -->
+          <!-- thanh progress chia đôi: overdue (đỏ) + upcoming (xám) tính theo tỷ lệ trên totalAssets -->
           <div class="flex h-1.5 overflow-hidden rounded-full bg-slate-100 dark:bg-slate-800/40">
             <div
               class="h-full bg-red-400 dark:bg-red-500 transition-all rounded-l-full"
               :style="{ width: `${overdueRate}%` }"
             />
-            <div class="h-full flex-1 bg-slate-300 dark:bg-slate-600 rounded-r-full" />
+            <div
+              class="h-full bg-slate-300 dark:bg-slate-500 transition-all rounded-r-full"
+              :style="{ width: `${upcomingRate}%` }"
+            />
           </div>
           <div class="mt-2 flex items-center gap-4">
             <div class="flex items-center gap-1.5">

@@ -1,12 +1,10 @@
 <script lang="ts" setup>
 import { ref, computed, onMounted } from 'vue';
 import { useRouter } from 'vue-router';
-import { Spin, Tabs, Table, Tag, Badge, Popconfirm, message } from 'ant-design-vue';
-import dayjs from 'dayjs';
+import { Spin, Button, message } from 'ant-design-vue';
 import { requestClient } from '#/api/request';
 import { listUsersApi } from '#/api/core/users';
 import { useUserStore } from '@vben/stores';
-import { Eye, EyeOff } from '@vben/icons';
 import { $t } from '#/locales';
 import ChecklistCalendar from './components/ChecklistCalendar.vue';
 import VisualMaintenanceCalendar from './components/VisualMaintenanceCalendar.vue';
@@ -19,7 +17,6 @@ import type {
   UserOption,
 } from './types';
 
-const TabPane = Tabs.TabPane;
 const router = useRouter();
 const userStore = useUserStore();
 
@@ -240,8 +237,8 @@ onMounted(() => {
   <div class="p-6 space-y-6">
     <!-- Top Completion Analytics Widget (Above Action Bar) -->
 
-    <!-- Workspace Navigation Tab Bar (Pill Control) -->
-    <div class="w-full flex items-center justify-between gap-3">
+    <!-- Workspace Navigation Tab Bar (Pill Control) & Action Buttons -->
+    <div class="w-full flex flex-wrap items-center justify-between gap-3">
       <!-- Segmented Pill Tab Bar Container (Equal Width 2-Tab Layout) -->
       <div class="grid grid-cols-2 p-1 bg-card border border-border rounded-xl shadow-sm gap-1 min-w-[320px] md:min-w-[400px]">
         <!-- Tab 1: Maintenance Plan -->

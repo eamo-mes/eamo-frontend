@@ -96,13 +96,23 @@ async function loadOperatingTimesData(): Promise<void> {
 
     operatingItems.value = itemsRes.data?.data ?? itemsRes.data ?? [];
     const equipments = equipmentsRes.data?.data ?? equipmentsRes.data ?? [];
-    operatingEquipments.value = equipments.map((item: any) => ({
-      id: item.id,
-      code: item.code,
-      name: item.name || item.code,
-      maintenance_interval_hours: item.maintenance_interval_hours,
-      last_maintenance: item.last_maintenance,
-    }));
+    operatingEquipments.value = equipments.map((item: any) => {
+      let lm = item.last_maintenance;
+      if (typeof lm === 'string') {
+        try {
+          lm = JSON.parse(lm);
+        } catch {
+          lm = null;
+        }
+      }
+      return {
+        id: item.id,
+        code: item.code,
+        name: item.name || item.code,
+        maintenance_interval_hours: item.maintenance_interval_hours,
+        last_maintenance: lm,
+      };
+    });
     maintenanceStatusData.value = maintenanceRes.data?.data ?? maintenanceRes.data ?? [];
   } catch {
     operatingItems.value = [];

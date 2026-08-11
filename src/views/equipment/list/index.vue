@@ -13,6 +13,7 @@ import {
   Spin,
 } from 'ant-design-vue';
 import axios from 'axios';
+import dayjs from 'dayjs';
 import { useAccessStore } from '@vben/stores';
 import { API_BASE_URL } from '#/api/config';
 import { isSoftDeleted, softDeletedRowClass, sortBySoftDeleted } from '#/utils/soft-delete';
@@ -60,6 +61,8 @@ interface EquipmentItem {
   equipment_images?: EquipmentImageOption[];
   is_active: boolean;
   maintenance_interval_hours?: number | null;
+  last_maintenance?: { datetime?: string | null; user_id?: string | null; note?: string | null } | null;
+  actual_operating_time?: number;
   equipment_errors?: ErrorOption[];
   equipment_parameters?: ParameterItem[];
   checklist_details_count?: number;
@@ -311,6 +314,16 @@ const columns = computed(() => [
     sorter: (a: EquipmentItem, b: EquipmentItem) => (a.maintenance_interval_hours || 0) - (b.maintenance_interval_hours || 0),
   },
   {
+    title: $t('page.equipment.colLastMaintenance'),
+    dataIndex: 'last_maintenance',
+    key: 'last_maintenance',
+    sorter: (a: EquipmentItem, b: EquipmentItem) => {
+      const timeA = a.last_maintenance?.datetime ? dayjs(a.last_maintenance.datetime).valueOf() : 0;
+      const timeB = b.last_maintenance?.datetime ? dayjs(b.last_maintenance.datetime).valueOf() : 0;
+      return timeA - timeB;
+    },
+  },
+  {
     title: $t('page.equipment.parametersTitle'),
     dataIndex: 'equipment_parameters',
     key: 'equipment_parameters',
@@ -443,7 +456,21 @@ onMounted(() => {
               </Tag>
             </template>
             <template v-else-if="column.key === 'maintenance_interval_hours'">
-              <span>{{ record.maintenance_interval_hours !== null && record.maintenance_interval_hours !== undefined ? `${record.maintenance_interval_hours} hrs` : '—' }}</span>
+              <div class="flex flex-col">
+                <span class="font-medium text-foreground">{{ record.maintenance_interval_hours !== null && record.maintenance_interval_hours !== undefined ? `${record.maintenance_interval_hours} hrs` : '—' }}</span>
+                <span
+                  v-if="record.maintenance_interval_hours !== null && record.maintenance_interval_hours !== undefined && record.actual_operating_time !== undefined"
+                  :class="Number(record.actual_operating_time) > Number(record.maintenance_interval_hours) ? 'text-red-500 dark:text-red-400 font-medium text-xs' : 'text-green-600 dark:text-green-400 font-medium text-xs'"
+                >
+                  ({{ record.actual_operating_time }} hrs)
+                </span>
+              </div>
+            </template>
+            <template v-else-if="column.key === 'last_maintenance'">
+              <span v-if="record.last_maintenance?.datetime" class="font-medium text-foreground text-xs">
+                {{ record.last_maintenance.datetime }}
+              </span>
+              <span v-else class="text-xs text-muted-foreground">—</span>
             </template>
             <template v-else-if="column.key === 'equipment_parameters'">
                <div class="max-w-[280px]">

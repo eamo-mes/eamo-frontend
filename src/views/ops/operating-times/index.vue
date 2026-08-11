@@ -66,13 +66,23 @@ async function loadEquipments() {
       headers: getAuthHeaders(),
     });
     const data = (res.data?.data ?? res.data ?? []) as any[];
-    equipments.value = data.map((item) => ({
-      id: item.id,
-      code: item.code,
-      name: item.name || item.code,
-      maintenance_interval_hours: item.maintenance_interval_hours,
-      last_maintenance: item.last_maintenance,
-    }));
+    equipments.value = data.map((item) => {
+      let lm = item.last_maintenance;
+      if (typeof lm === 'string') {
+        try {
+          lm = JSON.parse(lm);
+        } catch {
+          lm = null;
+        }
+      }
+      return {
+        id: item.id,
+        code: item.code,
+        name: item.name || item.code,
+        maintenance_interval_hours: item.maintenance_interval_hours,
+        last_maintenance: lm,
+      };
+    });
   } catch (error) {
     console.error('Failed to load equipments', error);
   }

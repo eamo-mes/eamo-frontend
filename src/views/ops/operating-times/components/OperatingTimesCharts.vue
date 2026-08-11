@@ -82,8 +82,21 @@ const horizontalData = computed(() => {
     const eqId = item.equipment_id;
     const eqCode = getEquipmentCode(eqId);
 
-    const eq = props.equipments.find((e) => e.id === eqId);
-    const lastMaintenanceDate = eq?.last_maintenance?.datetime;
+    const eq = props.equipments.find((e) => String(e.id) === String(eqId));
+    let lastMaintenanceDate: string | null = null;
+    if (eq?.last_maintenance) {
+      if (typeof eq.last_maintenance === 'string') {
+        try {
+          const parsed = JSON.parse(eq.last_maintenance);
+          lastMaintenanceDate = parsed?.datetime || null;
+        } catch {
+          lastMaintenanceDate = null;
+        }
+      } else {
+        lastMaintenanceDate = eq.last_maintenance.datetime || null;
+      }
+    }
+
     if (lastMaintenanceDate && item.start_time) {
       if (dayjs(item.start_time).isBefore(dayjs(lastMaintenanceDate))) {
         return;
