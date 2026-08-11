@@ -633,22 +633,26 @@ onMounted(() => {
               <div v-else class="max-h-[320px] divide-y divide-border overflow-y-auto">
                 <div v-for="(param, index) in formState.equipment_parameters" :key="index" class="flex flex-wrap items-end gap-2 py-3 first:pt-0 last:pb-0">
                   <div class="flex-1 min-w-[150px]">
+                    <span class="text-xs text-gray-500 block mb-1 font-medium">{{ $t('page.equipment.colName') }}</span>
+                    <Input v-model:value="param.name" :placeholder="$t('page.equipment.colName')" />
+                  </div>
+                  <div class="w-[150px]">
                     <span class="text-xs text-gray-500 block mb-1 font-medium">{{ $t('page.equipment.parameterCode') }}</span>
                     <Input v-model:value="param.code" :placeholder="$t('page.equipment.parameterCode')" />
                   </div>
-                  <div class="w-[120px]">
+                  <div class="w-[100px]">
                     <span class="text-xs text-gray-500 block mb-1 font-medium">{{ $t('page.equipment.parameterStandard') }}</span>
                     <InputNumber v-model:value="param.standard" :placeholder="$t('page.equipment.parameterStandard')" class="w-full" />
                   </div>
-                  <div class="w-[120px]">
+                  <div class="w-[100px]">
                     <span class="text-xs text-gray-500 block mb-1 font-medium">{{ $t('page.equipment.parameterMin') }}</span>
                     <InputNumber v-model:value="param.standard_min" :placeholder="$t('page.equipment.parameterMin')" class="w-full" />
                   </div>
-                  <div class="w-[120px]">
+                  <div class="w-[100px]">
                     <span class="text-xs text-gray-500 block mb-1 font-medium">{{ $t('page.equipment.parameterMax') }}</span>
                     <InputNumber v-model:value="param.standard_max" :placeholder="$t('page.equipment.parameterMax')" class="w-full" />
                   </div>
-                  <div class="w-[180px]">
+                  <div class="w-[150px]">
                     <span class="text-xs text-gray-500 block mb-1 font-medium">{{ $t('page.equipment.parameterUnit') }}</span>
                     <Select v-model:value="param.unit_id" :placeholder="$t('page.equipment.parameterUnit')" class="w-full" allow-clear>
                       <Select.Option v-for="u in units" :key="u.id" :value="u.id">

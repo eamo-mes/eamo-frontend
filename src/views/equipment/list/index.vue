@@ -182,6 +182,11 @@ async function loadEquipments(page = currentPage.value, size = pageSize.value) {
       page,
       per_page: size,
       with_trashed: true,
+      include_parameters: true,
+      include_equipment_parameters: true,
+      with_parameters: true,
+      include: 'equipment_parameters,parameters',
+      with: 'equipment_parameters,parameters',
     };
     if (filterCategoryId.value) {
       params.equipment_category_id = filterCategoryId.value;
@@ -262,6 +267,16 @@ function getEquipmentRowClassName(record: EquipmentItem) {
     return 'bg-red-50/90 dark:bg-red-950/40 text-red-900 dark:text-red-200 font-medium';
   }
   return '';
+}
+
+function goToParameterLog(equipmentId: string, parameterId?: string) {
+  router.push({
+    path: '/operation/parameter-log',
+    query: {
+      equipment_id: equipmentId,
+      parameter_id: parameterId,
+    },
+  });
 }
 
 const filteredEquipments = computed(() => sortBySoftDeleted(equipments.value));
@@ -432,11 +447,17 @@ onMounted(() => {
             </template>
             <template v-else-if="column.key === 'equipment_parameters'">
                <div class="max-w-[280px]">
-                 <ExpandableContainer :threshold="2">
-                   <div v-for="param in record.equipment_parameters" :key="param.id" class="text-xs text-foreground/90 py-0.5">
-                     <span class="font-medium text-foreground">{{ param.code }}:</span> {{ param.name }}
-                   </div>
-                 </ExpandableContainer>
+                  <ExpandableContainer :items="record.equipment_parameters" :limit="2">
+                    <Tag
+                      v-for="param in record.equipment_parameters"
+                      :key="param.id"
+                      class="text-xs max-w-full truncate cursor-pointer hover:opacity-80 transition-opacity"
+                      color="blue"
+                      @click="goToParameterLog(record.id, param.id)"
+                    >
+                      {{ param.code }}
+                    </Tag>
+                  </ExpandableContainer>
                </div>
             </template>
             <template v-else-if="column.key === 'actions'">

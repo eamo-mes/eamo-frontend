@@ -389,8 +389,8 @@
   },
   "ops": {
     "scheduleMode": "Chế độ lịch trình",
-    "modeRepeating": "Theo chu kỳ (Lặp lại)",
-    "modeSingle": "Thêm lẻ (1 buổi duy nhất)",
+    "modeRepeating": "Theo chu kỳ",
+    "modeSingle": "Thêm lẻ",
     "moreNodesCount": "+{count} xem thêm",
     "dayNodesModalTitle": "Danh sách kế hoạch bảo trì — {date}",
     "checklistModalTitle": "Danh sách phiên kiểm tra — {date}",

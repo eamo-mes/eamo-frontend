@@ -87,6 +87,7 @@ export interface ChecklistSession {
   } | null;
   session_date?: string;
   created_at?: string;
+  schedule_mode?: 'repeating' | 'single';
   cycle_type?: string;
   cycle_interval?: number;
   details?: ChecklistDetailItem[];

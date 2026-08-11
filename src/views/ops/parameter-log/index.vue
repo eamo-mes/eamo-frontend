@@ -1,5 +1,6 @@
 <script lang="ts" setup>
 import { ref, onMounted, computed, watch } from 'vue';
+import { useRoute } from 'vue-router';
 import {
   Table,
   Button,
@@ -20,6 +21,7 @@ import { isSoftDeleted, softDeletedRowClass, sortBySoftDeleted } from '#/utils/s
 import { useRoleAccess } from '#/utils/useRoleAccess';
 
 const { isManager } = useRoleAccess();
+const route = useRoute();
 
 import type { ParameterLogItem, EquipmentOption, UnitOption, ParameterLogFormState } from './types';
 import {
@@ -223,9 +225,18 @@ function getUnitSuffix(unitId: string | null | undefined): string {
   return unit ? ` ${unit.name}` : '';
 }
 
-onMounted(() => {
-  loadInitialMetadata();
+onMounted(async () => {
+  await loadInitialMetadata();
   loadItems();
+
+  const eqId = route.query.equipment_id;
+  const paramId = route.query.parameter_id;
+  if (eqId && typeof eqId === 'string') {
+    selectedEquipmentFilter.value = eqId;
+  }
+  if (paramId && typeof paramId === 'string') {
+    selectedParameterFilter.value = paramId;
+  }
 });
 
 function handleSearch() {

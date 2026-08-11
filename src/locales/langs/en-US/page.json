@@ -397,7 +397,7 @@
   "ops": {
     "scheduleMode": "Schedule Mode",
     "modeRepeating": "Recurring Cycle",
-    "modeSingle": "Single Execution (Ad-hoc)",
+    "modeSingle": "Single Execution",
     "moreNodesCount": "+{count} more",
     "dayNodesModalTitle": "Maintenance Plans — {date}",
     "checklistModalTitle": "Checklist Sessions — {date}",

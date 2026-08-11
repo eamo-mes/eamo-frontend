@@ -240,6 +240,40 @@ function goToChecklistDetail(): void {
         </div>
       </div>
 
+      <!-- Checker / Inspector & Expected Execution Date Section -->
+      <div class="space-y-4 border-t border-border pt-4">
+        <div class="space-y-1.5">
+          <label class="text-sm font-medium text-foreground block">
+            {{ $t('page.ops.checkerLabel') }}
+          </label>
+          <Select
+            v-model:value="selectedUserIds"
+            :disabled="!isManager"
+            :placeholder="$t('page.ops.placeholderSelectChecker')"
+            :options="userOptions"
+            mode="multiple"
+            option-filter-prop="label"
+            show-search
+            allow-clear
+            class="w-full"
+          />
+        </div>
+
+        <div class="space-y-1.5">
+          <label class="text-sm font-medium text-foreground block">
+            {{ $t('page.ops.expectedExecutionDate') }}
+          </label>
+          <DatePicker
+            v-model:value="selectedExecutionDate"
+            :disabled="!isManager"
+            value-format="YYYY-MM-DD"
+            format="YYYY-MM-DD"
+            class="w-full"
+            :placeholder="$t('page.ops.placeholderScheduleDate')"
+          />
+        </div>
+      </div>
+
       <!-- Checklist Items Section -->
       <div class="space-y-3 border-t border-border pt-4">
         <label class="text-[11px] font-semibold uppercase tracking-widest text-muted-foreground block">
@@ -298,39 +332,6 @@ function goToChecklistDetail(): void {
             </Button>
           </div>
         </div>
-      </div>
-
-      <!-- Checker / Inspector Section -->
-      <div class="space-y-1.5 border-t border-border pt-4">
-        <label class="text-sm font-medium text-foreground block">
-          {{ $t('page.ops.checkerLabel') }}
-        </label>
-        <Select
-          v-model:value="selectedUserIds"
-          :disabled="!isManager"
-          :placeholder="$t('page.ops.placeholderSelectChecker')"
-          :options="userOptions"
-          mode="multiple"
-          option-filter-prop="label"
-          show-search
-          allow-clear
-          class="w-full"
-        />
-      </div>
-
-      <!-- Expected Execution Date Section -->
-      <div class="space-y-1.5 border-t border-border pt-4">
-        <label class="text-sm font-medium text-foreground block">
-          {{ $t('page.ops.expectedExecutionDate') }}
-        </label>
-        <DatePicker
-          v-model:value="selectedExecutionDate"
-          :disabled="!isManager"
-          value-format="YYYY-MM-DD"
-          format="YYYY-MM-DD"
-          class="w-full"
-          :placeholder="$t('page.ops.placeholderScheduleDate')"
-        />
       </div>
     </div>
 

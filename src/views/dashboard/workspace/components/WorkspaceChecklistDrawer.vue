@@ -52,7 +52,9 @@ const emit = defineEmits<{
 }>();
 
 const router = useRouter();
-const { isManager, isEngineer, isAdmin } = useRoleAccess();
+const { isManager, isAdmin } = useRoleAccess();
+
+const canManage = computed(() => isManager.value || isAdmin.value);
 
 const visible = computed({
   get: () => props.open,
@@ -86,6 +88,7 @@ const userSelectOptions = computed(() =>
 const sessionForm = ref({
   id: undefined as string | undefined,
   name: '',
+  schedule_mode: 'repeating' as 'repeating' | 'single',
   equipment_id: undefined as string | undefined,
   session_date: '' as string,
   user_ids: [] as string[],
@@ -150,7 +153,8 @@ const rules = computed(() => ({
   name: [{ required: true, message: $t('page.ops.checklistDrawer.validationName') }],
   equipment_id: [{ required: true, message: $t('page.ops.checklistDrawer.validationEquipment') }],
   session_date: [{ required: true, message: $t('page.ops.validationDate') }],
-  cycle_interval: [{ required: true, type: 'number' as const, min: 1, message: 'Vui lòng nhập khoảng chu kỳ lặp hợp lệ' }],
+  cycle_type: [{ required: sessionForm.value.schedule_mode === 'repeating', message: $t('page.ops.placeholderCycleType') }],
+  cycle_interval: [{ required: sessionForm.value.schedule_mode === 'repeating', type: 'number' as const, min: 1, message: 'Vui lòng nhập khoảng chu kỳ lặp hợp lệ' }],
 }));
 
 function addDetailRow() {
@@ -185,8 +189,9 @@ function openCreateForm() {
   sessionForm.value = {
     id: undefined,
     name: '',
+    schedule_mode: 'repeating',
     equipment_id: undefined,
-    session_date: props.date ? props.date.format('YYYY-MM-DD HH:mm') : dayjs().format('YYYY-MM-DD HH:mm'),
+    session_date: props.date ? props.date.format('YYYY-MM-DD') : dayjs().format('YYYY-MM-DD'),
     user_ids: [],
     cycle_type: 'daily',
     cycle_interval: 1,
@@ -197,6 +202,9 @@ function openCreateForm() {
 function openEditForm(session: ChecklistSession) {
   activeMode.value = 'edit';
   selectedSessionId.value = session.id;
+
+  const scheduleMode = session.schedule_mode
+    ?? ((session.cycle_type === 'daily' && session.cycle_interval === 1) ? 'single' : 'repeating');
 
   const detailsList: DetailRowItem[] = (session.details || []).map((d) => {
     const latestLog = d.logs
@@ -214,8 +222,9 @@ function openEditForm(session: ChecklistSession) {
   sessionForm.value = {
     id: session.id,
     name: session.name || session.equipment?.name || '',
+    schedule_mode: scheduleMode,
     equipment_id: session.equipment_id || session.equipment?.id || undefined,
-    session_date: session.session_date ? dayjs(session.session_date).format('YYYY-MM-DD HH:mm') : (props.date ? props.date.format('YYYY-MM-DD HH:mm') : dayjs().format('YYYY-MM-DD HH:mm')),
+    session_date: session.session_date ? dayjs(session.session_date).format('YYYY-MM-DD') : (props.date ? props.date.format('YYYY-MM-DD') : dayjs().format('YYYY-MM-DD')),
     user_ids: session.users?.map((u) => u.id) || [],
     cycle_type: session.cycle_type || 'daily',
     cycle_interval: session.cycle_interval || 1,
@@ -238,16 +247,19 @@ async function handleSaveSession() {
 
   submitting.value = true;
   try {
-    const sessionDateStr = sessionForm.value.session_date || (props.date ? props.date.format('YYYY-MM-DD HH:mm') : dayjs().format('YYYY-MM-DD HH:mm'));
+    const isSingle = sessionForm.value.schedule_mode === 'single';
+    const effectiveCycleType = isSingle ? 'daily' : sessionForm.value.cycle_type;
+    const effectiveCycleInterval = isSingle ? 1 : sessionForm.value.cycle_interval;
+    const sessionDateStr = sessionForm.value.session_date || (props.date ? props.date.format('YYYY-MM-DD') : dayjs().format('YYYY-MM-DD'));
 
     if (activeMode.value === 'create') {
-      // 1. Create eamo_checklist_session + eamo_checklist_details
       await createChecklistSessionApi({
         name: sessionForm.value.name,
         equipment_id: sessionForm.value.equipment_id,
         session_date: sessionDateStr,
-        cycle_type: sessionForm.value.cycle_type,
-        cycle_interval: sessionForm.value.cycle_interval,
+        schedule_mode: sessionForm.value.schedule_mode,
+        cycle_type: effectiveCycleType,
+        cycle_interval: effectiveCycleInterval,
         user_ids: sessionForm.value.user_ids,
         details: validDetails.map((item) => ({
           checklist_id: item.checklist_id,
@@ -256,14 +268,14 @@ async function handleSaveSession() {
       });
       message.success($t('page.ops.checklistDrawer.msgCreateSuccess'));
     } else if (activeMode.value === 'edit' && sessionForm.value.id) {
-      // 2. Update eamo_checklist_session + eamo_checklist_details (Manager only)
       try {
         await updateChecklistSessionApi(sessionForm.value.id, {
           name: sessionForm.value.name,
           equipment_id: sessionForm.value.equipment_id,
           session_date: sessionDateStr,
-          cycle_type: sessionForm.value.cycle_type,
-          cycle_interval: sessionForm.value.cycle_interval,
+          schedule_mode: sessionForm.value.schedule_mode,
+          cycle_type: effectiveCycleType,
+          cycle_interval: effectiveCycleInterval,
           user_ids: sessionForm.value.user_ids,
         });
 
@@ -290,7 +302,7 @@ async function handleSaveSession() {
           description: item.description,
         })),
         user_ids: sessionForm.value.user_ids,
-        timestamp: `${sessionDateStr}:00`,
+        timestamp: `${sessionDateStr} 00:00:00`,
       });
 
       message.success($t('page.ops.checklistDrawer.msgUpdateSuccess'));
@@ -385,7 +397,7 @@ function goToChecklistDetail(): void {
 
                 <template v-else-if="column.key === 'session_date'">
                   <span class="text-sm text-foreground/90 font-normal">
-                    {{ (record as ChecklistSession).session_date ? dayjs((record as ChecklistSession).session_date).format('YYYY-MM-DD HH:mm') : '—' }}
+                    {{ (record as ChecklistSession).session_date ? dayjs((record as ChecklistSession).session_date).format('YYYY-MM-DD') : '—' }}
                   </span>
                 </template>
 
@@ -407,7 +419,7 @@ function goToChecklistDetail(): void {
           </div>
 
           <Button
-            v-if="isManager"
+            v-if="canManage"
             type="primary"
             block
             class="mt-4 bg-[#5c3e35] hover:bg-[#4b332b] border-[#5c3e35] rounded-md text-white font-medium h-10 text-sm"
@@ -428,118 +440,152 @@ function goToChecklistDetail(): void {
             </Button>
           </div>
 
-          <Form ref="formRef" :model="sessionForm" :rules="rules" layout="vertical" class="space-y-3">
-            <FormItem :label="$t('page.ops.checklistDrawer.fieldName')" name="name" class="mb-2">
-              <Input v-model:value="sessionForm.name" :disabled="!isManager" :placeholder="$t('page.ops.checklistDrawer.placeholderName')" />
-            </FormItem>
-
-            <FormItem :label="$t('page.ops.checklistDrawer.fieldEquipment')" name="equipment_id" class="mb-2">
-              <Select
-                v-model:value="sessionForm.equipment_id"
-                :disabled="!isManager"
-                :placeholder="$t('page.ops.checklistDrawer.placeholderEquipment')"
-                :options="equipmentSelectOptions"
-                show-search
-                option-filter-prop="label"
-                allow-clear
-              />
-            </FormItem>
-
-            <FormItem :label="$t('page.ops.colDate')" name="session_date" class="mb-2">
-              <DatePicker
-                v-model:value="sessionForm.session_date"
-                :disabled="!isManager"
-                show-time
-                value-format="YYYY-MM-DD HH:mm"
-                format="YYYY-MM-DD HH:mm"
-                class="w-full !w-full"
-                style="width: 100%"
-                :placeholder="$t('page.ops.placeholderDate')"
-              />
-            </FormItem>
-
-            <div class="grid grid-cols-2 gap-3">
-              <FormItem :label="$t('page.ops.colCycleType')" name="cycle_type" class="col-span-1 mb-2">
-                <Select v-model:value="sessionForm.cycle_type" :disabled="!isManager" :placeholder="$t('page.ops.placeholderCycleType')">
-                  <Select.Option value="daily">{{ $t('page.ops.cycleDaily') }}</Select.Option>
-                  <Select.Option value="weekly">{{ $t('page.ops.cycleWeekly') }}</Select.Option>
-                  <Select.Option value="monthly">{{ $t('page.ops.cycleMonthly') }}</Select.Option>
-                  <Select.Option value="yearly">{{ $t('page.ops.cycleYearly') }}</Select.Option>
-                </Select>
-              </FormItem>
-
-              <FormItem :label="$t('page.ops.colCycleInterval')" name="cycle_interval" class="col-span-1 mb-2">
-                <InputNumber
-                  v-model:value="sessionForm.cycle_interval"
-                  :disabled="!isManager"
-                  :min="1"
-                  class="w-full !w-full"
-                  style="width: 100%"
-                  :placeholder="$t('page.ops.placeholderCycleInterval')"
-                />
-              </FormItem>
-            </div>
-
-            <FormItem :label="$t('page.ops.checklistDrawer.fieldUsers')" name="user_ids" class="mb-2">
-              <Select
-                v-model:value="sessionForm.user_ids"
-                :disabled="!isManager"
-                mode="multiple"
-                :placeholder="$t('page.ops.checklistDrawer.placeholderUsers')"
-                :options="userSelectOptions"
-                show-search
-                option-filter-prop="label"
-              />
-            </FormItem>
-
-            <!-- DYNAMIC EAMO_CHECKLIST_DETAILS TABLE / LIST -->
-            <div class="mt-4 pt-4 border-t border-border">
-              <div class="flex items-center justify-between mb-3">
-                <div class="font-semibold text-foreground text-sm">
-                  {{ $t('page.ops.checklistDrawer.checkItemsHeader') }}
-                </div>
-              </div>
-
-              <div v-if="sessionForm.checklist_details.length === 0" class="py-6 flex justify-center">
-                <Empty :description="$t('page.ops.checklistDrawer.emptyItems')" />
-              </div>
-
-              <div v-else class="max-h-[300px] overflow-y-auto divide-y divide-border pr-2 scrollbar-thin">
-                <div
-                  v-for="(item, index) in sessionForm.checklist_details"
-                  :key="item.checklist_id || index"
-                  class="flex items-center gap-3 py-2 first:pt-0 last:pb-0"
-                >
+          <Spin :spinning="submitting">
+            <Form ref="formRef" :model="sessionForm" :rules="rules" layout="vertical" class="space-y-6">
+              <!-- Main Information -->
+              <div class="grid grid-cols-1 md:grid-cols-3 gap-x-4">
+                <!-- Name -->
+                <FormItem :label="$t('page.ops.colName')" name="name" class="col-span-1">
                   <Input
-                    v-model:value="item.description"
-                    :disabled="!isManager"
-                    class="flex-1"
-                    :placeholder="$t('page.ops.checklistDrawer.placeholderItemDesc')"
+                    v-model:value="sessionForm.name"
+                    :disabled="!canManage"
+                    :placeholder="$t('page.ops.checklistDrawer.placeholderName')"
                   />
-                  <!-- Engineers CAN modify item.result (pass/fail)! -->
-                  <Select v-model:value="item.result" class="w-28 shrink-0">
-                    <Select.Option value="pass">{{ $t('page.ops.checklistDrawer.statusPass') }}</Select.Option>
-                    <Select.Option value="fail">{{ $t('page.ops.checklistDrawer.statusFail') }}</Select.Option>
+                </FormItem>
+
+                <!-- Equipment -->
+                <FormItem :label="$t('page.ops.colEquipment')" name="equipment_id" class="col-span-1">
+                  <Select
+                    v-model:value="sessionForm.equipment_id"
+                    :disabled="!canManage"
+                    :placeholder="$t('page.ops.checklistDrawer.placeholderEquipment')"
+                    :options="equipmentSelectOptions"
+                    show-search
+                    option-filter-prop="label"
+                    allow-clear
+                  />
+                </FormItem>
+
+                <!-- Schedule Mode -->
+                <FormItem :label="$t('page.ops.scheduleMode')" name="schedule_mode" class="col-span-1">
+                  <Select v-model:value="sessionForm.schedule_mode" :disabled="!canManage">
+                    <Select.Option value="repeating">{{ $t('page.ops.modeRepeating') }}</Select.Option>
+                    <Select.Option value="single">{{ $t('page.ops.modeSingle') }}</Select.Option>
                   </Select>
-                  <Popconfirm
-                    v-if="isManager"
-                    :title="$t('page.ops.checklistDrawer.deleteConfirm')"
-                    :ok-text="$t('page.ops.checklistDrawer.btnDelete')"
-                    :cancel-text="$t('page.ops.checklistDrawer.btnCancel')"
-                    @confirm="removeDetailRow(index)"
-                  >
-                    <Button type="text" danger class="shrink-0 px-2">
-                      {{ $t('page.ops.checklistDrawer.btnDelete') }}
-                    </Button>
-                  </Popconfirm>
-                </div>
+                </FormItem>
+
+                <!-- Session Date -->
+                <FormItem :label="$t('page.ops.colDate')" name="session_date" class="col-span-1">
+                  <DatePicker
+                    v-model:value="sessionForm.session_date"
+                    :disabled="!canManage"
+                    value-format="YYYY-MM-DD"
+                    format="YYYY-MM-DD"
+                    class="w-full"
+                    style="width: 100%"
+                    :placeholder="$t('page.ops.placeholderDate')"
+                  />
+                </FormItem>
+
+                <!-- Cycle Type (only for repeating) -->
+                <FormItem
+                  v-if="sessionForm.schedule_mode === 'repeating'"
+                  :label="$t('page.ops.colCycleType')"
+                  name="cycle_type"
+                  class="col-span-1"
+                >
+                  <Select v-model:value="sessionForm.cycle_type" :disabled="!canManage" :placeholder="$t('page.ops.placeholderCycleType')">
+                    <Select.Option value="daily">{{ $t('page.ops.cycleDaily') }}</Select.Option>
+                    <Select.Option value="weekly">{{ $t('page.ops.cycleWeekly') }}</Select.Option>
+                    <Select.Option value="monthly">{{ $t('page.ops.cycleMonthly') }}</Select.Option>
+                    <Select.Option value="yearly">{{ $t('page.ops.cycleYearly') }}</Select.Option>
+                  </Select>
+                </FormItem>
+
+                <!-- Cycle Interval (only for repeating) -->
+                <FormItem
+                  v-if="sessionForm.schedule_mode === 'repeating'"
+                  :label="$t('page.ops.colCycleInterval')"
+                  name="cycle_interval"
+                  class="col-span-1"
+                >
+                  <InputNumber
+                    v-model:value="sessionForm.cycle_interval"
+                    :disabled="!canManage"
+                    :min="1"
+                    :max="365"
+                    class="w-full"
+                    style="width: 100%"
+                    :placeholder="$t('page.ops.placeholderCycleInterval')"
+                  />
+                </FormItem>
+
+                <!-- Users (full width) -->
+                <FormItem :label="$t('page.ops.colExecutor')" name="user_ids" class="col-span-1 md:col-span-3">
+                  <Select
+                    v-model:value="sessionForm.user_ids"
+                    :disabled="!canManage"
+                    mode="multiple"
+                    :placeholder="$t('page.ops.checklistDrawer.placeholderUsers')"
+                    :options="userSelectOptions"
+                    show-search
+                    option-filter-prop="label"
+                    allow-clear
+                  />
+                </FormItem>
               </div>
 
-              <Button v-if="isManager" type="dashed" block class="mt-3" @click="addDetailRow">
-                {{ $t('page.ops.checklistDrawer.btnAddItem') }}
-              </Button>
-            </div>
-          </Form>
+              <!-- Checklist Details Section -->
+              <div class="pt-4 border-t border-border">
+                <div class="mb-3 flex items-end justify-between gap-3">
+                  <div class="font-semibold text-foreground text-sm">
+                    {{ $t('page.ops.detailItemsHeader') }}
+                  </div>
+                </div>
+
+                <div class="py-1">
+                  <div v-if="sessionForm.checklist_details.length === 0" class="py-6 flex justify-center">
+                    <Empty :description="$t('page.ops.noDetailItems')" />
+                  </div>
+
+                  <div v-else class="max-h-[300px] overflow-y-auto divide-y divide-border pr-2 scrollbar-thin">
+                    <div
+                      v-for="(item, index) in sessionForm.checklist_details"
+                      :key="item.checklist_id || index"
+                      class="flex items-center gap-3 py-2 first:pt-0 last:pb-0"
+                    >
+                      <Input
+                        v-model:value="item.description"
+                        :disabled="!canManage"
+                        class="flex-1"
+                        :placeholder="$t('page.ops.itemNamePlaceholder')"
+                      />
+                      <!-- Engineers CAN modify item.result (pass/fail) in edit mode -->
+                      <Select v-if="activeMode === 'edit'" v-model:value="item.result" class="w-28 shrink-0">
+                        <Select.Option value="pass">{{ $t('page.ops.checklistDrawer.statusPass') }}</Select.Option>
+                        <Select.Option value="fail">{{ $t('page.ops.checklistDrawer.statusFail') }}</Select.Option>
+                      </Select>
+                      <Popconfirm
+                        v-if="canManage"
+                        :title="$t('page.ops.deleteItemConfirm')"
+                        :ok-text="$t('page.ops.btnConfirm')"
+                        :cancel-text="$t('page.ops.btnCancel')"
+                        @confirm="removeDetailRow(index)"
+                      >
+                        <Button type="text" danger class="shrink-0 px-2">
+                          {{ $t('page.ops.btnDelete') }}
+                        </Button>
+                      </Popconfirm>
+                    </div>
+                  </div>
+                </div>
+
+                <Button v-if="canManage" type="dashed" block class="mt-3" @click="addDetailRow">
+                  {{ $t('page.ops.btnAddCheck') }}
+                </Button>
+              </div>
+            </Form>
+          </Spin>
         </div>
       </div>
     </Spin>
@@ -571,19 +617,5 @@ function goToChecklistDetail(): void {
 .vben-noborder-table :deep(.ant-table-container),
 .vben-noborder-table :deep(.ant-table-content) {
   border: none !important;
-}
-.vben-custom-scrollbar::-webkit-scrollbar {
-  width: 6px;
-  height: 6px;
-}
-.vben-custom-scrollbar::-webkit-scrollbar-track {
-  background: transparent;
-}
-.vben-custom-scrollbar::-webkit-scrollbar-thumb {
-  background: rgba(156, 163, 175, 0.35);
-  border-radius: 9999px;
-}
-.vben-custom-scrollbar::-webkit-scrollbar-thumb:hover {
-  background: rgba(156, 163, 175, 0.65);
 }
 </style>
