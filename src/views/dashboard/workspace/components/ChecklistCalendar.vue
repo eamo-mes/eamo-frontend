@@ -330,21 +330,6 @@ onMounted(() => {
                 </div>
               </div>
             </div>
-
-            <!-- Bottom slot for More Sessions Button when count > 2 -->
-            <div class="h-6 shrink-0 flex items-end mt-1">
-              <button
-                v-if="getSessionsForDay(current).length > 2"
-                type="button"
-                class="w-full text-left py-0.5 px-1.5 text-[11px] font-semibold text-emerald-600 dark:text-emerald-400 bg-emerald-500/10 hover:bg-emerald-500/20 rounded border border-emerald-500/20 transition-colors flex items-center justify-between cursor-pointer"
-                @click.stop="openDaySessionsModal(current)"
-              >
-                <span>{{ $t('page.ops.moreNodesCount', { count: getSessionsForDay(current).length - 2 }) }}</span>
-                <svg xmlns="http://www.w3.org/2000/svg" class="w-3 h-3 text-emerald-600 dark:text-emerald-400 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7" />
-                </svg>
-              </button>
-            </div>
           </div>
         </template>
       </Calendar>
