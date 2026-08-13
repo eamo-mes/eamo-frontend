@@ -1,5 +1,5 @@
 <script lang="ts" setup>
-import { ref, onMounted } from 'vue';
+import { ref, computed, onMounted } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 import { useI18n } from '@vben/locales';
 import {
@@ -16,6 +16,7 @@ import {
   judgeChecklistSessionApi,
   updateChecklistSessionApi,
 } from '#/api/ops/checklist';
+import JudgeResultButton from '#/components/JudgeResultButton.vue';
 import type {
   ChecklistSession,
   ChecklistDetailItem,
@@ -41,6 +42,16 @@ const submitting = ref(false);
 const session = ref<ChecklistSession | null>(null);
 const judgeDetails = ref<JudgeDetailItem[]>([]);
 
+const displayDate = computed(() => {
+  const queryDate = route.query.date as string;
+  if (queryDate) {
+    return dayjs(queryDate).format('YYYY-MM-DD');
+  }
+  return session.value?.session_date 
+    ? dayjs(session.value.session_date).format('YYYY-MM-DD HH:mm') 
+    : '';
+});
+
 function getLatestCompletedLog(detail: ChecklistDetailItem & { schedules?: Array<{ logs?: ChecklistLog[] }> }): ChecklistLog | undefined {
   let logs: ChecklistLog[] = detail.logs || [];
   if (logs.length === 0 && detail.schedules && detail.schedules.length > 0) {
@@ -62,7 +73,8 @@ async function loadSessionDetail() {
 
   loading.value = true;
   try {
-    const raw = await getChecklistSessionDetailApi(sessionId);
+    const queryDate = route.query.date as string;
+    const raw = await getChecklistSessionDetailApi(sessionId, { date: queryDate });
     const data = (raw as { data?: ChecklistSession })?.data ?? (raw as ChecklistSession);
     if (data) {
       session.value = data;
@@ -93,15 +105,14 @@ async function loadSessionDetail() {
           id: detail.id,
           checklist_id: detail.checklist_id || detail.id || '',
           description: detail.description || 'Hạng mục kiểm tra',
-          result: latestLog?.result === 'fail' ? 'fail' : 'pass',
+          result: latestLog?.result === 'pass' ? 'pass' : 'fail',
         };
       });
     } else {
       message.error('Phiên kiểm tra không tồn tại');
     }
   } catch (err: unknown) {
-    const apiError = (err as { response?: { data?: { message?: string } } })?.response?.data?.message;
-    message.error(apiError || t('page.ops.loadDetailsError') || 'Không thể tải chi tiết checklist');
+    console.error(err);
   } finally {
     loading.value = false;
   }
@@ -120,9 +131,11 @@ async function handleJudgeSubmit() {
       ? session.value.users.map((u) => u.id)
       : [];
 
-    const executionDate = session.value.session_date
+    const queryDate = route.query.date as string;
+
+    const executionDate = queryDate || (session.value.session_date
       ? dayjs(session.value.session_date).format('YYYY-MM-DD')
-      : dayjs().format('YYYY-MM-DD');
+      : dayjs().format('YYYY-MM-DD'));
 
     const scheduleIds = session.value.details
       ?.map((detail) => detail.schedule_id)
@@ -144,9 +157,11 @@ async function handleJudgeSubmit() {
       // non-critical update ignore
     }
 
-    const timestamp = session.value.session_date
-      ? dayjs(session.value.session_date).format('YYYY-MM-DD HH:mm:ss')
-      : dayjs().format('YYYY-MM-DD HH:mm:ss');
+    const timestamp = queryDate
+      ? `${queryDate} ${dayjs().format('HH:mm:ss')}`
+      : (session.value.session_date
+          ? dayjs(session.value.session_date).format('YYYY-MM-DD HH:mm:ss')
+          : dayjs().format('YYYY-MM-DD HH:mm:ss'));
 
     await judgeChecklistSessionApi({
       session_id: session.value.id,
@@ -162,11 +177,43 @@ async function handleJudgeSubmit() {
     message.success(t('page.ops.judgeSuccess') || 'Đã lưu kết quả đánh giá thành công');
     router.push('/portal/checklist');
   } catch (err: unknown) {
-    const apiError = (err as { response?: { data?: { message?: string } } })?.response?.data?.message;
-    message.error(apiError || t('page.ops.judgeError') || 'Không thể lưu kết quả đánh giá');
+    console.error(err);
   } finally {
     submitting.value = false;
   }
+}
+
+async function handleSingleChecklistJudge(item: JudgeDetailItem, nextResult: string): Promise<void> {
+  if (!session.value) return;
+
+  const dateStr = displayDate.value;
+  if (dateStr && dayjs(dateStr).isAfter(dayjs(), 'day')) {
+    message.error(t('page.ops.dateCannotBeInFuture') || 'Ngày thực hiện không được vượt quá ngày hôm nay');
+    throw new Error('Date in future');
+  }
+
+  const selectedUserIds = Array.isArray(session.value.users)
+    ? session.value.users.map((u) => u.id)
+    : [];
+
+  const timestamp = dateStr
+    ? `${dateStr} ${dayjs().format('HH:mm:ss')}`
+    : dayjs().format('YYYY-MM-DD HH:mm:ss');
+
+  await judgeChecklistSessionApi({
+    session_id: session.value.id,
+    results: [
+      {
+        checklist_id: item.checklist_id,
+        result: nextResult as 'pass' | 'fail',
+        description: item.description,
+      },
+    ],
+    user_ids: selectedUserIds,
+    timestamp,
+  });
+
+  item.result = nextResult as 'pass' | 'fail';
 }
 
 onMounted(() => {
@@ -207,8 +254,8 @@ onMounted(() => {
             <p class="text-[11px] text-slate-400 dark:text-zinc-500 font-mono mt-1 mb-0">
               <span v-if="session.equipment?.code" class="font-bold text-slate-600 dark:text-zinc-400">{{ session.equipment.code }}</span>
               <span v-if="session.equipment?.name && !session.name" class="font-sans"> — {{ session.equipment.name }}</span>
-              <span v-if="session.session_date && session.equipment?.code" class="mx-1.5">·</span>
-              <span v-if="session.session_date">{{ dayjs(session.session_date).format('YYYY-MM-DD HH:mm') }}</span>
+              <span v-if="displayDate && session.equipment?.code" class="mx-1.5">·</span>
+              <span v-if="displayDate">{{ displayDate }}</span>
             </p>
           </div>
         </div>
@@ -236,41 +283,14 @@ onMounted(() => {
               </span>
             </div>
 
-            <Button
-              type="default"
-              size="small"
-              :class="[
-                'flex items-center gap-1 px-2.5 py-1 font-bold transition-all rounded-lg shrink-0 border text-[10px]',
-                item.result === 'pass'
-                  ? 'border-emerald-500 bg-emerald-50 text-emerald-700 dark:bg-emerald-950/40 dark:text-emerald-300 dark:border-emerald-600'
-                  : 'border-red-500 bg-red-50 text-red-700 dark:bg-red-950/40 dark:text-red-300 dark:border-red-600'
-              ]"
-              @click="item.result = item.result === 'pass' ? 'fail' : 'pass'"
-            >
-              <svg
-                v-if="item.result === 'pass'"
-                class="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400"
-                fill="none"
-                stroke="currentColor"
-                stroke-width="2.5"
-                viewBox="0 0 24 24"
-              >
-                <path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7" />
-              </svg>
-              <svg
-                v-else
-                class="w-3.5 h-3.5 text-red-600 dark:text-red-400"
-                fill="none"
-                stroke="currentColor"
-                stroke-width="2.5"
-                viewBox="0 0 24 24"
-              >
-                <path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12" />
-              </svg>
-              <span class="uppercase tracking-wider">
-                {{ item.result === 'pass' ? t('page.ops.checklistDrawer.statusPass') : t('page.ops.checklistDrawer.statusFail') }}
-              </span>
-            </Button>
+            <JudgeResultButton
+              v-model:value="item.result"
+              pass-value="pass"
+              fail-value="fail"
+              :pass-label="t('page.ops.checklistDrawer.statusPass') || 'Pass'"
+              :fail-label="t('page.ops.checklistDrawer.statusFail') || 'Fail'"
+              :on-judge="(nextRes) => handleSingleChecklistJudge(item, nextRes)"
+            />
           </div>
         </div>
       </div>

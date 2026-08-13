@@ -281,3 +281,20 @@ export async function createMaintenanceLogApi(payload: SaveMaintenanceLogPayload
 export async function deleteMaintenanceLogApi(id: string): Promise<void> {
   await requestClient.delete(`/v1/maintenance-logs/${id}`);
 }
+
+export interface JudgeMaintenancePlanResultItem {
+  schedule_id: string;
+  result: 'Completed' | 'Partial' | 'Failed' | 'Pending';
+  note?: string | null;
+}
+
+export interface JudgeMaintenancePlanPayload {
+  plan_id: string;
+  results: JudgeMaintenancePlanResultItem[];
+  user_ids?: string[];
+  timestamp?: string;
+}
+
+export async function judgeMaintenancePlanApi(payload: JudgeMaintenancePlanPayload): Promise<any> {
+  return await requestClient.post('/v1/maintenance-plans/judge', payload);
+}

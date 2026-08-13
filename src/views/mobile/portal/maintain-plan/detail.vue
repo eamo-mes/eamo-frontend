@@ -14,12 +14,13 @@ import dayjs from 'dayjs';
 import { requestClient } from '#/api/request';
 import {
   listMaintenanceSchedulesApi,
-  createMaintenanceLogApi,
   getMaintenancePlanDetailApi,
+  judgeMaintenancePlanApi,
   type ScheduleRow,
   type MaintenancePlanRecord,
   type MaintenanceLog,
 } from '#/api/ops/maintenance-plans';
+import JudgeResultButton from '#/components/JudgeResultButton.vue';
 
 defineOptions({ name: 'MobilePortalMaintainPlanDetail' });
 
@@ -191,38 +192,72 @@ function handleBack() {
 
 async function handleSaveEvaluation() {
   if (judgeItems.value.length === 0) return;
+
+  const dateStr = planHeader.value?.date;
+  if (dateStr && dayjs(dateStr).isAfter(dayjs(), 'day')) {
+    message.error(t('page.ops.dateCannotBeInFuture') || 'Ngày thực hiện không được vượt quá ngày hôm nay');
+    return;
+  }
+
   submitting.value = true;
   try {
-    for (const item of judgeItems.value) {
-      if (!item.schedule_id) continue;
+    const planId = route.params.id as string;
+    const results = judgeItems.value
+      .map((item) => {
+        if (!item.schedule_id) return null;
+        return {
+          schedule_id: item.schedule_id,
+          result: item.result === 'Completed' ? 'Completed' : 'Failed',
+          note: item.notes ? item.notes.trim() : null,
+        };
+      })
+      .filter((item): item is { schedule_id: string; result: 'Completed' | 'Failed'; note: string | null } => Boolean(item));
 
-      const logResult = item.result === 'Completed' ? 'Completed' : 'Failed';
-      const logNote = item.notes ? item.notes.trim() : null;
+    const payload = {
+      plan_id: planId,
+      timestamp: dateStr
+        ? `${dateStr} ${dayjs().format('HH:mm:ss')}`
+        : dayjs().format('YYYY-MM-DD HH:mm:ss'),
+      results: results as any[],
+    };
 
-      if (item.log_id) {
-        await requestClient.put<MaintenanceLog>(`/v1/maintenance-logs/${item.log_id}`, {
-          result: logResult,
-          note: logNote,
-        });
-      } else {
-        const newLog = await createMaintenanceLogApi({
-          maintenance_schedule_id: item.schedule_id,
-          equipment_id: item.equipment_id,
-          result: logResult,
-          note: logNote,
-        });
-        item.log_id = newLog.id;
-      }
-    }
+    await judgeMaintenancePlanApi(payload);
 
     message.success(t('page.ops.saveLogSuccess') || 'Đã lưu kết quả bảo trì thành công');
     router.push('/portal/maintain-plan');
   } catch (err: unknown) {
-    const apiError = (err as { response?: { data?: { message?: string } } })?.response?.data?.message;
-    message.error(apiError || t('page.ops.saveLogError') || 'Không thể lưu kết quả bảo trì');
+    console.error(err);
   } finally {
     submitting.value = false;
   }
+}
+
+async function handleSingleMaintenanceJudge(item: JudgeScheduleItem, nextResult: string): Promise<void> {
+  if (!item.schedule_id) return;
+
+  const dateStr = planHeader.value?.date;
+  if (dateStr && dayjs(dateStr).isAfter(dayjs(), 'day')) {
+    message.error(t('page.ops.dateCannotBeInFuture') || 'Ngày thực hiện không được vượt quá ngày hôm nay');
+    throw new Error('Date in future');
+  }
+
+  const planId = route.params.id as string;
+  const payload = {
+    plan_id: planId,
+    timestamp: dateStr
+      ? `${dateStr} ${dayjs().format('HH:mm:ss')}`
+      : dayjs().format('YYYY-MM-DD HH:mm:ss'),
+    results: [
+      {
+        schedule_id: item.schedule_id,
+        result: nextResult,
+        note: item.notes ? item.notes.trim() : null,
+      },
+    ],
+  };
+
+  await judgeMaintenancePlanApi(payload as any);
+  item.result = nextResult as 'Completed' | 'Pending';
 }
 
 onMounted(() => {
@@ -293,41 +328,14 @@ onMounted(() => {
                 </p>
               </div>
 
-              <Button
-                type="default"
-                size="small"
-                :class="[
-                  'flex items-center gap-1 px-2.5 py-1 font-bold transition-all rounded-lg shrink-0 border text-[10px]',
-                  item.result === 'Completed'
-                    ? 'border-emerald-500 bg-emerald-50 text-emerald-700 dark:bg-emerald-950/40 dark:text-emerald-300 dark:border-emerald-600'
-                    : 'border-red-500 bg-red-50 text-red-700 dark:bg-red-950/40 dark:text-red-300 dark:border-red-600'
-                ]"
-                @click="item.result = item.result === 'Completed' ? 'Pending' : 'Completed'"
-              >
-                <svg
-                  v-if="item.result === 'Completed'"
-                  class="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400"
-                  fill="none"
-                  stroke="currentColor"
-                  stroke-width="2.5"
-                  viewBox="0 0 24 24"
-                >
-                  <path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7" />
-                </svg>
-                <svg
-                  v-else
-                  class="w-3.5 h-3.5 text-red-600 dark:text-red-400"
-                  fill="none"
-                  stroke="currentColor"
-                  stroke-width="2.5"
-                  viewBox="0 0 24 24"
-                >
-                  <path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12" />
-                </svg>
-                <span class="uppercase tracking-wider">
-                  {{ item.result === 'Completed' ? (t('page.ops.resultPass') || 'Đạt') : (t('page.ops.resultFail') || 'Chưa đạt') }}
-                </span>
-              </Button>
+              <JudgeResultButton
+                v-model:value="item.result"
+                pass-value="Completed"
+                fail-value="Failed"
+                :pass-label="t('page.ops.resultPass') || 'Đạt'"
+                :fail-label="t('page.ops.resultFail') || 'Chưa đạt'"
+                :on-judge="(nextRes) => handleSingleMaintenanceJudge(item, nextRes)"
+              />
             </div>
 
             <!-- Optional Notes -->

@@ -11,11 +11,11 @@ import {
   Empty,
 } from 'ant-design-vue';
 import { useRouter } from 'vue-router';
-import axios from 'axios';
 import dayjs from 'dayjs';
-import { useAccessStore } from '@vben/stores';
-import { API_BASE_URL } from '#/api/config';
 import { $t } from '#/locales';
+import { requestClient } from '#/api/request';
+import { judgeChecklistSessionApi, updateChecklistSessionApi } from '#/api/ops/checklist';
+import JudgeResultButton from '#/components/JudgeResultButton.vue';
 import type {
   ChecklistSession,
   ChecklistDetailItem,
@@ -38,7 +38,7 @@ const emit = defineEmits<{
 import { useRoleAccess } from '#/utils/useRoleAccess';
 
 const router = useRouter();
-const { isManager, isEngineer, isAdmin } = useRoleAccess();
+const { isManager } = useRoleAccess();
 
 const submitting = ref(false);
 const deletingSchedule = ref(false);
@@ -55,14 +55,6 @@ const userOptions = computed(() => {
   }));
 });
 
-function getAuthHeaders(): Record<string, string> {
-  const accessStore = useAccessStore();
-  return {
-    Authorization: `Bearer ${accessStore.accessToken}`,
-    Accept: 'application/json',
-    'Content-Type': 'application/json',
-  };
-}
 
 function normalizeDate(value: string | null | undefined): string | undefined {
   if (!value) {
@@ -112,8 +104,18 @@ watch(
   { immediate: true },
 );
 
+function disabledDate(current: any) {
+  return current && current > dayjs().endOf('day');
+}
+
 async function handleJudgeOk(): Promise<void> {
   if (!props.session) return;
+
+  if (selectedExecutionDate.value && dayjs(selectedExecutionDate.value).isAfter(dayjs(), 'day')) {
+    message.error($t('page.ops.dateCannotBeInFuture'));
+    return;
+  }
+
   submitting.value = true;
 
   try {
@@ -122,21 +124,17 @@ async function handleJudgeOk(): Promise<void> {
         ?.map((detail) => detail.schedule_id)
         .filter((id): id is string => Boolean(id));
 
-      await axios.put(
-        `${API_BASE_URL}/v1/checklist-sessions/${props.session.id}`,
-        {
-          user_ids: selectedUserIds.value,
-          schedules:
-            scheduleIds && scheduleIds.length > 0
-              ? scheduleIds.map((id) => ({
-                  id,
-                  date: selectedExecutionDate.value,
-                  user_ids: selectedUserIds.value,
-                }))
-              : undefined,
-        },
-        { headers: getAuthHeaders() },
-      );
+      await updateChecklistSessionApi(props.session.id, {
+        user_ids: selectedUserIds.value,
+        schedules:
+          scheduleIds && scheduleIds.length > 0
+            ? scheduleIds.map((id) => ({
+                id,
+                date: selectedExecutionDate.value,
+                user_ids: selectedUserIds.value,
+              }))
+            : undefined,
+      });
     } catch (putErr) {
       // Non-managers may get 403 on session PUT, continue to judge POST
       console.warn('Session structure update skipped or unauthorized:', putErr);
@@ -155,19 +153,46 @@ async function handleJudgeOk(): Promise<void> {
         : undefined,
     };
 
-    await axios.post(`${API_BASE_URL}/v1/checklist-sessions/judge`, payload, {
-      headers: getAuthHeaders(),
-    });
+    await judgeChecklistSessionApi(payload);
 
     message.success($t('page.ops.judgeSuccess'));
     emit('update:open', false);
     emit('submitted');
   } catch (err: unknown) {
-    const apiError = axios.isAxiosError(err) ? err.response?.data?.message : undefined;
+    const apiError = (err as { response?: { data?: { message?: string } } })?.response?.data?.message;
     message.error(apiError || $t('page.ops.judgeError'));
   } finally {
     submitting.value = false;
   }
+}
+
+async function handleSingleChecklistJudge(item: JudgeDetailItem, nextResult: string): Promise<void> {
+  if (!props.session) return;
+
+  if (selectedExecutionDate.value && dayjs(selectedExecutionDate.value).isAfter(dayjs(), 'day')) {
+    message.error($t('page.ops.dateCannotBeInFuture'));
+    throw new Error('Date in future');
+  }
+
+  const payload = {
+    session_id: props.session.id,
+    results: [
+      {
+        checklist_id: item.checklist_id,
+        result: nextResult as 'pass' | 'fail',
+        description: item.description,
+      },
+    ],
+    user_ids: selectedUserIds.value,
+    timestamp: selectedExecutionDate.value
+      ? `${selectedExecutionDate.value} ${selectedTimestamp.value.slice(11)}`
+      : undefined,
+  };
+
+  await judgeChecklistSessionApi(payload);
+
+  item.result = nextResult as 'pass' | 'fail';
+  emit('submitted');
 }
 
 async function handleDeleteSchedule(): Promise<void> {
@@ -177,8 +202,7 @@ async function handleDeleteSchedule(): Promise<void> {
 
   deletingSchedule.value = true;
   try {
-    await axios.delete(`${API_BASE_URL}/v1/checklist-schedules/daily`, {
-      headers: getAuthHeaders(),
+    await requestClient.delete('/v1/checklist-schedules/daily', {
       data: {
         session_id: session.id,
         equipment_id: session.equipment_id,
@@ -190,7 +214,7 @@ async function handleDeleteSchedule(): Promise<void> {
     emit('update:open', false);
     emit('submitted');
   } catch (err: unknown) {
-    const apiError = axios.isAxiosError(err) ? err.response?.data?.message : undefined;
+    const apiError = (err as { response?: { data?: { message?: string } } })?.response?.data?.message;
     message.error(apiError || $t('page.ops.deleteScheduleError'));
   } finally {
     deletingSchedule.value = false;
@@ -266,6 +290,7 @@ function goToChecklistDetail(): void {
           <DatePicker
             v-model:value="selectedExecutionDate"
             :disabled="!isManager"
+            :disabled-date="disabledDate"
             value-format="YYYY-MM-DD"
             format="YYYY-MM-DD"
             class="w-full"
@@ -296,40 +321,12 @@ function goToChecklistDetail(): void {
               </span>
             </div>
 
-            <Button
-              type="default"
-              size="small"
-              :class="[
-                'flex items-center gap-1 px-3 py-1 font-medium transition-colors shrink-0',
-                item.result === 'pass'
-                  ? 'border-emerald-500 bg-emerald-50 text-emerald-700 dark:bg-emerald-950/40 dark:text-emerald-300 dark:border-emerald-600'
-                  : 'border-red-500 bg-red-50 text-red-700 dark:bg-red-950/40 dark:text-red-300 dark:border-red-600'
-              ]"
-              :title="item.result === 'pass' ? $t('page.ops.resultPass') : $t('page.ops.resultFail')"
-              @click="item.result = item.result === 'pass' ? 'fail' : 'pass'"
-            >
-              <svg
-                v-if="item.result === 'pass'"
-                class="w-4 h-4 text-emerald-600 dark:text-emerald-400"
-                fill="none"
-                stroke="currentColor"
-                viewBox="0 0 24 24"
-              >
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M5 13l4 4L19 7" />
-              </svg>
-              <svg
-                v-else
-                class="w-4 h-4 text-red-600 dark:text-red-400"
-                fill="none"
-                stroke="currentColor"
-                viewBox="0 0 24 24"
-              >
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M6 18L18 6M6 6l12 12" />
-              </svg>
-              <span class="text-xs uppercase tracking-wider">
-                {{ item.result === 'pass' ? $t('page.ops.resultPass') : $t('page.ops.resultFail') }}
-              </span>
-            </Button>
+            <JudgeResultButton
+              v-model:value="item.result"
+              pass-value="pass"
+              fail-value="fail"
+              :on-judge="(nextRes) => handleSingleChecklistJudge(item, nextRes)"
+            />
           </div>
         </div>
       </div>

@@ -1,6 +1,4 @@
-import axios from 'axios';
-import { useAccessStore } from '@vben/stores';
-import { API_BASE_URL } from '#/api/config';
+import { requestClient } from '#/api/request';
 
 export interface BackendNotificationData {
   type: 'assigned' | 'unassigned';
@@ -45,110 +43,40 @@ export interface UserNotificationsResponse {
  * Fetch specific user's notifications and unread count
  */
 export async function getUserNotificationsApi(userId: string, params?: Record<string, unknown>): Promise<UserNotificationsResponse> {
-  const accessStore = useAccessStore();
-  const token = accessStore.accessToken;
-
-  const response = await axios.get(`${API_BASE_URL}/users/${userId}/notifications`, {
-    headers: {
-      Authorization: token ? `Bearer ${token}` : '',
-      Accept: 'application/json',
-    },
-    params,
-  });
-
-  return response.data;
+  return await requestClient.get<UserNotificationsResponse>(`/users/${userId}/notifications`, { params });
 }
 
 /**
  * Mark a single notification as read
  */
 export async function markNotificationReadApi(id: string): Promise<{ message: string }> {
-  const accessStore = useAccessStore();
-  const token = accessStore.accessToken;
-
-  const response = await axios.patch(
-    `${API_BASE_URL}/notifications/${id}/read`,
-    {},
-    {
-      headers: {
-        Authorization: token ? `Bearer ${token}` : '',
-        Accept: 'application/json',
-      },
-    }
-  );
-
-  return response.data;
+  return await requestClient.patch<{ message: string }>(`/notifications/${id}/read`);
 }
 
 /**
  * Mark all notifications as read for current user
  */
 export async function markAllNotificationsReadApi(): Promise<{ message: string }> {
-  const accessStore = useAccessStore();
-  const token = accessStore.accessToken;
-
-  const response = await axios.patch(
-    `${API_BASE_URL}/notifications/read-all`,
-    {},
-    {
-      headers: {
-        Authorization: token ? `Bearer ${token}` : '',
-        Accept: 'application/json',
-      },
-    }
-  );
-
-  return response.data;
+  return await requestClient.patch<{ message: string }>('/notifications/read-all');
 }
 
 /**
  * Fetch today's schedules (Checklists & Maintenance) for the authenticated user
  */
 export async function getUserTodaySchedulesApi(params?: Record<string, unknown>): Promise<unknown> {
-  const accessStore = useAccessStore();
-  const token = accessStore.accessToken;
-
-  const response = await axios.get(`${API_BASE_URL}/user/schedules/today`, {
-    headers: {
-      Authorization: token ? `Bearer ${token}` : '',
-      Accept: 'application/json',
-    },
-    params,
-  });
-
-  return response.data;
+  return await requestClient.get('/user/schedules/today', { params });
 }
 
 /**
  * Mark a checklist schedule as completed
  */
 export async function completeChecklistScheduleApi(id: string): Promise<unknown> {
-  const accessStore = useAccessStore();
-  const token = accessStore.accessToken;
-
-  const response = await axios.post(`${API_BASE_URL}/v1/checklist-schedules/${id}/complete`, {}, {
-    headers: {
-      Authorization: token ? `Bearer ${token}` : '',
-      Accept: 'application/json',
-    },
-  });
-
-  return response.data;
+  return await requestClient.post(`/v1/checklist-schedules/${id}/complete`);
 }
 
 /**
  * Mark a maintenance schedule as completed
  */
 export async function completeMaintenanceScheduleApi(id: string): Promise<unknown> {
-  const accessStore = useAccessStore();
-  const token = accessStore.accessToken;
-
-  const response = await axios.post(`${API_BASE_URL}/v1/maintenance-schedules/${id}/complete`, {}, {
-    headers: {
-      Authorization: token ? `Bearer ${token}` : '',
-      Accept: 'application/json',
-    },
-  });
-
-  return response.data;
+  return await requestClient.post(`/v1/maintenance-schedules/${id}/complete`);
 }

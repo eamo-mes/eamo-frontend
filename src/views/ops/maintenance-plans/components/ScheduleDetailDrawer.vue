@@ -38,14 +38,15 @@ import { $t } from '#/locales';
 import { requestClient } from '#/api/request';
 import { useRoleAccess } from '#/utils/useRoleAccess';
 import {
-  createMaintenanceLogApi,
   deleteMaintenanceScheduleApi,
+  judgeMaintenancePlanApi,
   type EquipmentOption,
   type MaintenanceCategoryOption,
   type MaintenanceItemOption,
   type ScheduleRow,
   type MaintenanceLog,
 } from '#/api/ops/maintenance-plans';
+import JudgeResultButton from '#/components/JudgeResultButton.vue';
 
 interface UserOption {
   label: string;
@@ -76,7 +77,7 @@ const emit = defineEmits<{
 }>();
 
 const router = useRouter();
-const { isManager, isAdmin } = useRoleAccess();
+const { isManager } = useRoleAccess();
 
 const drawerSchedule = ref<{ date: string; user_ids: string[] }>({
   date: dayjs().format('YYYY-MM-DD'),
@@ -233,39 +234,50 @@ watch(
   { immediate: true, deep: true }
 );
 
+function disabledDate(current: any) {
+  return current && current > dayjs().endOf('day');
+}
+
 async function handleSaveDrawer(): Promise<void> {
   if (!activeSchedule.value) return;
 
+  if (drawerSchedule.value.date && dayjs(drawerSchedule.value.date).isAfter(dayjs(), 'day')) {
+    message.error($t('page.ops.dateCannotBeInFuture'));
+    return;
+  }
+
   submitting.value = true;
   try {
-    const updatedSchedules = [...props.schedules];
+    const planId = activeSchedule.value.maintenance_plan_id || '';
+    const results = planSchedules.value
+      .map((s) => {
+        const key = getEvalKey(s);
+        const evalState = itemEvaluations.value[key];
+        if (!evalState || !s.id) return null;
+        return {
+          schedule_id: s.id,
+          result: evalState.result === 'Completed' ? 'Completed' : 'Failed',
+          note: evalState.notes ? evalState.notes.trim() : null,
+        };
+      })
+      .filter((item): item is { schedule_id: string; result: 'Completed' | 'Failed'; note: string | null } => Boolean(item));
 
+    const payload = {
+      plan_id: planId,
+      timestamp: drawerSchedule.value.date
+        ? `${drawerSchedule.value.date} ${dayjs().format('HH:mm:ss')}`
+        : dayjs().format('YYYY-MM-DD HH:mm:ss'),
+      user_ids: Array.isArray(drawerSchedule.value.user_ids) ? [...drawerSchedule.value.user_ids] : [],
+      results: results as any[],
+    };
+
+    await judgeMaintenancePlanApi(payload);
+
+    const updatedSchedules = [...props.schedules];
     for (const s of planSchedules.value) {
       const key = getEvalKey(s);
       const evalState = itemEvaluations.value[key];
 
-      if (evalState && s.id) {
-        const logResult = evalState.result === 'Completed' ? 'Completed' : 'Failed';
-        const logNote = evalState.notes ? evalState.notes.trim() : null;
-
-        if (evalState.log_id) {
-          await requestClient.put<MaintenanceLog>(`/v1/maintenance-logs/${evalState.log_id}`, {
-            result: logResult,
-            note: logNote,
-            notes: logNote,
-          });
-        } else {
-          const newLog = await createMaintenanceLogApi({
-            maintenance_schedule_id: s.id,
-            result: logResult,
-            note: logNote,
-            notes: logNote,
-          });
-          evalState.log_id = newLog.id;
-        }
-      }
-
-      // Update schedule in local list
       const idx = updatedSchedules.findIndex((x) => (x.id && x.id === s.id) || x._key === s._key);
       if (idx !== -1) {
         const target = updatedSchedules[idx];
@@ -284,14 +296,41 @@ async function handleSaveDrawer(): Promise<void> {
     emit('update:open', false);
     message.success($t('page.ops.drawerSaveSuccess') || 'Đã ghi nhận kết quả đánh giá bảo trì');
   } catch (err: unknown) {
-    const status = (err as { response?: { status?: number } })?.response?.status;
-    if (status !== 403 && status !== 401) {
-      const apiError = (err as { response?: { data?: { message?: string } } })?.response?.data?.message;
-      message.error(apiError || $t('page.ops.logSaveError') || 'Không thể lưu nhật ký đánh giá');
-    }
+    console.error(err);
   } finally {
     submitting.value = false;
   }
+}
+
+async function handleSingleMaintenanceJudge(sched: ScheduleRow, nextResult: string): Promise<void> {
+  if (!activeSchedule.value || !sched.id) return;
+
+  if (drawerSchedule.value.date && dayjs(drawerSchedule.value.date).isAfter(dayjs(), 'day')) {
+    message.error($t('page.ops.dateCannotBeInFuture'));
+    throw new Error('Date in future');
+  }
+
+  const evalState = getItemEvalState(sched);
+  const planId = activeSchedule.value.maintenance_plan_id || '';
+  const note = evalState.notes ? evalState.notes.trim() : null;
+
+  const payload = {
+    plan_id: planId,
+    timestamp: drawerSchedule.value.date
+      ? `${drawerSchedule.value.date} ${dayjs().format('HH:mm:ss')}`
+      : dayjs().format('YYYY-MM-DD HH:mm:ss'),
+    user_ids: Array.isArray(drawerSchedule.value.user_ids) ? [...drawerSchedule.value.user_ids] : [],
+    results: [
+      {
+        schedule_id: sched.id,
+        result: nextResult,
+        note,
+      },
+    ],
+  };
+
+  await judgeMaintenancePlanApi(payload as any);
+  setItemResult(sched, nextResult as 'Completed' | 'Pending');
 }
 
 async function handleDeleteSchedule(): Promise<void> {
@@ -314,32 +353,6 @@ async function handleDeleteSchedule(): Promise<void> {
     emit('update:schedules', updatedSchedules);
     emit('update:open', false);
     message.success($t('page.ops.deleteScheduleSuccess') || 'Đã xóa lịch bảo trì thành công');
-  } catch (err: unknown) {
-    const status = (err as { response?: { status?: number } })?.response?.status;
-    if (status !== 403 && status !== 401) {
-      const apiError = (err as { response?: { data?: { message?: string } } })?.response?.data?.message;
-      message.error(apiError || $t('page.ops.deleteScheduleError') || 'Không thể xóa lịch bảo trì');
-    }
-  } finally {
-    deleting.value = false;
-  }
-}
-
-async function handleDeleteItemSchedule(sched: ScheduleRow): Promise<void> {
-  deleting.value = true;
-  try {
-    if (sched.id) {
-      await deleteMaintenanceScheduleApi(sched.id);
-    }
-    const updatedSchedules = props.schedules.filter(
-      (x) => !((x.id && x.id === sched.id) || (x._key && x._key === sched._key))
-    );
-    emit('update:schedules', updatedSchedules);
-    message.success($t('page.ops.deleteScheduleSuccess') || 'Đã xóa lịch bảo trì thành công');
-
-    if (planSchedules.value.length <= 1) {
-      emit('update:open', false);
-    }
   } catch (err: unknown) {
     const status = (err as { response?: { status?: number } })?.response?.status;
     if (status !== 403 && status !== 401) {
@@ -395,6 +408,7 @@ function goToPlan(): void {
             <DatePicker
               v-model:value="drawerSchedule.date"
               :disabled="!isManager"
+              :disabled-date="disabledDate"
               value-format="YYYY-MM-DD"
               format="YYYY-MM-DD"
               :placeholder="$t('page.ops.placeholderScheduleDate')"
@@ -458,40 +472,14 @@ function goToPlan(): void {
 
               <!-- Pass/Fail Button placed below input, aligned to far right -->
               <div class="flex items-center justify-end pt-2">
-                <Button
-                  type="default"
-                  size="small"
-                  :class="[
-                    'flex items-center gap-1 px-3 py-1 font-medium transition-colors shrink-0',
-                    getItemEvalState(sched).result === 'Completed'
-                      ? 'border-emerald-500 bg-emerald-50 text-emerald-700 dark:bg-emerald-950/40 dark:text-emerald-300 dark:border-emerald-600'
-                      : 'border-red-500 bg-red-50 text-red-700 dark:bg-red-950/40 dark:text-red-300 dark:border-red-600'
-                  ]"
-                  :title="getItemEvalState(sched).result === 'Completed' ? $t('page.ops.resultPass') : $t('page.ops.resultFail')"
-                  @click="setItemResult(sched, getItemEvalState(sched).result === 'Completed' ? 'Pending' : 'Completed')"
-                >
-                  <svg
-                    v-if="getItemEvalState(sched).result === 'Completed'"
-                    class="w-4 h-4 text-emerald-600 dark:text-emerald-400"
-                    fill="none"
-                    stroke="currentColor"
-                    viewBox="0 0 24 24"
-                  >
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M5 13l4 4L19 7" />
-                  </svg>
-                  <svg
-                    v-else
-                    class="w-4 h-4 text-red-600 dark:text-red-400"
-                    fill="none"
-                    stroke="currentColor"
-                    viewBox="0 0 24 24"
-                  >
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M6 18L18 6M6 6l12 12" />
-                  </svg>
-                  <span class="text-xs uppercase tracking-wider">
-                    {{ getItemEvalState(sched).result === 'Completed' ? $t('page.ops.resultPass') : $t('page.ops.resultFail') }}
-                  </span>
-                </Button>
+                <JudgeResultButton
+                  v-model:value="getItemEvalState(sched).result"
+                  pass-value="Completed"
+                  fail-value="Failed"
+                  :pass-label="$t('page.ops.resultPass') || 'Đạt'"
+                  :fail-label="$t('page.ops.resultFail') || 'Chưa đạt'"
+                  :on-judge="(nextRes) => handleSingleMaintenanceJudge(sched, nextRes)"
+                />
               </div>
             </div>
           </div>

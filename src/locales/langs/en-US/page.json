@@ -817,6 +817,7 @@
     "placeholderSelectTime": "Select time",
     "judgeSuccess": "Checklist evaluation recorded successfully",
     "judgeError": "Failed to record checklist evaluation",
+    "dateCannotBeInFuture": "The execution date cannot be in the future",
     "deadlineLabel": "Deadline",
     "placeholderSelectDeadline": "Select deadline",
     "deleteSchedule": "Delete Schedule",

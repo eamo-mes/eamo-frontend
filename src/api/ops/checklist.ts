@@ -57,9 +57,9 @@ export async function getChecklistSessionsApi(params?: Record<string, unknown>) 
 /**
  * Get detailed checklist session by ID including details and logs
  */
-export async function getChecklistSessionDetailApi(id: string) {
+export async function getChecklistSessionDetailApi(id: string, params?: Record<string, unknown>) {
   return requestClient.get(`/v1/checklist-sessions/${id}`, {
-    params: { include_details: true, include_equipment: true },
+    params: { include_details: true, include_equipment: true, ...params },
   });
 }
 

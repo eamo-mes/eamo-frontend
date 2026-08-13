@@ -813,6 +813,7 @@
     "placeholderSelectTime": "Chọn thời gian",
     "judgeSuccess": "Đánh giá checklist thành công",
     "judgeError": "Đánh giá checklist thất bại",
+    "dateCannotBeInFuture": "Ngày thực hiện không được vượt quá ngày hôm nay",
     "loadUsersError": "Không thể tải danh sách người dùng: ",
     "loadChecklistDetailError": "Không thể tải chi tiết phiên checklist",
     "updateChecklistSuccess": "Cập nhật phiên kiểm tra thành công",

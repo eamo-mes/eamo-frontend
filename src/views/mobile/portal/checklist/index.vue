@@ -6,7 +6,6 @@ import {
   Spin,
   Empty,
   DatePicker,
-  message,
 } from 'ant-design-vue';
 import dayjs, { type Dayjs } from 'dayjs';
 import { getChecklistSessionsApi } from '#/api/ops/checklist';
@@ -41,8 +40,7 @@ async function fetchSessions() {
 
     sessions.value = Array.isArray(responseData) ? (responseData as ChecklistSession[]) : [];
   } catch (err: unknown) {
-    const apiError = (err as { response?: { data?: { message?: string } } })?.response?.data?.message;
-    message.error(apiError || t('page.ops.loadChecklistError') || 'Không thể tải danh sách kiểm tra');
+    console.error(err);
   } finally {
     loading.value = false;
   }
@@ -97,7 +95,8 @@ function handleBack() {
 
 function startJudge(session: ChecklistSession) {
   if (session.id) {
-    router.push(`/portal/checklist/${session.id}`);
+    const dateStr = selectedDate.value.format('YYYY-MM-DD');
+    router.push(`/portal/checklist/${session.id}?date=${dateStr}`);
   }
 }
 
