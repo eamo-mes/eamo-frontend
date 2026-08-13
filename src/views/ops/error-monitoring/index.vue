@@ -60,11 +60,16 @@ interface ErrorLogItem {
 const loading = ref(false);
 const items = ref<ErrorLogItem[]>([]);
 
+const EMERGENCY_STOP_ERROR_ID = 'emergency_stop';
+
 function getRowClassName(record: ErrorLogItem): string {
-  if (isSoftDeleted(record) || record.is_handled) {
-    return "opacity-50 pointer-events-none";
+  if (record.equipment_error_id === EMERGENCY_STOP_ERROR_ID && !isSoftDeleted(record) && !record.is_handled) {
+    return 'emergency-stop-row';
   }
-  return "";
+  if (isSoftDeleted(record) || record.is_handled) {
+    return 'opacity-50 pointer-events-none';
+  }
+  return '';
 }
 
 const equipments = ref<EquipmentOption[]>([]);
@@ -459,3 +464,17 @@ const columns = computed(() => [
     />
   </div>
 </template>
+
+<style scoped>
+:deep(.emergency-stop-row) {
+  background-color: rgba(239, 68, 68, 0.08) !important;
+}
+
+:deep(.emergency-stop-row:hover > td) {
+  background-color: rgba(239, 68, 68, 0.14) !important;
+}
+
+:deep(.emergency-stop-row > td) {
+  background-color: rgba(239, 68, 68, 0.08) !important;
+}
+</style>

@@ -25,6 +25,12 @@ import TopMostFrequentErrors from './top-most-frequent-errors.vue';
 
 const { isManager } = useRoleAccess();
 
+const SYSTEM_ERROR_IDS = ['emergency_stop'];
+
+function isSystemError(id: string): boolean {
+  return SYSTEM_ERROR_IDS.includes(id);
+}
+
 interface EquipmentOption {
   id: string;
   name: string;
@@ -391,7 +397,16 @@ onMounted(async () => {
           @change="handleTableChange"
         >
           <template #bodyCell="{ column, record }">
-            <template v-if="column.key === 'equipment'">
+            <template v-if="column.key === 'name'">
+              <div class="flex items-center gap-2">
+                <span>{{ record.name }}</span>
+                <span
+                  v-if="isSystemError(record.id)"
+                  class="inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-bold uppercase tracking-wider bg-amber-100 dark:bg-amber-950/50 text-amber-700 dark:text-amber-400 border border-amber-300 dark:border-amber-700/50"
+                >System</span>
+              </div>
+            </template>
+            <template v-else-if="column.key === 'equipment'">
                <div class="flex flex-col gap-1 max-w-[320px]">
                  <ExpandableContainer :items="record.equipment">
                    <Tag
@@ -422,12 +437,14 @@ onMounted(async () => {
                   :title="$t('page.company.deleteConfirm')"
                   :ok-text="$t('page.equipment.modalConfirm')"
                   :cancel-text="$t('page.equipment.modalCancel')"
+                  :disabled="isSystemError(record.id)"
                   @confirm="handleDelete(record.id)"
                 >
                   <Button
                     size="small"
                     danger
-                    :disabled="isSoftDeleted(record as ErrorItem)"
+                    :disabled="isSoftDeleted(record as ErrorItem) || isSystemError(record.id)"
+                    :title="isSystemError(record.id) ? 'Không thể xóa lỗi hệ thống mặc định' : undefined"
                     class="rounded bg-red-50/50 dark:bg-red-950/40 hover:bg-red-500 hover:text-white border-red-200 dark:border-red-900/50 text-red-600 dark:text-red-400"
                   >
                     {{ $t('page.company.btnDelete') }}
