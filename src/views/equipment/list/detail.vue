@@ -263,7 +263,7 @@ const handleRemoveFile = async (file: UploadFile) => {
         const localFiles = fileList.value.filter(item => !!item.originFileObj);
         fileList.value = [...newFileList, ...localFiles];
       }
-      message.success('Xóa ảnh khỏi máy chủ thành công');
+      message.success($t('page.equipment.msgDeleteImageSuccess'));
     } catch (err: any) {
       const msg = err?.response?.data?.message || $t('page.equipment.msgDeleteImageError');
       message.error(msg);
@@ -367,7 +367,7 @@ async function handleSubmit() {
       if (updatedRecord && updatedRecord.equipment_images) {
         currentExistingImageIds = updatedRecord.equipment_images.map((img: { id: string }) => img.id);
       }
-      message.success('Cập nhật thông tin thiết bị thành công');
+      message.success($t('page.equipment.msgUpdateEquipmentSuccess'));
     } else {
       // 1. Send base create request
       const baseFormData = buildBaseFormData();
@@ -381,7 +381,7 @@ async function handleSubmit() {
           currentExistingImageIds = createdRecord.equipment_images.map((img: { id: string }) => img.id);
         }
       }
-      message.success('Thêm thiết bị thành công');
+      message.success($t('page.equipment.msgCreateEquipmentSuccess'));
     }
 
     // 2. Upload queue sequentially for new images
@@ -408,7 +408,7 @@ async function handleSubmit() {
           }
         } catch (uploadErr) {
           const error = uploadErr as { response?: { data?: { message?: string } } };
-          const msg = error?.response?.data?.message || `Tải lên thất bại ảnh ${i + 1}/${newFiles.length}`;
+          const msg = error?.response?.data?.message || $t('page.equipment.msgUploadFailedImage', { current: i + 1, total: newFiles.length });
           message.error(msg);
           throw uploadErr;
         }
@@ -508,7 +508,7 @@ onMounted(() => {
         <Button class="flex items-center justify-center mr-3" @click="goBack">
           <ChevronLeft class="size-5" />
         </Button>
-        <h1 class="text-xl font-bold text-gray-800 m-0">
+        <h1 class="text-xl font-bold text-gray-800 m-0 dark:text-gray-100">
           {{ isEditing ? $t('page.equipment.btnEditEquipment') : $t('page.equipment.btnAddEquipment') }}
         </h1>
       </div>

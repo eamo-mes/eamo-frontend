@@ -15,6 +15,7 @@ import {
 import axios from 'axios';
 import { useAccessStore } from '@vben/stores';
 import { API_BASE_URL } from '#/api/config';
+import { isSoftDeleted, softDeletedRowClass, sortBySoftDeleted } from '#/utils/soft-delete';
 import { useRoleAccess } from '#/utils/useRoleAccess';
 
 const { isManager } = useRoleAccess();
@@ -25,6 +26,7 @@ interface UnitItem {
   name: string;
   description: string | null;
   created_at?: string;
+  deleted_at?: string | null;
 }
 
 const loading = ref(false);
@@ -50,9 +52,10 @@ const total = ref(0);
 async function loadUnits(page = currentPage.value, size = pageSize.value) {
   loading.value = true;
   try {
-    const params: Record<string, number | string> = {
+    const params: Record<string, number | string | boolean> = {
       page,
       per_page: size,
+      with_trashed: true,
     };
     if (activeSearch.value) {
       params.q = activeSearch.value;
@@ -94,7 +97,7 @@ function handleTableChange(pagination: { current?: number; pageSize?: number }) 
   loadUnits(current, size);
 }
 
-const filteredUnits = computed(() => units.value);
+const filteredUnits = computed(() => sortBySoftDeleted(units.value));
 
 const columns = computed(() => [
   {
@@ -259,6 +262,7 @@ onMounted(() => {
           :columns="columns"
           :data-source="filteredUnits"
           row-key="id"
+          :row-class-name="softDeletedRowClass"
           :scroll="{ x: 'max-content' }"
           :pagination="{
             current: currentPage,
@@ -279,6 +283,7 @@ onMounted(() => {
                 <Button
                   v-if="isManager"
                   size="small"
+                  :disabled="isSoftDeleted(record as UnitItem)"
                   class="rounded hover:border-primary hover:text-primary"
                   @click="openEditModal(record as UnitItem)"
                 >
@@ -294,6 +299,7 @@ onMounted(() => {
                   <Button
                     size="small"
                     danger
+                    :disabled="isSoftDeleted(record as UnitItem)"
                     class="rounded bg-red-50/50 hover:bg-red-500 hover:text-white border-red-200"
                   >
                     {{ $t('page.company.btnDelete') }}

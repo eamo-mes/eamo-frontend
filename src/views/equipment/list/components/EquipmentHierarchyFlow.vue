@@ -24,6 +24,7 @@ import '@vue-flow/core/dist/theme-default.css';
 import '@vue-flow/controls/dist/style.css';
 
 const RefreshOutlined = createIconifyIcon('ant-design:reload-outlined');
+const SyncOutlined = createIconifyIcon('ant-design:sync-outlined');
 const SearchOutlined = createIconifyIcon('ant-design:search-outlined');
 const UnorderedListOutlined = createIconifyIcon('ant-design:unordered-list-outlined');
 const HolderOutlined = createIconifyIcon('ant-design:holder-outlined');
@@ -134,13 +135,7 @@ const sidebarCategoryGroups = computed<CategoryGroup[]>(() => {
   return Array.from(groupsMap.values());
 });
 
-watch(
-  sidebarCategoryGroups,
-  (groups) => {
-    activeCategoryKeys.value = groups.map((g) => g.id);
-  },
-  { immediate: true, deep: true }
-);
+// watch sidebarCategoryGroups is removed to collapse categories by default
 
 const calculatedNodeWidth = ref(160);
 
@@ -484,6 +479,10 @@ onMounted(() => {
           </div>
 
           <div class="flex items-center gap-2">
+            <Button :loading="loading" @click="fetchEquipmentData">
+              <SyncOutlined class="size-4" />
+              {{ $t('page.equipment.btnReload') }}
+            </Button>
             <Button @click="resetLayout">
               <RefreshOutlined class="size-4" />
               {{ $t('page.equipment.btnResetLayout') }}
@@ -769,18 +768,18 @@ onMounted(() => {
 
 /* ── Dark Mode Overrides ── */
 .dark .eqflow-layout {
-  border-color: #374151;
-  background: #111827;
+  border-color: #262626;
+  background: #000000;
 }
 
 .dark .eqflow-sidebar {
-  border-right-color: #374151;
-  background: #1f2937;
+  border-right-color: #262626;
+  background: #000000;
 }
 
 .dark .sb-header {
-  border-bottom-color: #374151;
-  background: #111827;
+  border-bottom-color: #262626;
+  background: #000000;
 }
 
 .dark .sb-title {
@@ -788,8 +787,8 @@ onMounted(() => {
 }
 
 .dark .sb-item {
-  border-color: #374151;
-  background: #1f2937;
+  border-color: #262626;
+  background: #000000;
 }
 .dark .sb-item:hover {
   border-color: #3b82f6;
@@ -808,35 +807,38 @@ onMounted(() => {
 }
 
 .dark .canvas-toolbar {
-  border-bottom-color: #374151;
-  background: #1f2937;
+  border-bottom-color: #262626;
+  background: #000000;
 }
 
 .dark .canvas-loading {
-  background: rgba(17, 24, 39, 0.75);
+  background: rgba(0, 0, 0, 0.75);
 }
 
-.dark :deep(.sb-collapse-panel) {
-  border-bottom-color: #374151 !important;
+:global(.dark .sb-collapse-panel) {
+  border-bottom-color: #262626 !important;
 }
-.dark :deep(.sb-collapse-panel .ant-collapse-content) {
+:global(.dark .sb-collapse-panel .ant-collapse-header) {
+  background: transparent !important;
+}
+:global(.dark .sb-collapse-panel .ant-collapse-content) {
   background: transparent !important;
 }
 
 /* VueFlow Controls in Dark Mode */
-.dark :deep(.vue-flow__controls) {
+:global(.dark .vue-flow__controls) {
   background-color: #1f2937;
   border: 1px solid #374151;
 }
-.dark :deep(.vue-flow__controls-button) {
+:global(.dark .vue-flow__controls-button) {
   background-color: #1f2937;
   color: #f3f4f6;
   border-bottom: 1px solid #374151;
 }
-.dark :deep(.vue-flow__controls-button:hover) {
+:global(.dark .vue-flow__controls-button:hover) {
   background-color: #374151;
 }
-.dark :deep(.vue-flow__controls-button svg) {
+:global(.dark .vue-flow__controls-button svg) {
   fill: #f3f4f6;
 }
 </style>
