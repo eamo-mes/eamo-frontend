@@ -162,6 +162,7 @@ onMounted(() => {
           <p class="text-[11px] text-red-500/80 dark:text-red-400/70 m-0 mt-0.5">
             {{ t('page.portal.emergencyScanInstruction') }}
           </p>
+        </div>
       </div>
 
       <!-- Submitting overlay feedback -->
