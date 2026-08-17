@@ -1,31 +1,24 @@
 <script setup lang="ts">
 import { ref, watch } from 'vue';
-import { Modal, Form, FormItem, Input, Select, message } from 'ant-design-vue';
+import { Modal, Form, FormItem, Input, message } from 'ant-design-vue';
 import { $t } from '#/locales';
 import {
   createMaintenanceItemApi,
   type MaintenanceItemOption,
 } from '#/api/ops/maintenance-plans';
 
-interface UserOption {
-  label: string;
-  value: string;
-}
-
 const props = defineProps<{
   open: boolean;
   categoryId: string | undefined;
-  userOptions: UserOption[];
 }>();
 
 const emit = defineEmits<{
   (e: 'update:open', val: boolean): void;
-  (e: 'success', item: MaintenanceItemOption, userIds: string[]): void;
+  (e: 'success', item: MaintenanceItemOption): void;
 }>();
 
 const newItemName = ref('');
 const newItemDescription = ref('');
-const newItemUserIds = ref<string[]>([]);
 const addingItem = ref(false);
 
 watch(
@@ -34,7 +27,6 @@ watch(
     if (newVal) {
       newItemName.value = '';
       newItemDescription.value = '';
-      newItemUserIds.value = [];
     }
   }
 );
@@ -55,9 +47,8 @@ async function handleSubmit(): Promise<void> {
       name,
       description: newItemDescription.value.trim() || null,
       maintenance_category_id: props.categoryId,
-      user_ids: newItemUserIds.value,
     });
-    emit('success', item, newItemUserIds.value);
+    emit('success', item);
     emit('update:open', false);
     message.success($t('page.ops.addItemSuccess'));
   } catch (err: unknown) {
@@ -96,20 +87,6 @@ async function handleSubmit(): Promise<void> {
           v-model:value="newItemDescription"
           :placeholder="$t('page.ops.placeholderNewItemDesc')"
           :rows="3"
-        />
-      </FormItem>
-
-      <!-- Kỹ thuật viên chịu trách nhiệm -->
-      <FormItem :label="$t('page.ops.assignedTechnicians')">
-        <Select
-          v-model:value="newItemUserIds"
-          :options="props.userOptions"
-          :placeholder="$t('page.ops.placeholderAssignedUsers')"
-          mode="multiple"
-          option-filter-prop="label"
-          show-search
-          allow-clear
-          class="w-full"
         />
       </FormItem>
     </Form>

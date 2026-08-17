@@ -70,6 +70,7 @@ const formState = ref({
   cycle_type: undefined as string | undefined,
   cycle_interval: undefined as number | undefined,
   occurrences: undefined as number | undefined,
+  user_ids: [] as string[],
   notes: '',
   schedules: [] as ScheduleRow[],
 });
@@ -185,7 +186,7 @@ function handleCategoryChange(): void {
         maintenance_item_id: item.id,
         item_name_text: item.name,
         date: (formState.value.date || new Date().toISOString().split('T')[0]) as string,
-        user_ids: item.user_ids ?? [],
+        user_ids: [],
         equipment_id: formState.value.equipment_id,
         maintenance_plan_id: editId.value,
         _key: generateKey(),
@@ -219,9 +220,15 @@ function generateKey(): string {
 
 function setFormStateFromRecord(record: MaintenancePlanRecord): void {
   const isSingle = record.schedule_mode === 'single' || (record.occurrences === 1 && record.cycle_type === 'daily' && record.cycle_interval === 1);
+  const planUserIds = record.user_ids && record.user_ids.length > 0
+    ? record.user_ids
+    : Array.from(new Set(
+        (record.maintenance_schedule ?? []).flatMap((s) => (s.users ?? []).map((u: ScheduleUser) => u.id))
+      ));
+
   formState.value = {
     plan_code: record.plan_code ?? '',
-    schedule_mode: isSingle ? 'single' : (record.schedule_mode || 'repeating'),
+    schedule_mode: isSingle ? 'single' : ((record.schedule_mode as 'repeating' | 'single') || 'repeating'),
     equipment_id: record.equipment_id ?? undefined,
     maintenance_category_id: record.maintenance_category_id ?? undefined,
     maintenance_type: record.maintenance_type ?? undefined,
@@ -231,6 +238,7 @@ function setFormStateFromRecord(record: MaintenancePlanRecord): void {
     cycle_type: record.cycle_type ?? undefined,
     cycle_interval: record.cycle_interval ?? undefined,
     occurrences: record.occurrences ?? undefined,
+    user_ids: planUserIds,
     notes: record.notes ?? '',
     schedules: (record.maintenance_schedule ?? [])
       .filter((s) => s.maintenance_item_id || s.item_name || s.maintenance_item?.name)
@@ -268,22 +276,6 @@ async function loadPlanDetail(id: string): Promise<void> {
   }
 }
 
-function removeScheduleRow(index: number): void {
-  formState.value.schedules.splice(index, 1);
-}
-
-function addScheduleRow(): void {
-  formState.value.schedules.push({
-    maintenance_item_id: '',
-    item_name_text: '',
-    date: formState.value.date || new Date().toISOString().split('T')[0] as string,
-    user_ids: [],
-    equipment_id: formState.value.equipment_id,
-    maintenance_plan_id: editId.value,
-    _key: generateKey(),
-  });
-}
-
 // ─── Submit ──────────────────────────────────────────────────────────────────
 
 async function handleSubmit(): Promise<void> {
@@ -299,13 +291,17 @@ async function handleSubmit(): Promise<void> {
             name: item.name.trim(),
             description: item.description?.trim() || null,
             maintenance_category_id: formState.value.maintenance_category_id!,
-            user_ids: item.user_ids ?? [],
           });
           const idx = maintenanceItems.value.findIndex(i => i.id === item.id);
           if (idx !== -1) {
             maintenanceItems.value[idx] = created;
           }
-          setItemUserIds(created.id, item.user_ids ?? []);
+          formState.value.schedules.forEach(s => {
+            if (s.maintenance_item_id === item.id) {
+              s.maintenance_item_id = created.id;
+              s.item_name_text = created.name;
+            }
+          });
         } catch {
           // ignore
         }
@@ -313,38 +309,27 @@ async function handleSubmit(): Promise<void> {
     }
 
     const saveSchedules: SaveScheduleItemPayload[] = [];
+    const itemIdsInSchedules = new Set<string>();
+
     for (const s of formState.value.schedules) {
-      let itemId = s.maintenance_item_id;
-      const textName = (s.item_name_text || '').trim();
-
-      if (textName) {
-        const catId = formState.value.maintenance_category_id || '';
-        const existing = maintenanceItems.value.find(
-          (mi) => mi.name.toLowerCase() === textName.toLowerCase() && (!catId || mi.maintenance_category_id === catId)
-        );
-        if (existing) {
-          itemId = existing.id;
-        } else {
-          try {
-            const newItem = await createMaintenanceItemApi({
-              name: textName,
-              maintenance_category_id: catId,
-              user_ids: s.user_ids,
-            });
-            itemId = newItem.id;
-            maintenanceItems.value.push(newItem);
-          } catch {
-            // ignore
-          }
-        }
-      }
-
-      if (itemId) {
+      if (s.maintenance_item_id) {
         saveSchedules.push({
           id: s.id,
-          maintenance_item_id: itemId,
+          maintenance_item_id: s.maintenance_item_id,
           date: typeof s.date === 'string' ? s.date : dayjs(s.date).format('YYYY-MM-DD'),
-          user_ids: s.user_ids,
+          user_ids: s.user_ids || [],
+        });
+        itemIdsInSchedules.add(s.maintenance_item_id);
+      }
+    }
+
+    // Ensure all items in category are included in schedules
+    for (const item of categoryItems.value) {
+      if (item.id && !item.id.startsWith('temp_') && !itemIdsInSchedules.has(item.id)) {
+        saveSchedules.push({
+          maintenance_item_id: item.id,
+          date: formState.value.date || dayjs().format('YYYY-MM-DD'),
+          user_ids: [],
         });
       }
     }
@@ -366,6 +351,7 @@ async function handleSubmit(): Promise<void> {
       cycle_type: effectiveCycleType,
       cycle_interval: effectiveCycleInterval,
       occurrences: effectiveOccurrences,
+      user_ids: formState.value.user_ids,
       notes: formState.value.notes || null,
       schedules: saveSchedules,
     };
@@ -405,24 +391,6 @@ function goBack(): void {
   router.push({ name: 'OpsMaintenancePlans' });
 }
 
-function setItemUserIds(itemId: string, userIds: string[]): void {
-  const matchingSchedules = formState.value.schedules.filter(s => s.maintenance_item_id === itemId);
-  if (matchingSchedules.length > 0) {
-    matchingSchedules.forEach(s => {
-      s.user_ids = userIds;
-    });
-  } else {
-    formState.value.schedules.push({
-      maintenance_item_id: itemId,
-      date: (formState.value.date || new Date().toISOString().split('T')[0]) as string,
-      user_ids: userIds,
-      equipment_id: formState.value.equipment_id,
-      maintenance_plan_id: editId.value,
-      _key: generateKey(),
-    });
-  }
-}
-
 const selectedCategoryName = computed(() => {
   const catId = formState.value.maintenance_category_id;
   if (!catId) return '';
@@ -457,7 +425,6 @@ function addCategoryItemRow(): void {
     name: '',
     description: '',
     maintenance_category_id: catId,
-    user_ids: [],
   };
   maintenanceItems.value.push(newItem);
 }
@@ -482,20 +449,23 @@ async function saveCategoryItem(item: MaintenanceItemOption): Promise<void> {
         name,
         description: item.description?.trim() || null,
         maintenance_category_id: catId,
-        user_ids: item.user_ids ?? [],
       });
       const idx = maintenanceItems.value.findIndex(i => i.id === item.id);
       if (idx !== -1) {
         maintenanceItems.value[idx] = created;
       }
-      setItemUserIds(created.id, item.user_ids ?? []);
+      formState.value.schedules.forEach(s => {
+        if (s.maintenance_item_id === item.id) {
+          s.maintenance_item_id = created.id;
+          s.item_name_text = created.name;
+        }
+      });
       message.success($t('page.ops.addItemSuccess'));
     } else {
       await updateMaintenanceItemApi(item.id, {
         name,
         description: item.description?.trim() || null,
         maintenance_category_id: item.maintenance_category_id,
-        user_ids: item.user_ids ?? [],
       });
       message.success($t('page.ops.updateItemSuccess'));
     }
@@ -713,6 +683,24 @@ onMounted(async () => {
                   style="width: 100%"
                 />
               </FormItem>
+
+              <!-- Người thực hiện -->
+              <FormItem
+                :label="$t('page.ops.assignedTechnicians') || 'Người thực hiện'"
+                name="user_ids"
+                :class="formState.schedule_mode === 'repeating' && formState.cycle_type ? 'col-span-3' : 'col-span-1'"
+              >
+                <Select
+                  v-model:value="formState.user_ids"
+                  :options="userOptions"
+                  :placeholder="$t('page.ops.placeholderAssignedUsers') || 'Chọn người thực hiện...'"
+                  mode="multiple"
+                  option-filter-prop="label"
+                  show-search
+                  allow-clear
+                  class="w-full"
+                />
+              </FormItem>
             </div>
 
             <!-- Ghi chú – full width -->
@@ -725,9 +713,8 @@ onMounted(async () => {
             </FormItem>
           </Card>
 
-          <!-- ── Card 2 (Tách riêng div/card tách biệt ở trên): Applied Maintenance Items ── -->
+          <!-- ── Card 2: Applied Maintenance Items (Danh sách hạng mục bảo trì của Danh mục) ── -->
           <Card
-            v-if="formState.cycle_type"
             :title="appliedItemsCardTitle"
             class="!mt-6 rounded-xl shadow-sm"
             style="margin-top: 24px !important;"
@@ -735,7 +722,7 @@ onMounted(async () => {
             <div class="space-y-4">
               <!-- Danh sách items hiện có (UI design pattern inline giống maintenance-categories) -->
               <div v-if="categoryItems.length === 0" class="py-6 flex justify-center">
-                <Empty :description="$t('page.ops.noItems')" />
+                <Empty :description="formState.maintenance_category_id ? $t('page.ops.noItems') : ($t('page.ops.selectCategoryFirst') || 'Vui lòng chọn danh mục bảo trì trước')" />
               </div>
 
               <div v-else class="max-h-[360px] overflow-x-auto overflow-y-auto pr-2 pb-3 vben-custom-scrollbar">
@@ -745,7 +732,8 @@ onMounted(async () => {
                     :key="item.id"
                     class="flex items-end gap-3 py-3 first:pt-0 last:pb-2"
                   >
-                    <div class="flex-1 min-w-[200px]">
+                    <!-- Tên hạng mục -->
+                    <div class="w-1/3 min-w-[200px]">
                       <span class="text-xs text-gray-500 block mb-1 font-medium">{{ $t('page.ops.colItemName') }}</span>
                       <Input
                         v-model:value="item.name"
@@ -753,6 +741,8 @@ onMounted(async () => {
                         @press-enter="saveCategoryItem(item)"
                       />
                     </div>
+
+                    <!-- Mô tả -->
                     <div class="flex-1 min-w-[250px]">
                       <span class="text-xs text-gray-500 block mb-1 font-medium">{{ $t('page.ops.colItemDesc') }}</span>
                       <Input
@@ -762,20 +752,8 @@ onMounted(async () => {
                         @press-enter="saveCategoryItem(item)"
                       />
                     </div>
-                    <div class="flex-1 min-w-[200px]">
-                      <span class="text-xs text-gray-500 block mb-1 font-medium">{{ $t('page.ops.assignedTechnicians') }}</span>
-                      <Select
-                        :value="item.user_ids"
-                        @update:value="(val: unknown) => { const userIds = Array.isArray(val) ? (val as string[]) : []; item.user_ids = userIds; setItemUserIds(item.id, userIds); }"
-                        :options="userOptions"
-                        :placeholder="$t('page.ops.placeholderAssignedUsers')"
-                        mode="multiple"
-                        option-filter-prop="label"
-                        show-search
-                        allow-clear
-                        class="w-full"
-                      />
-                    </div>
+
+                    <!-- Nút thao tác -->
                     <div class="flex gap-2 h-[32px] items-center shrink-0">
                       <Button
                         type="default"
@@ -825,93 +803,6 @@ onMounted(async () => {
                 + {{ $t('page.ops.btnAddShort') }}
               </Button>
             </div>
-          </Card>
-
-          <!-- ── Card 2 (Không dùng chu kỳ - Lịch trình thủ công) ────────────────── -->
-          <Card
-            v-else
-            :title="$t('page.ops.schedulesTitle')"
-            class="!mt-6 rounded-xl shadow-sm"
-            style="margin-top: 24px !important;"
-          >
-            <div class="py-2">
-              <div v-if="formState.schedules.length === 0" class="py-6 flex justify-center">
-                <Empty :description="$t('page.ops.noSchedules')" />
-              </div>
-
-              <div v-else class="max-h-[360px] overflow-y-auto divide-y divide-border pr-2 scrollbar-thin">
-                <div
-                  v-for="(schedule, idx) in formState.schedules"
-                  :key="schedule._key"
-                  class="flex flex-wrap md:flex-nowrap items-center gap-3 py-3 first:pt-0 last:pb-0"
-                >
-                  <!-- Hạng mục bảo trì -->
-                  <div class="flex-1 min-w-[200px]">
-                    <span class="text-xs text-gray-400 block mb-1 font-medium">{{ $t('page.ops.colMaintenanceItem') }}</span>
-                    <Input
-                      v-model:value="schedule.item_name_text"
-                      :placeholder="$t('page.ops.placeholderMaintenanceItem') || 'Nhập tên hạng mục bảo trì...'"
-                      class="w-full"
-                    />
-                  </div>
-
-                  <!-- Ngày thực hiện -->
-                  <div class="w-[160px]">
-                    <span class="text-xs text-gray-400 block mb-1 font-medium">{{ $t('page.ops.colScheduleDate') }}</span>
-                    <DatePicker
-                      v-model:value="schedule.date"
-                      value-format="YYYY-MM-DD"
-                      format="YYYY-MM-DD"
-                      :placeholder="$t('page.ops.placeholderScheduleDate')"
-                      class="w-full"
-                    />
-                  </div>
-
-                  <!-- Người thực hiện -->
-                  <div class="flex-1 min-w-[200px]">
-                    <span class="text-xs text-gray-400 block mb-1 font-medium">{{ $t('page.ops.colAssignedUsers') }}</span>
-                    <Select
-                      v-model:value="schedule.user_ids"
-                      :options="userOptions"
-                      :placeholder="$t('page.ops.placeholderAssignedUsers')"
-                      mode="multiple"
-                      option-filter-prop="label"
-                      show-search
-                      allow-clear
-                      class="w-full"
-                    />
-                  </div>
-
-                  <!-- Nút Xóa -->
-                  <div class="self-end pb-0.5">
-                    <Popconfirm
-                      :title="$t('page.ops.deleteConfirm') || 'Bạn có chắc chắn muốn xóa lịch này?'"
-                      :ok-text="$t('page.ops.btnConfirm')"
-                      :cancel-text="$t('page.ops.btnCancel')"
-                      @confirm="removeScheduleRow(idx)"
-                    >
-                      <Button
-                        type="text"
-                        danger
-                        class="shrink-0 px-2"
-                      >
-                        {{ $t('page.ops.btnDelete') }}
-                      </Button>
-                    </Popconfirm>
-                  </div>
-                </div>
-              </div>
-            </div>
-
-            <Button
-              type="dashed"
-              block
-              class="mt-3"
-              :disabled="!formState.maintenance_category_id"
-              @click="addScheduleRow"
-            >
-              + {{ $t('page.ops.btnAddSchedule') }}
-            </Button>
           </Card>
         </div>
 

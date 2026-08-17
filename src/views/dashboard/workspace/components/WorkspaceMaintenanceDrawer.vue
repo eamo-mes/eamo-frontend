@@ -108,6 +108,7 @@ const planForm = ref({
   cycle_type: undefined as string | undefined,
   cycle_interval: undefined as number | undefined,
   occurrences: undefined as number | undefined,
+  user_ids: [] as string[],
   notes: '',
   schedules: [] as ScheduleRow[],
 });
@@ -330,7 +331,7 @@ function handleCategoryChange(): void {
         maintenance_item_id: item.id,
         item_name_text: item.name,
         date: (planForm.value.date || (props.date ? props.date.format('YYYY-MM-DD') : new Date().toISOString().split('T')[0])) as string,
-        user_ids: item.user_ids ?? [],
+        user_ids: [],
         equipment_id: planForm.value.equipment_id,
         maintenance_plan_id: planForm.value.id,
         _key: generateKey(),
@@ -350,7 +351,6 @@ function addCategoryItemRow(): void {
     name: '',
     description: '',
     maintenance_category_id: catId,
-    user_ids: [],
   };
   allMaintenanceItems.value.push(newItem);
 }
@@ -375,20 +375,19 @@ async function saveCategoryItem(item: MaintenanceItemOption): Promise<void> {
         name,
         description: item.description?.trim() || null,
         maintenance_category_id: catId,
-        user_ids: item.user_ids ?? [],
       });
       const idx = allMaintenanceItems.value.findIndex((i: MaintenanceItemOption) => i.id === item.id);
       if (idx !== -1) {
         allMaintenanceItems.value[idx] = created;
       }
-      setItemUserIds(created.id, item.user_ids ?? []);
+      const existingUserIds = planForm.value.schedules.find((s: ScheduleRow) => s.maintenance_item_id === item.id)?.user_ids ?? [];
+      setItemUserIds(created.id, existingUserIds);
       message.success($t('page.ops.addItemSuccess') || 'Thêm hạng mục thành công');
     } else {
       await updateMaintenanceItemApi(item.id, {
         name,
         description: item.description?.trim() || null,
         maintenance_category_id: item.maintenance_category_id,
-        user_ids: item.user_ids ?? [],
       });
       message.success($t('page.ops.updateItemSuccess') || 'Cập nhật hạng mục thành công');
     }
@@ -444,6 +443,7 @@ function openCreateForm(): void {
     cycle_type: undefined,
     cycle_interval: undefined,
     occurrences: undefined,
+    user_ids: [],
     notes: '',
     schedules: [],
   };
@@ -456,6 +456,12 @@ async function openEditForm(planId: string): Promise<void> {
   try {
     const record = await getMaintenancePlanDetailApi(planId);
     if (record) {
+      const planUserIds = record.user_ids && record.user_ids.length > 0
+        ? record.user_ids
+        : Array.from(new Set(
+            (record.maintenance_schedule ?? []).flatMap((s: MaintenancePlanRawSchedule) => (s.users ?? []).map((u: ScheduleUser) => u.id))
+          ));
+
       planForm.value = {
         id: record.id,
         plan_code: record.plan_code ?? '',
@@ -466,6 +472,7 @@ async function openEditForm(planId: string): Promise<void> {
         cycle_type: record.cycle_type ?? undefined,
         cycle_interval: record.cycle_interval ?? undefined,
         occurrences: record.occurrences ?? undefined,
+        user_ids: planUserIds,
         notes: record.notes ?? '',
         schedules: (record.maintenance_schedule ?? [])
           .filter((s: MaintenancePlanRawSchedule) => s.maintenance_item_id || s.item_name || s.maintenance_item?.name)
@@ -512,13 +519,17 @@ async function handleSavePlan(): Promise<void> {
             name: item.name.trim(),
             description: item.description?.trim() || null,
             maintenance_category_id: planForm.value.maintenance_category_id!,
-            user_ids: item.user_ids ?? [],
           });
           const idx = allMaintenanceItems.value.findIndex((i: MaintenanceItemOption) => i.id === item.id);
           if (idx !== -1) {
             allMaintenanceItems.value[idx] = created;
           }
-          setItemUserIds(created.id, item.user_ids ?? []);
+          planForm.value.schedules.forEach((s: ScheduleRow) => {
+            if (s.maintenance_item_id === item.id) {
+              s.maintenance_item_id = created.id;
+              s.item_name_text = created.name;
+            }
+          });
         } catch {
           // ignore
         }
@@ -526,37 +537,27 @@ async function handleSavePlan(): Promise<void> {
     }
 
     const saveSchedules: SaveScheduleItemPayload[] = [];
+    const itemIdsInSchedules = new Set<string>();
+
     for (const s of planForm.value.schedules) {
-      let itemId = s.maintenance_item_id;
-      const textName = (s.item_name_text || '').trim();
-
-      if (textName) {
-        const catId = planForm.value.maintenance_category_id || '';
-        const existing = allMaintenanceItems.value.find(
-          (mi: MaintenanceItemOption) => mi.name.toLowerCase() === textName.toLowerCase() && (!catId || mi.maintenance_category_id === catId)
-        );
-        if (existing) {
-          itemId = existing.id;
-        } else {
-          try {
-            const newItem = await createMaintenanceItemApi({
-              name: textName,
-              maintenance_category_id: catId,
-              user_ids: s.user_ids,
-            });
-            itemId = newItem.id;
-          } catch {
-            // ignore
-          }
-        }
-      }
-
-      if (itemId) {
+      if (s.maintenance_item_id) {
         saveSchedules.push({
           id: s.id,
-          maintenance_item_id: itemId,
+          maintenance_item_id: s.maintenance_item_id,
           date: s.date,
-          user_ids: s.user_ids,
+          user_ids: s.user_ids || [],
+        });
+        itemIdsInSchedules.add(s.maintenance_item_id);
+      }
+    }
+
+    // Ensure all items in category are included in schedules
+    for (const item of categoryItems.value) {
+      if (item.id && !item.id.startsWith('temp_') && !itemIdsInSchedules.has(item.id)) {
+        saveSchedules.push({
+          maintenance_item_id: item.id,
+          date: planForm.value.date || (props.date ? props.date.format('YYYY-MM-DD') : new Date().toISOString().split('T')[0] as string),
+          user_ids: [],
         });
       }
     }
@@ -572,6 +573,7 @@ async function handleSavePlan(): Promise<void> {
       cycle_type: planForm.value.cycle_type ?? null,
       cycle_interval: planForm.value.cycle_interval ?? null,
       occurrences: planForm.value.occurrences ?? null,
+      user_ids: planForm.value.user_ids,
       notes: planForm.value.notes || null,
       schedules: saveSchedules,
     };
@@ -863,6 +865,20 @@ function goToPlanDetail(): void {
                   style="width: 100%"
                 />
               </FormItem>
+              <!-- Người thực hiện -->
+              <FormItem :label="$t('page.ops.assignedTechnicians') || 'Người thực hiện'" name="user_ids" class="mb-2">
+                <Select
+                  v-model:value="planForm.user_ids"
+                  :disabled="!isManager"
+                  :options="userSelectOptions"
+                  :placeholder="$t('page.ops.placeholderAssignedUsers') || 'Chọn người thực hiện...'"
+                  mode="multiple"
+                  option-filter-prop="label"
+                  show-search
+                  allow-clear
+                  class="w-full"
+                />
+              </FormItem>
             </div>
 
             <!-- Ghi chú -->
@@ -897,7 +913,8 @@ function goToPlanDetail(): void {
                     :key="item.id"
                     class="flex items-end gap-3 py-3 first:pt-0 last:pb-2"
                   >
-                    <div class="flex-1 min-w-[180px]">
+                    <!-- Tên hạng mục -->
+                    <div class="w-1/3 min-w-[180px]">
                       <span class="text-xs text-gray-500 block mb-1 font-medium">{{ $t('page.ops.colItemName') || 'Tên hạng mục' }}</span>
                       <Input
                         v-model:value="item.name"
@@ -907,6 +924,7 @@ function goToPlanDetail(): void {
                       />
                     </div>
 
+                    <!-- Mô tả -->
                     <div class="flex-1 min-w-[200px]">
                       <span class="text-xs text-gray-500 block mb-1 font-medium">{{ $t('page.ops.colItemDesc') || 'Mô tả' }}</span>
                       <Input
@@ -915,22 +933,6 @@ function goToPlanDetail(): void {
                         @update:value="(val) => item.description = val || null"
                         :placeholder="$t('page.ops.placeholderItemDesc') || 'Nhập mô tả...'"
                         @press-enter="saveCategoryItem(item)"
-                      />
-                    </div>
-
-                    <div class="flex-1 min-w-[180px]">
-                      <span class="text-xs text-gray-500 block mb-1 font-medium">{{ $t('page.ops.assignedTechnicians') || 'Người thực hiện' }}</span>
-                      <Select
-                        :value="item.user_ids"
-                        :disabled="!isManager"
-                        @update:value="(val: unknown) => { const userIds = Array.isArray(val) ? (val as string[]) : []; item.user_ids = userIds; setItemUserIds(item.id, userIds); }"
-                        :options="userSelectOptions"
-                        :placeholder="$t('page.ops.placeholderAssignedUsers') || 'Chọn người...'"
-                        mode="multiple"
-                        option-filter-prop="label"
-                        show-search
-                        allow-clear
-                        class="w-full"
                       />
                     </div>
 

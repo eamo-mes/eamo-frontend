@@ -7,7 +7,6 @@ import {
   Breadcrumb,
   Button,
   Input,
-  Select,
   Form,
   FormItem,
   Popconfirm,
@@ -19,13 +18,11 @@ import {
 import axios from 'axios';
 import { useAccessStore } from '@vben/stores';
 import { API_BASE_URL } from '#/api/config';
-import { listUsersApi, type UserItem } from '#/api/core/users';
 
 interface MaintenanceItemRow {
   id?: string;
   name: string;
   description: string;
-  user_ids: string[];
   _key: string;
 }
 
@@ -37,10 +34,6 @@ interface CategoryDetailRecord {
     id: string;
     name: string;
     description: string | null;
-    users?: {
-      id: string;
-      name: string;
-    }[];
   }[];
 }
 
@@ -71,15 +64,6 @@ const rules = computed(() => ({
   name: [{ required: true, message: $t('page.ops.validationCategoryName') }],
 }));
 
-const users = ref<UserItem[]>([]);
-
-const userOptions = computed(() =>
-  users.value.map(u => ({
-    label: u.name,
-    value: u.id,
-  }))
-);
-
 function getAuthHeaders(): Record<string, string> {
   const accessStore = useAccessStore();
   return {
@@ -97,21 +81,12 @@ function addItemRow(): void {
   formState.value.items.push({
     name: '',
     description: '',
-    user_ids: [],
     _key: generateKey(),
   });
 }
 
 function removeItemRow(index: number): void {
   formState.value.items.splice(index, 1);
-}
-
-async function loadUsers(): Promise<void> {
-  try {
-    users.value = await listUsersApi({ per_page: 1000 });
-  } catch {
-    // silently fail
-  }
 }
 
 async function loadCategoryDetail(id: string): Promise<void> {
@@ -132,7 +107,6 @@ async function loadCategoryDetail(id: string): Promise<void> {
           id: item.id,
           name: item.name,
           description: item.description || '',
-          user_ids: (item.users ?? []).map(u => u.id),
           _key: generateKey(),
         })),
       };
@@ -161,7 +135,6 @@ async function handleSubmit(): Promise<void> {
         id: item.id,
         name: item.name,
         description: item.description,
-        user_ids: item.user_ids,
       })),
     };
 
@@ -192,8 +165,6 @@ function goBack(): void {
 }
 
 onMounted(() => {
-  loadUsers();
-
   const id = route.query.id as string;
   if (id) {
     isEditing.value = true;
@@ -284,10 +255,10 @@ onMounted(() => {
                 <div
                   v-for="(item, idx) in formState.items"
                   :key="item._key"
-                  class="flex flex-wrap items-end gap-3 py-3 first:pt-0 last:pb-0"
+                  class="flex items-end gap-3 py-3 first:pt-0 last:pb-0"
                 >
                   <!-- Tên hạng mục -->
-                  <div class="flex-1 min-w-[200px]">
+                  <div class="w-1/3 min-w-[200px]">
                     <span class="text-xs text-gray-500 block mb-1 font-medium">{{ $t('page.ops.colItemName') }}</span>
                     <Input
                       v-model:value="item.name"
@@ -301,21 +272,6 @@ onMounted(() => {
                     <Input
                       v-model:value="item.description"
                       :placeholder="$t('page.ops.placeholderItemDesc')"
-                    />
-                  </div>
-
-                  <!-- Kỹ thuật viên thực hiện -->
-                  <div class="flex-1 min-w-[200px]">
-                    <span class="text-xs text-gray-500 block mb-1 font-medium">{{ $t('page.ops.assignedTechnicians') }}</span>
-                    <Select
-                      v-model:value="item.user_ids"
-                      :options="userOptions"
-                      :placeholder="$t('page.ops.placeholderAssignedUsers')"
-                      mode="multiple"
-                      option-filter-prop="label"
-                      show-search
-                      allow-clear
-                      class="w-full"
                     />
                   </div>
 

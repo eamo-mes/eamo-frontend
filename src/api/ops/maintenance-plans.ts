@@ -18,7 +18,6 @@ export interface MaintenanceItemOption {
   name: string;
   description: string | null;
   maintenance_category_id: string;
-  user_ids?: string[];
 }
 
 export interface ScheduleUser {
@@ -95,6 +94,7 @@ export interface MaintenancePlanRecord {
   cycle_type?: string;
   cycle_interval?: number;
   occurrences?: number;
+  user_ids?: string[];
   notes?: string;
   maintenance_schedule?: MaintenancePlanRawSchedule[];
 }
@@ -117,6 +117,7 @@ export interface SaveMaintenancePlanPayload {
   cycle_type: string | null;
   cycle_interval: number | null;
   occurrences: number | null;
+  user_ids?: string[];
   notes: string | null;
   schedules: SaveScheduleItemPayload[];
 }
@@ -125,7 +126,6 @@ export interface SaveMaintenanceItemPayload {
   name: string;
   description?: string | null;
   maintenance_category_id: string;
-  user_ids?: string[];
 }
 
 export interface SaveMaintenanceLogPayload {
@@ -152,7 +152,6 @@ export interface RawMaintenanceItemResponse {
   name: string;
   description?: string | null;
   maintenance_category_id: string;
-  users?: ScheduleUser[];
 }
 
 export interface FetchMaintenancePlansParams {
@@ -217,7 +216,6 @@ export async function listMaintenanceItemsApi(): Promise<MaintenanceItemOption[]
     name: item.name,
     description: item.description ?? null,
     maintenance_category_id: item.maintenance_category_id,
-    user_ids: (item.users ?? []).map((u: ScheduleUser) => u.id),
   }));
 }
 
@@ -228,7 +226,6 @@ export async function createMaintenanceItemApi(payload: SaveMaintenanceItemPaylo
     name: created.name,
     description: created.description ?? null,
     maintenance_category_id: created.maintenance_category_id,
-    user_ids: (created.users ?? []).map((u: ScheduleUser) => u.id),
   };
 }
 

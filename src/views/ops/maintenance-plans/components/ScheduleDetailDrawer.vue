@@ -216,14 +216,6 @@ watch(
         initialUserIds = sched.users.map((u) => u.id);
       }
 
-      // Fallback to maintenance item's default user_ids
-      if (initialUserIds.length === 0 && sched.maintenance_item_id) {
-        const item = props.maintenanceItems.find((i) => i.id === sched.maintenance_item_id);
-        if (item && Array.isArray(item.user_ids)) {
-          initialUserIds = [...item.user_ids];
-        }
-      }
-
       drawerSchedule.value = {
         date: sched.date || dayjs().format('YYYY-MM-DD'),
         user_ids: initialUserIds,
