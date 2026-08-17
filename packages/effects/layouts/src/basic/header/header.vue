@@ -56,10 +56,6 @@ const rightSlots = computed(() => {
   }
   // 偏好设置快捷功能
   if (preferencesButtonPosition.value.header) {
-    list.push({
-      index: REFERENCE_VALUE + 10,
-      name: 'preferences',
-    });
     // 将偏好设置中的子功能分组到同一个按钮位置控制逻辑下
     if (preferences.widget.themeToggle) {
       list.push({

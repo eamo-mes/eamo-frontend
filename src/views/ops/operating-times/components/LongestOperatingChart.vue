@@ -50,7 +50,7 @@ async function renderChart() {
         data: props.data.map((item) => Number(item.actualOp.toFixed(2))),
         itemStyle: {
           borderRadius: [0, 4, 4, 0],
-          color: '#1890ff',
+          color: '#3b82f6',
         },
         name: $t('page.ops.actualOperatingTime'),
         stack: 'total',
@@ -95,13 +95,13 @@ async function renderChart() {
     xAxis: {
       axisLabel: {
         color: axisTextColor,
-        fontSize: 10,
+        fontSize: 12,
         formatter: (value: number) => `${Math.abs(value)} hrs`,
       },
       type: 'value',
     },
     yAxis: {
-      axisLabel: { color: axisTextColor, fontSize: 10 },
+      axisLabel: { color: axisTextColor, fontSize: 12, fontWeight: 'medium' },
       axisLine: { onZero: false },
       data: props.data.map((item) => item.name),
       type: 'category',
@@ -121,7 +121,7 @@ watch(
 <template>
   <div class="border border-border rounded-xl p-4 bg-card flex flex-col h-[360px]">
     <div class="mb-2">
-      <h5 class="text-xs font-bold text-foreground uppercase tracking-wider m-0">
+      <h5 class="text-sm font-bold text-foreground uppercase tracking-wider m-0">
         {{ $t('page.ops.chartLongestOperatingTitle') }}
       </h5>
     </div>

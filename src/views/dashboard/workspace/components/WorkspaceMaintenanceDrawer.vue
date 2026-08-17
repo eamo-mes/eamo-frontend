@@ -755,6 +755,9 @@ function goToPlanDetail(): void {
         <!-- MODE 2 & 3: FORM FOR CREATING / EDITING MAINTENANCE PLANS & SCHEDULES -->
         <div v-else class="space-y-4">
           <div class="flex items-center justify-between mb-2">
+            <div class="text-xs font-bold text-foreground uppercase tracking-wider">
+              {{ activeMode === 'create' ? ($t('page.ops.createTitle') || 'Create Maintenance Plan') : ($t('page.ops.editTitle') || 'Edit Maintenance Plan') }}
+            </div>
             <Button size="small" @click="activeMode = 'list'">
               &larr; {{ $t('page.ops.checklistDrawer.btnBackToList') || 'Quay lại danh sách' }}
             </Button>
@@ -985,7 +988,7 @@ function goToPlanDetail(): void {
             <div v-else class="mt-4 pt-4 border-t border-border">
               <div class="flex items-center justify-between mb-3">
                 <div class="font-semibold text-foreground text-sm">
-                  {{ $t('page.ops.schedulesTitle') || 'Danh sách lịch bảo trì' }}
+                  {{ $t('page.ops.nestedItemsTitle') || 'Maintenance Items' }}
                 </div>
               </div>
 

@@ -2,7 +2,7 @@
 import { computed, nextTick, ref, watch } from 'vue';
 
 import dayjs from 'dayjs';
-import { Skeleton, SkeletonInput } from 'ant-design-vue';
+import { SkeletonInput } from 'ant-design-vue';
 
 import type { EquipmentOption, OperatingTimeItem } from '../types';
 
@@ -166,22 +166,46 @@ watch(
 
 <template>
   <div v-if="isComponentLoading" :class="props.vertical ? 'grid grid-cols-1 gap-3' : 'grid grid-cols-1 lg:grid-cols-3 gap-4'">
-    <div :class="['border border-border rounded-xl p-4 bg-card flex flex-col justify-between', props.vertical ? 'h-[240px]' : 'h-[360px]']">
-      <SkeletonInput active size="small" style="width: 60%; height: 16px;" class="mb-2" />
-      <div class="flex-1 flex flex-col justify-center items-center p-4">
-        <Skeleton active avatar :paragraph="{ rows: 3, width: ['90%', '70%', '80%'] }" :title="false" />
-      </div>
-    </div>
-    <div :class="['border border-border rounded-xl p-4 bg-card flex flex-col justify-between', props.vertical ? 'h-[240px]' : 'h-[360px]']">
-      <SkeletonInput active size="small" style="width: 65%; height: 16px;" class="mb-2" />
-      <div class="flex-1 flex flex-col justify-center p-2 space-y-3">
-        <Skeleton active :paragraph="{ rows: 4, width: ['100%', '85%', '90%', '75%'] }" :title="false" />
-      </div>
-    </div>
+    <!-- Skeleton Card 1: Avg Availability Factor -->
     <div :class="['border border-border rounded-xl p-4 bg-card flex flex-col justify-between', props.vertical ? 'h-[240px]' : 'h-[360px]']">
       <SkeletonInput active size="small" style="width: 55%; height: 16px;" class="mb-2" />
-      <div class="flex-1 flex flex-col justify-center p-2 space-y-3">
-        <Skeleton active :paragraph="{ rows: 4, width: ['95%', '70%', '85%', '90%'] }" :title="false" />
+      <div class="flex-1 flex flex-col justify-center items-center p-4">
+        <div class="w-36 h-36 rounded-full border-8 border-muted/30 dark:border-muted/20 border-t-primary/40 animate-spin flex items-center justify-center">
+          <div class="w-20 h-6 bg-muted/40 dark:bg-muted/30 rounded-md animate-pulse"></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Skeleton Card 2: Longest Operating Time -->
+    <div :class="['border border-border rounded-xl p-4 bg-card flex flex-col justify-between', props.vertical ? 'h-[240px]' : 'h-[360px]']">
+      <SkeletonInput active size="small" style="width: 65%; height: 16px;" class="mb-2" />
+      <div class="flex-1 flex flex-col justify-center p-3 space-y-3.5">
+        <div class="space-y-1.5" v-for="i in 4" :key="i">
+          <div class="flex justify-between items-center text-xs">
+            <div class="h-3 bg-muted/50 rounded w-16 animate-pulse"></div>
+            <div class="h-3 bg-muted/40 rounded w-10 animate-pulse"></div>
+          </div>
+          <div class="h-3.5 bg-muted/30 rounded-full overflow-hidden flex gap-1 animate-pulse">
+            <div class="bg-primary/30 h-full rounded-l-full" :style="{ width: `${70 - i * 12}%` }"></div>
+            <div class="bg-slate-400/30 h-full" :style="{ width: `${10 + i * 5}%` }"></div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Skeleton Card 3: Maintenance Status -->
+    <div :class="['border border-border rounded-xl p-4 bg-card flex flex-col justify-between', props.vertical ? 'h-[240px]' : 'h-[360px]']">
+      <SkeletonInput active size="small" style="width: 60%; height: 16px;" class="mb-2" />
+      <div class="flex-1 flex flex-col justify-center p-3 space-y-3.5">
+        <div class="space-y-1.5" v-for="i in 4" :key="i">
+          <div class="flex justify-between items-center text-xs">
+            <div class="h-3 bg-muted/50 rounded w-14 animate-pulse"></div>
+            <div class="h-3 bg-muted/40 rounded w-12 animate-pulse"></div>
+          </div>
+          <div class="h-3.5 bg-muted/30 rounded-full overflow-hidden animate-pulse">
+            <div class="bg-primary/30 h-full rounded-full" :style="{ width: `${85 - i * 15}%` }"></div>
+          </div>
+        </div>
       </div>
     </div>
   </div>

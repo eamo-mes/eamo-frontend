@@ -1,8 +1,7 @@
 <script setup lang="ts">
 import type { SupportedLanguagesType } from '@vben/locales';
 
-import { SUPPORT_LANGUAGES } from '@vben/constants';
-import { Languages } from '@vben/icons';
+import { FlagEnglish, FlagVietnam, Languages } from '@vben/icons';
 import { loadLocaleMessages } from '@vben/locales';
 import { preferences, updatePreferences } from '@vben/preferences';
 
@@ -11,6 +10,17 @@ import { VbenDropdownRadioMenu, VbenIconButton } from '@vben-core/shadcn-ui';
 defineOptions({
   name: 'LanguageToggle',
 });
+
+const menus = [
+  {
+    label: 'Vietnamese',
+    value: 'zh-CN',
+  },
+  {
+    label: 'English',
+    value: 'en-US',
+  },
+];
 
 async function handleUpdate(value: string | undefined) {
   if (!value) return;
@@ -27,7 +37,7 @@ async function handleUpdate(value: string | undefined) {
 <template>
   <div>
     <VbenDropdownRadioMenu
-      :menus="SUPPORT_LANGUAGES"
+      :menus="menus"
       :model-value="preferences.app.locale"
       @update:model-value="handleUpdate"
     >

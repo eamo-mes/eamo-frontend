@@ -36,7 +36,7 @@ async function renderChart() {
   const pieBorderColor = isDark.value ? '#0f172a' : '#ffffff';
 
   renderEcharts({
-    color: ['#1890ff', isDark.value ? '#334155' : '#cbd5e1'],
+    color: ['#3b82f6', isDark.value ? '#334155' : '#e2e8f0'],
     series: [
       {
         avoidLabelOverlap: false,
@@ -51,7 +51,7 @@ async function renderChart() {
         },
         label: {
           color: labelColor,
-          fontSize: 22,
+          fontSize: 26,
           fontWeight: 'bold',
           formatter: `${props.avgValue}%`,
           position: 'center',
@@ -88,7 +88,7 @@ watch(
 <template>
   <div :class="['border border-border rounded-xl p-4 bg-card flex flex-col', props.compact ? 'h-[240px]' : 'h-[360px]']">
     <div class="mb-2">
-      <h5 class="text-xs font-bold text-foreground uppercase tracking-wider m-0">
+      <h5 class="text-sm font-bold text-foreground uppercase tracking-wider m-0">
         {{ $t('page.ops.chartAvgAvailabilityTitle') }}
       </h5>
     </div>

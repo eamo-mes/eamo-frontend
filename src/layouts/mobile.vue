@@ -751,9 +751,10 @@ async function handleMakeAll() {
                   ? 'bg-indigo-600 text-white font-bold shadow-xs'
                   : 'text-slate-400 hover:text-slate-200',
               ]"
-              class="flex-1 py-1.5 rounded-lg text-[10px] uppercase tracking-wider font-bold transition-all cursor-pointer border-0 outline-none"
+              class="flex-1 py-1.5 rounded-lg text-[10px] uppercase tracking-wider font-bold transition-all cursor-pointer border-0 outline-none flex items-center justify-center gap-1"
             >
-              VI
+              <span>🇻🇳</span>
+              <span>Vietnamese</span>
             </button>
             <button
               @click="changeLang('en-US')"
@@ -762,9 +763,10 @@ async function handleMakeAll() {
                   ? 'bg-indigo-600 text-white font-bold shadow-xs'
                   : 'text-slate-400 hover:text-slate-200',
               ]"
-              class="flex-1 py-1.5 rounded-lg text-[10px] uppercase tracking-wider font-bold transition-all cursor-pointer border-0 outline-none"
+              class="flex-1 py-1.5 rounded-lg text-[10px] uppercase tracking-wider font-bold transition-all cursor-pointer border-0 outline-none flex items-center justify-center gap-1"
             >
-              EN
+              <span>🇺🇸</span>
+              <span>English</span>
             </button>
           </div>
 

@@ -402,7 +402,7 @@ onMounted(async () => {
                 <span>{{ record.name }}</span>
                 <span
                   v-if="isSystemError(record.id)"
-                  class="inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-bold uppercase tracking-wider bg-amber-100 dark:bg-amber-950/50 text-amber-700 dark:text-amber-400 border border-amber-300 dark:border-amber-700/50"
+                  class="inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-bold uppercase tracking-wider bg-red-100 dark:bg-red-950/50 text-red-700 dark:text-red-400 border border-red-300 dark:border-red-700/50"
                 >System</span>
               </div>
             </template>

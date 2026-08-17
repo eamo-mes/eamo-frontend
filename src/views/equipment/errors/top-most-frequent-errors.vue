@@ -172,10 +172,20 @@ async function updateCharts() {
       {
         avoidLabelOverlap: true,
         center: ['30%', '50%'],
-        data: chartData.map((d: MappedItem) => ({
-          name: d.name,
-          value: d.count,
-        })),
+        data: chartData.map((d: MappedItem, idx: number) => {
+          const isEmergency =
+            d.name.toLowerCase().includes('emergency stop') ||
+            d.name.toLowerCase().includes('dừng khẩn cấp');
+          return {
+            name: d.name,
+            value: d.count,
+            itemStyle: {
+              color: isEmergency
+                ? '#ef4444'
+                : signatureColors[idx % signatureColors.length],
+            },
+          };
+        }),
         emphasis: {
           itemStyle: { shadowBlur: 10, shadowColor: 'rgba(0,0,0,0.15)' },
           label: { fontSize: 14, fontWeight: 'bold', show: true },
