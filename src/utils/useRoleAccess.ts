@@ -16,9 +16,14 @@ export function useRoleAccess() {
     userRoles.value.some((r) => ['admin', 'manager', 'engineer'].includes(r)),
   );
 
+  const isGuest = computed(() =>
+    userRoles.value.includes('guest') || (!isAdmin.value && !isManager.value && !isEngineer.value),
+  );
+
   return {
     isAdmin,
     isEngineer,
+    isGuest,
     isManager,
     userRoles,
   };

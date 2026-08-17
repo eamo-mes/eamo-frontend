@@ -17,6 +17,7 @@ import {
   updateChecklistSessionApi,
 } from '#/api/ops/checklist';
 import JudgeResultButton from '#/components/JudgeResultButton.vue';
+import { useRoleAccess } from '#/utils/useRoleAccess';
 import type {
   ChecklistSession,
   ChecklistDetailItem,
@@ -24,6 +25,8 @@ import type {
 } from '#/views/dashboard/workspace/types';
 
 defineOptions({ name: 'MobilePortalChecklistDetail' });
+
+const { isEngineer } = useRoleAccess();
 
 interface JudgeDetailItem {
   id?: string;
@@ -287,6 +290,7 @@ onMounted(() => {
               v-model:value="item.result"
               pass-value="pass"
               fail-value="fail"
+              :disabled="!isEngineer"
               :pass-label="t('page.ops.checklistDrawer.statusPass') || 'Pass'"
               :fail-label="t('page.ops.checklistDrawer.statusFail') || 'Fail'"
               :on-judge="(nextRes) => handleSingleChecklistJudge(item, nextRes)"
@@ -297,10 +301,11 @@ onMounted(() => {
 
       <!-- Action Footer -->
       <div class="fixed bottom-0 left-0 right-0 bg-white/95 dark:bg-zinc-900/95 backdrop-blur-xl border-t border-slate-200 dark:border-zinc-800 p-4 z-50 flex items-center justify-between gap-3">
-        <Button class="flex-1 h-10 font-bold rounded-xl text-xs" @click="handleBack">
-          {{ t('page.ops.btnCancel') || 'Hủy' }}
+        <Button :class="[isEngineer ? 'flex-1' : 'w-full', 'h-10 font-bold rounded-xl text-xs']" @click="handleBack">
+          {{ isEngineer ? (t('page.ops.btnCancel') || 'Hủy') : (t('page.ops.btnBack') || 'Quay lại') }}
         </Button>
         <Button
+          v-if="isEngineer"
           type="primary"
           class="flex-1 h-10 font-bold bg-indigo-600 hover:bg-indigo-700 border-none rounded-xl text-xs"
           :loading="submitting"

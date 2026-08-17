@@ -74,6 +74,7 @@ const roleColorMap: Record<string, string> = {
   manager: 'orange',
   engineer: 'purple',
   user: 'blue',
+  guest: 'cyan',
 };
 
 function roleColor(role: string) {
@@ -258,6 +259,7 @@ const roleOptions = [
   { value: 'manager', label: 'MANAGER' },
   { value: 'engineer', label: 'ENGINEER' },
   { value: 'user', label: 'USER' },
+  { value: 'guest', label: 'GUEST' },
 ];
 
 const filteredDeptOptions = computed(() => {

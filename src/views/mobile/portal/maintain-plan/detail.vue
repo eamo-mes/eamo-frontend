@@ -22,7 +22,11 @@ import {
 } from '#/api/ops/maintenance-plans';
 import JudgeResultButton from '#/components/JudgeResultButton.vue';
 
+import { useRoleAccess } from '#/utils/useRoleAccess';
+
 defineOptions({ name: 'MobilePortalMaintainPlanDetail' });
+
+const { isEngineer } = useRoleAccess();
 
 interface JudgeScheduleItem {
   schedule_id: string;
@@ -332,6 +336,7 @@ onMounted(() => {
                 v-model:value="item.result"
                 pass-value="Completed"
                 fail-value="Failed"
+                :disabled="!isEngineer"
                 :pass-label="t('page.ops.resultPass') || 'Đạt'"
                 :fail-label="t('page.ops.resultFail') || 'Chưa đạt'"
                 :on-judge="(nextRes) => handleSingleMaintenanceJudge(item, nextRes)"
@@ -339,7 +344,7 @@ onMounted(() => {
             </div>
 
             <!-- Optional Notes -->
-            <div>
+            <div v-if="isEngineer">
               <Input.Textarea
                 v-model:value="item.notes"
                 :rows="2"
@@ -347,16 +352,20 @@ onMounted(() => {
                 :placeholder="t('page.ops.notesPlaceholder') || 'Ghi chú cho hạng mục này (nếu có)...'"
               />
             </div>
+            <div v-else-if="item.notes" class="text-[11px] text-slate-500 italic">
+              {{ item.notes }}
+            </div>
           </div>
         </div>
       </div>
 
       <!-- Action Footer -->
       <div class="fixed bottom-0 left-0 right-0 bg-white/95 dark:bg-zinc-900/95 backdrop-blur-xl border-t border-slate-200 dark:border-zinc-800 p-4 z-50 flex items-center justify-between gap-3">
-        <Button class="flex-1 h-10 font-bold rounded-xl text-xs" @click="handleBack">
-          {{ t('page.ops.btnCancel') || 'Hủy' }}
+        <Button :class="[isEngineer ? 'flex-1' : 'w-full', 'h-10 font-bold rounded-xl text-xs']" @click="handleBack">
+          {{ isEngineer ? (t('page.ops.btnCancel') || 'Hủy') : (t('page.ops.btnBack') || 'Quay lại') }}
         </Button>
         <Button
+          v-if="isEngineer"
           type="primary"
           class="flex-1 h-10 font-bold bg-indigo-600 hover:bg-indigo-700 border-none rounded-xl text-xs"
           :loading="submitting"

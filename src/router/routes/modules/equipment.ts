@@ -5,7 +5,6 @@ import { $t } from '#/locales';
 const routes: RouteRecordRaw[] = [
   {
     meta: {
-      authority: ['admin', 'manager', 'engineer'],
       icon: 'lucide:wrench',
       order: 20,
       title: $t('page.equipment.title'),
@@ -17,7 +16,6 @@ const routes: RouteRecordRaw[] = [
         name: 'EquipmentGroup',
         path: 'equipment-group',
         meta: {
-          authority: ['admin', 'manager', 'engineer'],
           icon: 'lucide:box',
           title: $t('page.equipment.navEquipment'),
           isGroup: true,
@@ -28,7 +26,6 @@ const routes: RouteRecordRaw[] = [
             path: 'list',
             component: () => import('#/views/equipment/list/index.vue'),
             meta: {
-              authority: ['admin', 'manager', 'engineer'],
               icon: 'lucide:list',
               title: $t('page.equipment.list'),
             },
@@ -38,7 +35,6 @@ const routes: RouteRecordRaw[] = [
             path: 'list/detail',
             component: () => import('#/views/equipment/list/detail.vue'),
             meta: {
-              authority: ['admin', 'manager', 'engineer'],
               hideInMenu: true,
               title: $t('page.equipment.detail'),
             },
@@ -48,7 +44,6 @@ const routes: RouteRecordRaw[] = [
             path: 'categories',
             component: () => import('#/views/equipment/categories/index.vue'),
             meta: {
-              authority: ['admin', 'manager', 'engineer'],
               icon: 'lucide:tag',
               title: $t('page.equipment.categories'),
             },
@@ -58,7 +53,6 @@ const routes: RouteRecordRaw[] = [
             path: 'units',
             component: () => import('#/views/equipment/units/index.vue'),
             meta: {
-              authority: ['admin', 'manager', 'engineer'],
               icon: 'lucide:box',
               title: $t('page.equipment.units'),
             },
@@ -69,7 +63,6 @@ const routes: RouteRecordRaw[] = [
         name: 'MaintenanceGroup',
         path: 'maintenance-group',
         meta: {
-          authority: ['admin', 'manager', 'engineer'],
           icon: 'lucide:wrench',
           title: $t('page.ops.maintenance'),
           isGroup: true,
@@ -80,7 +73,6 @@ const routes: RouteRecordRaw[] = [
             path: '/maintenance/maintenance-categories',
             component: () => import('#/views/ops/maintenance-categories/index.vue'),
             meta: {
-              authority: ['admin', 'manager', 'engineer'],
               icon: 'lucide:wrench',
               title: $t('page.ops.maintenanceCategories'),
             },
@@ -90,7 +82,6 @@ const routes: RouteRecordRaw[] = [
             path: '/maintenance/maintenance-categories/detail',
             component: () => import('#/views/ops/maintenance-categories/detail.vue'),
             meta: {
-              authority: ['admin', 'manager', 'engineer'],
               hideInMenu: true,
               title: $t('page.ops.maintenanceCategoryDetail'),
             },
@@ -100,7 +91,6 @@ const routes: RouteRecordRaw[] = [
             path: '/maintenance/maintenance-plans',
             component: () => import('#/views/ops/maintenance-plans/index.vue'),
             meta: {
-              authority: ['admin', 'manager', 'engineer'],
               icon: 'lucide:clipboard-check',
               title: $t('page.ops.maintenancePlans'),
             },
@@ -110,7 +100,6 @@ const routes: RouteRecordRaw[] = [
             path: '/maintenance/maintenance-plans/detail',
             component: () => import('#/views/ops/maintenance-plans/detail.vue'),
             meta: {
-              authority: ['admin', 'manager', 'engineer'],
               hideInMenu: true,
               title: $t('page.ops.maintenancePlanDetail'),
             },
@@ -120,7 +109,6 @@ const routes: RouteRecordRaw[] = [
             path: '/maintenance/checklist',
             component: () => import('#/views/ops/checklist/index.vue'),
             meta: {
-              authority: ['admin', 'manager', 'engineer'],
               icon: 'lucide:clipboard-list',
               title: $t('page.ops.checklist'),
             },
@@ -130,7 +118,6 @@ const routes: RouteRecordRaw[] = [
             path: '/maintenance/checklist/detail',
             component: () => import('#/views/ops/checklist/detail.vue'),
             meta: {
-              authority: ['admin', 'manager', 'engineer'],
               hideInMenu: true,
               title: $t('page.ops.checklistDetail'),
             },
@@ -141,7 +128,6 @@ const routes: RouteRecordRaw[] = [
         name: 'ErrorGroup',
         path: 'error-group',
         meta: {
-          authority: ['admin', 'manager', 'engineer'],
           icon: 'lucide:alert-triangle',
           title: $t('page.equipment.navError'),
           isGroup: true,
@@ -152,7 +138,6 @@ const routes: RouteRecordRaw[] = [
             path: 'errors',
             component: () => import('#/views/equipment/errors/index.vue'),
             meta: {
-              authority: ['admin', 'manager', 'engineer'],
               icon: 'lucide:alert-triangle',
               title: $t('page.equipment.errors'),
             },
@@ -162,7 +147,6 @@ const routes: RouteRecordRaw[] = [
             path: '/maintenance/error-monitoring',
             component: () => import('#/views/ops/error-monitoring/index.vue'),
             meta: {
-              authority: ['admin', 'manager', 'engineer'],
               icon: 'lucide:activity',
               title: $t('page.ops.errorMonitoring'),
             },
