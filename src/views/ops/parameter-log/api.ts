@@ -27,16 +27,27 @@ function getAuthHeadersForUpload() {
   };
 }
 
+export interface FetchParameterLogsParams {
+  withTrashed?: boolean;
+  equipment_id?: string;
+  equipment_parameter_id?: string;
+  start_date?: string;
+  end_date?: string;
+}
+
 /**
  * GET /api/v1/equipment/equipment-parameter/logs
  * Route: equipment-parameter-logs.index
  */
-export async function fetchParameterLogsApi(withTrashed = true): Promise<ParameterLogItem[]> {
+export async function fetchParameterLogsApi(
+  params: boolean | FetchParameterLogsParams = true
+): Promise<ParameterLogItem[]> {
+  const queryParams = typeof params === 'boolean' ? { with_trashed: params } : { with_trashed: false, ...params };
   const res = await axios.get<ApiResponse<ParameterLogItem[]> | ParameterLogItem[]>(
     `${API_BASE_URL}/v1/equipment/equipment-parameter/logs`,
     {
       headers: getAuthHeaders(),
-      params: { with_trashed: withTrashed },
+      params: queryParams,
     }
   );
   if (Array.isArray(res.data)) {

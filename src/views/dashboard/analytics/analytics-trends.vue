@@ -1,6 +1,6 @@
 <script lang="ts" setup>
 import { ref, watch, nextTick } from 'vue';
-import { Empty, Spin } from 'ant-design-vue';
+import { Empty, Skeleton } from 'ant-design-vue';
 import dayjs from 'dayjs';
 import { $t } from '#/locales';
 import { usePreferences } from '@vben/preferences';
@@ -226,12 +226,13 @@ watch(
 </script>
 
 <template>
-  <Spin :spinning="props.loading || false">
-    <div v-if="props.items && props.items.length > 0" class="h-[340px]">
-      <EchartsUI ref="chartRef" height="340px" />
-    </div>
-    <div v-else class="py-8 flex justify-center">
-      <Empty :description="$t('page.ops.chartNoData')" />
-    </div>
-  </Spin>
+  <div v-if="props.loading" class="h-[340px] p-4 flex flex-col justify-center border border-dashed border-border/40 rounded-lg bg-muted/5">
+    <Skeleton active :paragraph="{ rows: 7, width: ['100%', '92%', '96%', '88%', '94%', '82%', '96%'] }" :title="false" />
+  </div>
+  <div v-else-if="props.items && props.items.length > 0" class="h-[340px]">
+    <EchartsUI ref="chartRef" height="340px" />
+  </div>
+  <div v-else class="py-8 flex justify-center">
+    <Empty :description="$t('page.ops.chartNoData')" />
+  </div>
 </template>

@@ -1,7 +1,7 @@
 <script lang="ts" setup>
 import { onMounted, ref, computed, watch } from 'vue';
 import axios from 'axios';
-import { Select, Switch } from 'ant-design-vue';
+import { Select, Switch, SkeletonInput } from 'ant-design-vue';
 import dayjs from 'dayjs';
 import { useAccessStore } from '@vben/stores';
 import { API_BASE_URL } from '#/api/config';
@@ -51,13 +51,13 @@ const summaryLoading = ref(false);
 const operatingItems = ref<OperatingTimeItem[]>([]);
 const operatingEquipments = ref<OperatingEquipmentOption[]>([]);
 const maintenanceStatusData = ref<{ name: string; remaining: number }[]>([]);
-const operatingLoading = ref(false);
+const operatingLoading = ref(true);
 
 // Parameter Logs Chart State
 const paramLogs = ref<ParameterLogItem[]>([]);
 const paramEquipments = ref<ParameterEquipmentOption[]>([]);
 const paramUnits = ref<UnitOption[]>([]);
-const paramLogsLoading = ref(false);
+const paramLogsLoading = ref(true);
 
 const selectedEquipmentId = ref<string | undefined>(undefined);
 const selectedParameterId = ref<string | undefined>(undefined);
@@ -123,13 +123,32 @@ async function loadOperatingTimesData(): Promise<void> {
   }
 }
 
+async function fetchChartLogs(equipmentId: string, parameterId: string): Promise<void> {
+  paramLogsLoading.value = true;
+  try {
+    const startDate = dayjs().subtract(1, 'month').format('YYYY-MM-DD');
+    const endDate = dayjs().format('YYYY-MM-DD');
+    const logs = await fetchParameterLogsApi({
+      equipment_id: equipmentId,
+      equipment_parameter_id: parameterId,
+      start_date: startDate,
+      end_date: endDate,
+    });
+    paramLogs.value = logs;
+  } catch (error) {
+    console.error('Failed to fetch chart parameter logs', error);
+    paramLogs.value = [];
+  } finally {
+    paramLogsLoading.value = false;
+  }
+}
+
 async function loadParameterLogsData(): Promise<void> {
   paramLogsLoading.value = true;
   try {
-    const [equipRes, unitRes, logsRes] = await Promise.all([
+    const [equipRes, unitRes] = await Promise.all([
       fetchEquipmentsApi(),
       fetchUnitsApi(),
-      fetchParameterLogsApi(false),
     ]);
 
     paramEquipments.value = equipRes.map((item) => ({
@@ -139,42 +158,20 @@ async function loadParameterLogsData(): Promise<void> {
       equipment_parameters: item.equipment_parameters || [],
     }));
     paramUnits.value = unitRes;
-    // Lọc bỏ các log của thiết bị hoặc thông số đã bị xóa mềm (không có trong paramEquipments)
-    const activeEquipMap = new Map(
-      paramEquipments.value.map((e) => [e.id, new Set((e.equipment_parameters || []).map((p) => p.id))])
-    );
-    const activeLogs = logsRes.filter((log) => {
-      const paramSet = activeEquipMap.get(log.equipment_id);
-      return paramSet && paramSet.has(log.equipment_parameter_id);
-    });
-    paramLogs.value = activeLogs;
 
-    // Tự động chọn thiết bị và thông số có log mới nhất
-    if (activeLogs.length > 0) {
-      let newestItem: ParameterLogItem = activeLogs[0]!;
-      let newestTime = dayjs(newestItem.recorded_at || newestItem.created_at).valueOf();
-
-      for (let i = 1; i < activeLogs.length; i++) {
-        const item = activeLogs[i]!;
-        const itemTime = dayjs(item.recorded_at || item.created_at).valueOf();
-        if (itemTime > newestTime) {
-          newestTime = itemTime;
-          newestItem = item;
-        }
-      }
-
-      selectedEquipmentId.value = newestItem.equipment_id;
-      selectedParameterId.value = newestItem.equipment_parameter_id;
-    } else if (paramEquipments.value.length > 0) {
+    if (paramEquipments.value.length > 0) {
       const firstEquip = paramEquipments.value[0];
       selectedEquipmentId.value = firstEquip?.id;
       if (firstEquip?.equipment_parameters && firstEquip.equipment_parameters.length > 0) {
         selectedParameterId.value = firstEquip.equipment_parameters[0]?.id;
+      } else {
+        paramLogsLoading.value = false;
       }
+    } else {
+      paramLogsLoading.value = false;
     }
   } catch (error) {
-    console.error('Failed to load parameter logs data for dashboard chart', error);
-  } finally {
+    console.error('Failed to load equipment and unit data for dashboard chart', error);
     paramLogsLoading.value = false;
   }
 }
@@ -186,6 +183,14 @@ watch(selectedEquipmentId, (newEquipId) => {
   const exists = params.some((p) => p.id === selectedParameterId.value);
   if (!exists) {
     selectedParameterId.value = params.length > 0 ? params[0]?.id : undefined;
+  }
+});
+
+watch([selectedEquipmentId, selectedParameterId], ([equipId, paramId]) => {
+  if (equipId && paramId) {
+    fetchChartLogs(equipId, paramId);
+  } else {
+    paramLogs.value = [];
   }
 });
 
@@ -222,23 +227,7 @@ const selectedUnitName = computed<string>(() => {
 const chartFilteredLogs = computed(() => {
   if (!selectedEquipmentId.value || !selectedParameterId.value) return [];
 
-  const start = dayjs().subtract(1, 'month').startOf('day');
-  const end = dayjs().endOf('day');
-
-  const result = paramLogs.value.filter((item) => {
-    if (
-      item.equipment_id !== selectedEquipmentId.value ||
-      item.equipment_parameter_id !== selectedParameterId.value
-    ) {
-      return false;
-    }
-    const dateStr = item.recorded_at || item.created_at;
-    if (!dateStr) return false;
-    const recDate = dayjs(dateStr);
-    return (recDate.isAfter(start) || recDate.isSame(start)) && (recDate.isBefore(end) || recDate.isSame(end));
-  });
-
-  return [...result].sort((a, b) => {
+  return [...paramLogs.value].sort((a, b) => {
     const timeA = dayjs(a.recorded_at || a.created_at).valueOf();
     const timeB = dayjs(b.recorded_at || b.created_at).valueOf();
     return timeA - timeB;
@@ -273,7 +262,14 @@ onMounted(() => {
             <span class="text-xs font-semibold text-muted-foreground whitespace-nowrap">
               {{ $t('page.ops.equipmentLabel') }}:
             </span>
+            <SkeletonInput
+              v-if="paramLogsLoading && paramEquipments.length === 0"
+              active
+              size="small"
+              style="width: 220px;"
+            />
             <Select
+              v-else
               v-model:value="selectedEquipmentId"
               :placeholder="$t('page.ops.selectEquipment')"
               class="w-[220px]"
@@ -287,7 +283,14 @@ onMounted(() => {
             <span class="text-xs font-semibold text-muted-foreground whitespace-nowrap">
               {{ $t('page.ops.parameterLabel') }}:
             </span>
+            <SkeletonInput
+              v-if="paramLogsLoading && paramEquipments.length === 0"
+              active
+              size="small"
+              style="width: 220px;"
+            />
             <Select
+              v-else
               v-model:value="selectedParameterId"
               :placeholder="$t('page.ops.selectParameter')"
               class="w-[220px]"
