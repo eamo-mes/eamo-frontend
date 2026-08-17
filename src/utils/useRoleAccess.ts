@@ -10,15 +10,13 @@ export function useRoleAccess() {
 
   const userRoles = computed<string[]>(() => userStore.userInfo?.roles || []);
 
-  const isAdmin = computed(() => userRoles.value.includes('admin'));
-  const isManager = computed(() => userRoles.value.some((r) => ['admin', 'manager'].includes(r)));
+  const isAdmin = computed(() => userRoles.value.some((r) => ['admin', 'guest'].includes(r)));
+  const isManager = computed(() => userRoles.value.some((r) => ['admin', 'manager', 'guest'].includes(r)));
   const isEngineer = computed(() =>
-    userRoles.value.some((r) => ['admin', 'manager', 'engineer'].includes(r)),
+    userRoles.value.some((r) => ['admin', 'manager', 'engineer', 'guest'].includes(r)),
   );
 
-  const isGuest = computed(() =>
-    userRoles.value.includes('guest') || (!isAdmin.value && !isManager.value && !isEngineer.value),
-  );
+  const isGuest = computed(() => userRoles.value.includes('guest'));
 
   return {
     isAdmin,
