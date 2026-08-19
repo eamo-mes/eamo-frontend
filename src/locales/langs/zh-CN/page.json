@@ -1086,6 +1086,7 @@
     "Internal Server Error": "Lỗi máy chủ nội bộ. Vui lòng thử lại sau.",
     "Resource not found.": "Không tìm thấy dữ liệu yêu cầu.",
     "The given data was invalid.": "Dữ liệu nhập vào không hợp lệ. Vui lòng kiểm tra lại.",
-    "Too Many Requests": "Quá nhiều yêu cầu. Vui lòng thử lại sau."
+    "Too Many Requests": "Quá nhiều yêu cầu. Vui lòng thử lại sau.",
+    "forbidden": "Truy cập bị từ chối. Bạn không có quyền thực hiện hành động này."
   }
 }

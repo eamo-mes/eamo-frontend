@@ -1095,6 +1095,7 @@
     "Internal Server Error": "Internal server error. Please try again later.",
     "Resource not found.": "Requested resource was not found.",
     "The given data was invalid.": "Validation error. Please check your input fields.",
-    "Too Many Requests": "Too many requests. Please try again later."
+    "Too Many Requests": "Too many requests. Please try again later.",
+    "forbidden": "Access denied. You do not have permission to perform this action."
   }
 }

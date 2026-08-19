@@ -43,6 +43,10 @@ async function bootstrap(namespace: string) {
   // 国际化 i18n 配置
   await setupI18n(app);
 
+  // 初始化全局 Axios 拦截器 (Tự động chuyển ngữ mã lỗi toàn dự án)
+  const { setupGlobalAxios } = await import('#/api/setupAxios');
+  setupGlobalAxios();
+
   // 配置 pinia-tore
   await initStores(app, { namespace });
 
