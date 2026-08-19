@@ -10,12 +10,14 @@ import {
   Empty,
   Progress,
   Result,
-  Modal
+  Modal,
+  message,
 } from 'ant-design-vue';
 import axios from 'axios';
 import { useAccessStore } from '@vben/stores';
 import { API_BASE_URL } from '#/api/config';
 import EquipmentHierarchyFlow from '#/views/equipment/list/components/EquipmentHierarchyFlow.vue';
+import JudgeResultButton from '#/components/JudgeResultButton.vue';
 
 defineOptions({ name: 'MobilePortalEquipmentDetail' });
 
@@ -275,7 +277,7 @@ async function loadEquipmentDetails() {
     console.error('loadEquipmentDetails error:', err);
     const errTyped = err as { response?: { status?: number; data?: { message?: string } } };
     errorStatus.value = errTyped?.response?.status || 500;
-    fetchError.value = errTyped?.response?.data?.message || 'Không thể tải thông tin chi tiết thiết bị.';
+    fetchError.value = errTyped?.response?.data?.message || t('page.equipment.msgLoadDetailError') || 'Không thể tải thông tin chi tiết thiết bị.';
   } finally {
     loading.value = false;
   }
@@ -283,17 +285,6 @@ async function loadEquipmentDetails() {
 
 function handleBack() {
   router.push('/portal/equipment');
-}
-
-function navigateToDetail(sessionId: string, equipmentId: string, date: string) {
-  router.push({
-    path: '/maintenance/checklist/detail',
-    query: {
-      id: sessionId,
-      equipment_id: equipmentId,
-      date: date,
-    },
-  });
 }
 
 // ─── Daily Checklist Helpers ───
@@ -323,6 +314,36 @@ function getStatusColor(status: string) {
   if (status === 'Passed') return 'success';
   if (status === 'Failed') return 'error';
   return 'warning';
+}
+
+async function handleSingleChecklistJudge(item: DailyChecklistDetail, nextResult: string): Promise<void> {
+  if (!dailyChecklistData.value) return;
+
+  try {
+    await axios.post(
+      `${API_BASE_URL}/v1/checklist-sessions/judge`,
+      {
+        session_id: dailyChecklistData.value.id,
+        results: [
+          {
+            checklist_id: item.id,
+            result: nextResult,
+            description: item.description,
+          },
+        ],
+      },
+      {
+        headers: getAuthHeaders(),
+      },
+    );
+    message.success(t('page.ops.judgeSuccess') || 'Đã lưu kết quả đánh giá thành công');
+    await loadDailyChecklist(dailyChecklistData.value.equipment_id);
+  } catch (err: unknown) {
+    console.error('Failed to judge checklist detail:', err);
+    const errTyped = err as { response?: { data?: { message?: string } } };
+    const errorMsg = errTyped?.response?.data?.message || t('page.ops.judgeError') || 'Có lỗi xảy ra khi lưu kết quả đánh giá';
+    message.error(errorMsg);
+  }
 }
 
 onMounted(() => {
@@ -558,9 +579,12 @@ onMounted(() => {
                 <Tag :color="getStatusColor(getDailyStatusText(item))" class="text-[9px] uppercase font-bold px-1.5 py-0.5 rounded-md m-0">
                   {{ getDailyStatusText(item) }}
                 </Tag>
-                <Button type="primary" size="small" class="bg-indigo-600 hover:bg-indigo-700 border-none text-[11px] h-7 px-2.5 rounded-lg flex items-center justify-center font-bold" @click="navigateToDetail(dailyChecklistData!.id, dailyChecklistData!.equipment_id, dailyChecklistData!.session_date)">
-                  Check
-                </Button>
+                <JudgeResultButton
+                  :value="getDailyLatestLog(item)?.result || ''"
+                  pass-value="pass"
+                  fail-value="fail"
+                  :on-judge="(nextRes) => handleSingleChecklistJudge(item, nextRes)"
+                />
               </div>
             </div>
           </div>

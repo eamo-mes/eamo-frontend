@@ -622,7 +622,7 @@ onMounted(() => {
             <Card class="shadow-sm border-border rounded-xl mt-6">
               <div class="mb-3 flex items-end justify-between gap-3">
                 <div>
-                  <div class="font-semibold text-gray-800 text-base">
+                  <div class="font-semibold text-gray-800 dark:text-gray-100 text-base">
                     {{ $t('page.equipment.parametersTitle') }}
                   </div>
                 </div>

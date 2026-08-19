@@ -315,7 +315,7 @@ onMounted(() => {
         <Button class="flex items-center justify-center" @click="goBack">
           <ChevronLeft class="size-5" />
         </Button>
-        <h1 class="text-xl font-bold text-gray-800 m-0">
+        <h1 class="text-xl font-bold text-gray-800 dark:text-gray-100 m-0">
           {{ isEditing ? $t('page.ops.checklistDetail') : $t('page.ops.detailTitleAdd') }}
         </h1>
       </div>
@@ -424,7 +424,7 @@ onMounted(() => {
             <Card class="shadow-sm border-border rounded-xl mt-6">
               <div class="mb-3 flex items-end justify-between gap-3">
                 <div>
-                  <div class="font-semibold text-gray-800 text-base">
+                  <div class="font-semibold text-gray-800 dark:text-gray-100 text-base">
                     {{ $t('page.ops.detailItemsHeader') }}
                   </div>
                 </div>

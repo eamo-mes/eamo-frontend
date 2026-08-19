@@ -530,7 +530,7 @@ onMounted(async () => {
         <Button class="flex items-center justify-center" @click="goBack">
           <ChevronLeft class="size-5" />
         </Button>
-        <h1 class="text-xl font-bold text-gray-800 dark:text-gray-200 m-0">
+        <h1 class="text-xl font-bold text-gray-800 dark:text-gray-100 m-0">
           {{ isEditing ? $t('page.ops.editPlan') : $t('page.ops.addNewPlan') }}
         </h1>
       </div>
